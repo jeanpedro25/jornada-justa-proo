@@ -27,6 +27,9 @@ const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [filter, setFilter] = useState<FilterPeriod>('month');
+  const [filtroHorasMin, setFiltroHorasMin] = useState('');
+  const [filtroHorasMax, setFiltroHorasMax] = useState('');
+  const [showTimeFilter, setShowTimeFilter] = useState(false);
   const [selectedDay, setSelectedDay] = useState<DayGroup | null>(null);
   const [editFields, setEditFields] = useState<Array<{ id: string; entrada: string; saida: string }>>([]);
   const [editObs, setEditObs] = useState('');
