@@ -259,8 +259,54 @@ const HistoricoPage: React.FC = () => {
           ))}
         </div>
 
+        {/* Time Filter */}
+        <div>
+          <button
+            onClick={() => setShowTimeFilter(!showTimeFilter)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              showTimeFilter || filtroHorasMin || filtroHorasMax
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-secondary text-secondary-foreground'
+            }`}
+          >
+            <Filter size={12} />
+            Filtrar por horas
+          </button>
+          {showTimeFilter && (
+            <div className="flex gap-2 mt-2 items-center">
+              <Input
+                type="number"
+                placeholder="Mín (h)"
+                value={filtroHorasMin}
+                onChange={(e) => setFiltroHorasMin(e.target.value)}
+                className="rounded-xl h-8 text-xs w-20"
+                step="0.5"
+                min="0"
+              />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input
+                type="number"
+                placeholder="Máx (h)"
+                value={filtroHorasMax}
+                onChange={(e) => setFiltroHorasMax(e.target.value)}
+                className="rounded-xl h-8 text-xs w-20"
+                step="0.5"
+                min="0"
+              />
+              {(filtroHorasMin || filtroHorasMax) && (
+                <button
+                  onClick={() => { setFiltroHorasMin(''); setFiltroHorasMax(''); }}
+                  className="text-[10px] text-destructive underline"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* List grouped by day */}
-        {dayGroups.length === 0 ? (
+        {filteredDayGroups.length === 0 ? (
           <div className="text-center py-12">
             <Calendar size={40} className="mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Nenhum registro neste período</p>
