@@ -7,8 +7,10 @@ import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { Play, Square, CheckCircle2, AlertTriangle, Coffee, Sun, Sunset } from 'lucide-react';
+import { Play, Square, CheckCircle2, AlertTriangle, Coffee, Sun, Sunset, Paperclip } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
+import AttachFile from '@/components/AttachFile';
+import EditRegistro from '@/components/EditRegistro';
 
 type Registro = Tables<'registros_ponto'>;
 
@@ -301,15 +303,35 @@ const AppPage: React.FC = () => {
         {/* Timeline */}
         {registros.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground font-semibold mb-3">REGISTROS DE HOJE</p>
-            <div className="space-y-2">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-muted-foreground font-semibold">REGISTROS DE HOJE</p>
+              {registros.length > 0 && (
+                <AttachFile
+                  registroId={registros[0].id}
+                  currentUrl={(registros[0] as any).anexo_url}
+                  onAttached={fetchToday}
+                />
+              )}
+            </div>
+            <div className="space-y-3">
               {registros.map((r, i) => (
-                <div key={r.id} className="flex items-center gap-3 text-sm">
-                  <div className={`w-2 h-2 rounded-full ${r.saida ? 'bg-success' : 'bg-warning'}`} />
-                  <span className="text-muted-foreground w-16">{i === 0 ? 'Manhã' : `Tarde`}</span>
-                  <span className="font-medium">{formatTime(new Date(r.entrada))}</span>
-                  <span className="text-muted-foreground">→</span>
-                  <span className="font-medium">{r.saida ? formatTime(new Date(r.saida)) : '...'}</span>
+                <div key={r.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className={`w-2 h-2 rounded-full ${r.saida ? 'bg-success' : 'bg-warning'}`} />
+                    <span className="text-muted-foreground w-14">{i === 0 ? 'Manhã' : 'Tarde'}</span>
+                    <span className="font-medium">{formatTime(new Date(r.entrada))}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="font-medium">{r.saida ? formatTime(new Date(r.saida)) : '...'}</span>
+                    {(r as any).editado_manualmente && (
+                      <span className="text-[10px] text-warning">✏️</span>
+                    )}
+                  </div>
+                  <EditRegistro
+                    registroId={r.id}
+                    entrada={r.entrada}
+                    saida={r.saida}
+                    onEdited={fetchToday}
+                  />
                 </div>
               ))}
             </div>
