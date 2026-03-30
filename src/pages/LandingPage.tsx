@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, Shield, BarChart3, FileText, ChevronRight, Star, Zap, TrendingUp } from 'lucide-react';
+import { Shield, BarChart3, FileText, ChevronRight, Zap, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import HoraJustaLogo from '@/components/HoraJustaLogo';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -31,10 +32,7 @@ const LandingPage: React.FC = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-5 h-16">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-accent flex items-center justify-center">
-              <Clock className="h-4 w-4 text-accent-foreground" />
-            </div>
-            <span className="text-lg font-bold text-foreground tracking-tight">Hora Justa</span>
+            <HoraJustaLogo size={36} showText />
           </div>
           <Button variant="outline" size="sm" className="rounded-full text-xs font-semibold" onClick={() => navigate('/auth')}>
             Entrar
@@ -437,12 +435,7 @@ const LandingPage: React.FC = () => {
 
       {/* FOOTER */}
       <footer className="py-8 px-5 border-t border-border/50 text-center">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-lg bg-accent flex items-center justify-center">
-            <Clock className="h-3 w-3 text-accent-foreground" />
-          </div>
-          <span className="text-sm font-bold text-foreground">Hora Justa</span>
-        </div>
+        <HoraJustaLogo size={28} showText />
         <p className="text-[10px] text-muted-foreground">
           Os registros são de responsabilidade do usuário. Valores são estimativas.
         </p>
