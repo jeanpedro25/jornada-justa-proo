@@ -5,7 +5,8 @@ import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import { formatCurrency, calcHorasTrabalhadas, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
-import { Lock, FileText, Shield, TrendingUp } from 'lucide-react';
+import { FileText, Shield, TrendingUp, Download, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Registro = Tables<'registros_ponto'>;
@@ -13,6 +14,7 @@ type Registro = Tables<'registros_ponto'>;
 const RelatorioPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -58,7 +60,38 @@ const RelatorioPage: React.FC = () => {
     return ht > 10 || (r.intervalo_minutos ?? 60) < 60;
   }).length;
 
-  const isPro = profile?.plano === 'pro';
+  const handleGeneratePDF = async () => {
+    setGenerating(true);
+    try {
+      const now = new Date();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Não autenticado');
+
+      const response = await supabase.functions.invoke('gerar-relatorio', {
+        body: { month: now.getMonth() + 1, year: now.getFullYear() },
+      });
+
+      if (response.error) throw response.error;
+
+      const { html } = response.data;
+
+      // Open HTML in new window for printing as PDF
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      }
+
+      toast({ title: 'Relatório gerado!', description: 'Use Ctrl+P ou o botão de imprimir para salvar como PDF.' });
+    } catch (error: any) {
+      toast({ title: 'Erro', description: error.message || 'Erro ao gerar relatório', variant: 'destructive' });
+    }
+    setGenerating(false);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -95,40 +128,43 @@ const RelatorioPage: React.FC = () => {
           )}
         </div>
 
-        {/* Download / Upgrade */}
-        {isPro ? (
-          <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl h-12 font-semibold">
-            Baixar PDF oficial
-          </Button>
-        ) : (
-          <div className="space-y-4">
-            <Button disabled className="w-full rounded-xl h-12 font-semibold opacity-50">
-              Baixar PDF oficial
-            </Button>
-            <div className="bg-card rounded-2xl border border-border p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Lock size={18} className="text-warning" />
-                <span className="font-bold">Sua prova jurídica está aqui</span>
-              </div>
-              <ul className="space-y-2 text-sm text-muted-foreground mb-4">
-                <li className="flex items-center gap-2">
-                  <Shield size={14} className="text-accent" />
-                  PDF oficial com todos os registros
-                </li>
-                <li className="flex items-center gap-2">
-                  <TrendingUp size={14} className="text-accent" />
-                  Cálculo automático de horas extras e valores
-                </li>
-                <li className="flex items-center gap-2">
-                  <FileText size={14} className="text-accent" />
-                  Pronto para entregar ao advogado
-                </li>
-              </ul>
-              <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl h-12 font-semibold">
-                Assinar Pro — R$ 9,90/mês
-              </Button>
-            </div>
-          </div>
+        {/* Features */}
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <p className="font-bold mb-3">O que o relatório inclui:</p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex items-center gap-2">
+              <Shield size={14} className="text-accent shrink-0" />
+              Todos os registros de entrada e saída
+            </li>
+            <li className="flex items-center gap-2">
+              <TrendingUp size={14} className="text-accent shrink-0" />
+              Cálculo automático de horas extras e valores
+            </li>
+            <li className="flex items-center gap-2">
+              <FileText size={14} className="text-accent shrink-0" />
+              Indicação de atestados anexados e edições manuais
+            </li>
+            <li className="flex items-center gap-2">
+              <Shield size={14} className="text-accent shrink-0" />
+              Aviso legal com base no Art. 74 da CLT
+            </li>
+          </ul>
+        </div>
+
+        {/* Generate Button */}
+        <Button
+          onClick={handleGeneratePDF}
+          disabled={generating || registros.length === 0}
+          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl h-12 font-semibold gap-2"
+        >
+          {generating ? (
+            <><Loader2 size={18} className="animate-spin" /> Gerando...</>
+          ) : (
+            <><Download size={18} /> Gerar prova para advogado (PDF)</>
+          )}
+        </Button>
+        {registros.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center">Nenhum registro neste mês para gerar relatório.</p>
         )}
       </div>
       <BottomNav />
