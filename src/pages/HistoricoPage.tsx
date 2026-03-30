@@ -106,8 +106,19 @@ const HistoricoPage: React.FC = () => {
     });
   }, [registros, carga]);
 
-  const totalHoras = dayGroups.reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = dayGroups.reduce((s, d) => s + d.extraHours, 0);
+  // Apply time filter
+  const filteredDayGroups = React.useMemo(() => {
+    const minHours = filtroHorasMin ? parseFloat(filtroHorasMin) : 0;
+    const maxHours = filtroHorasMax ? parseFloat(filtroHorasMax) : Infinity;
+    if (!filtroHorasMin && !filtroHorasMax) return dayGroups;
+    return dayGroups.filter(d => {
+      const hours = d.totalMin / 60;
+      return hours >= minHours && hours <= maxHours;
+    });
+  }, [dayGroups, filtroHorasMin, filtroHorasMax]);
+
+  const totalHoras = filteredDayGroups.reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = filteredDayGroups.reduce((s, d) => s + d.extraHours, 0);
 
   const openEdit = (day: DayGroup) => {
     setSelectedDay(day);
