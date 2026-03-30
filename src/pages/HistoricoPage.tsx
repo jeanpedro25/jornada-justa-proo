@@ -12,7 +12,7 @@ import { Calendar, Paperclip, Upload, Loader2, ExternalLink, Filter } from 'luci
 import type { Tables } from '@/integrations/supabase/types';
 
 type Registro = Tables<'registros_ponto'>;
-type FilterPeriod = 'week' | 'month' | 'prev_month';
+type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
 
 interface DayGroup {
   data: string;
@@ -27,9 +27,8 @@ const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [filter, setFilter] = useState<FilterPeriod>('month');
-  const [filtroHorasMin, setFiltroHorasMin] = useState('');
-  const [filtroHorasMax, setFiltroHorasMax] = useState('');
-  const [showTimeFilter, setShowTimeFilter] = useState(false);
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
   const [selectedDay, setSelectedDay] = useState<DayGroup | null>(null);
   const [editFields, setEditFields] = useState<Array<{ id: string; entrada: string; saida: string }>>([]);
   const [editObs, setEditObs] = useState('');
@@ -42,6 +41,9 @@ const HistoricoPage: React.FC = () => {
 
   const getDateRange = (period: FilterPeriod) => {
     const now = new Date();
+    if (period === 'custom' && dataInicio && dataFim) {
+      return { start: dataInicio, end: dataFim };
+    }
     if (period === 'week') {
       const start = new Date(now);
       start.setDate(now.getDate() - now.getDay());
@@ -70,7 +72,7 @@ const HistoricoPage: React.FC = () => {
       .order('data', { ascending: false })
       .order('created_at', { ascending: true });
     setRegistros(data || []);
-  }, [user, filter]);
+  }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
     if (!user) return;
@@ -106,16 +108,7 @@ const HistoricoPage: React.FC = () => {
     });
   }, [registros, carga]);
 
-  // Apply time filter
-  const filteredDayGroups = React.useMemo(() => {
-    const minHours = filtroHorasMin ? parseFloat(filtroHorasMin) : 0;
-    const maxHours = filtroHorasMax ? parseFloat(filtroHorasMax) : Infinity;
-    if (!filtroHorasMin && !filtroHorasMax) return dayGroups;
-    return dayGroups.filter(d => {
-      const hours = d.totalMin / 60;
-      return hours >= minHours && hours <= maxHours;
-    });
-  }, [dayGroups, filtroHorasMin, filtroHorasMax]);
+  const filteredDayGroups = dayGroups;
 
   const totalHoras = filteredDayGroups.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = filteredDayGroups.reduce((s, d) => s + d.extraHours, 0);
@@ -245,8 +238,8 @@ const HistoricoPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2">
-          {([['week', 'Esta semana'], ['month', 'Este mês'], ['prev_month', 'Mês anterior']] as const).map(([key, label]) => (
+        <div className="flex gap-2 flex-wrap">
+          {([['week', 'Esta semana'], ['month', 'Este mês'], ['prev_month', 'Mês anterior'], ['custom', 'Personalizado']] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
@@ -259,51 +252,29 @@ const HistoricoPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Time Filter */}
-        <div>
-          <button
-            onClick={() => setShowTimeFilter(!showTimeFilter)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              showTimeFilter || filtroHorasMin || filtroHorasMax
-                ? 'bg-accent text-accent-foreground'
-                : 'bg-secondary text-secondary-foreground'
-            }`}
-          >
-            <Filter size={12} />
-            Filtrar por horas
-          </button>
-          {showTimeFilter && (
-            <div className="flex gap-2 mt-2 items-center">
+        {/* Custom date range */}
+        {filter === 'custom' && (
+          <div className="flex gap-2 items-center">
+            <div className="flex-1">
+              <label className="text-[10px] text-muted-foreground mb-1 block">De</label>
               <Input
-                type="number"
-                placeholder="Mín (h)"
-                value={filtroHorasMin}
-                onChange={(e) => setFiltroHorasMin(e.target.value)}
-                className="rounded-xl h-8 text-xs w-20"
-                step="0.5"
-                min="0"
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+                className="rounded-xl h-9 text-xs"
               />
-              <span className="text-xs text-muted-foreground">até</span>
-              <Input
-                type="number"
-                placeholder="Máx (h)"
-                value={filtroHorasMax}
-                onChange={(e) => setFiltroHorasMax(e.target.value)}
-                className="rounded-xl h-8 text-xs w-20"
-                step="0.5"
-                min="0"
-              />
-              {(filtroHorasMin || filtroHorasMax) && (
-                <button
-                  onClick={() => { setFiltroHorasMin(''); setFiltroHorasMax(''); }}
-                  className="text-[10px] text-destructive underline"
-                >
-                  Limpar
-                </button>
-              )}
             </div>
-          )}
-        </div>
+            <div className="flex-1">
+              <label className="text-[10px] text-muted-foreground mb-1 block">Até</label>
+              <Input
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+                className="rounded-xl h-9 text-xs"
+              />
+            </div>
+          </div>
+        )}
 
         {/* List grouped by day */}
         {filteredDayGroups.length === 0 ? (
