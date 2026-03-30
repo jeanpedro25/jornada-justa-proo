@@ -16,6 +16,7 @@ const ConfigPage: React.FC = () => {
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
+  const [almoco, setAlmoco] = useState('60');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -24,6 +25,7 @@ const ConfigPage: React.FC = () => {
       setSalario(String(profile.salario_base || ''));
       setCarga(String(profile.carga_horaria_diaria || ''));
       setPercentual(String(profile.hora_extra_percentual || ''));
+      setAlmoco(String((profile as any).intervalo_almoco ?? 60));
     }
   }, [profile]);
 
@@ -35,7 +37,8 @@ const ConfigPage: React.FC = () => {
       salario_base: Number(salario),
       carga_horaria_diaria: Number(carga),
       hora_extra_percentual: Number(percentual),
-    }).eq('id', user.id);
+      intervalo_almoco: Number(almoco),
+    } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
@@ -72,22 +75,46 @@ const ConfigPage: React.FC = () => {
       <AppHeader title="Configurações" />
       <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
         {/* Profile */}
-        <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+        <div className="bg-card rounded-xl border border-border p-4 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <User size={16} className="text-accent" />
-            <span className="font-semibold text-sm">Meu perfil</span>
+            <span className="font-semibold text-sm">Configurações de trabalho</span>
           </div>
-          <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" className="rounded-xl" />
-          <div className="grid grid-cols-2 gap-2">
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Seu nome</label>
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" className="rounded-xl" />
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Salário base (R$)</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-              <Input type="number" value={salario} onChange={(e) => setSalario(e.target.value)} className="rounded-xl pl-9" placeholder="Salário" />
+              <Input type="number" value={salario} onChange={(e) => setSalario(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 2500" />
             </div>
-            <Input type="number" value={carga} onChange={(e) => setCarga(e.target.value)} className="rounded-xl" placeholder="Horas/dia" />
           </div>
-          <Input type="number" value={percentual} onChange={(e) => setPercentual(e.target.value)} className="rounded-xl" placeholder="% hora extra" />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Carga horária/dia</label>
+              <Input type="number" value={carga} onChange={(e) => setCarga(e.target.value)} className="rounded-xl" placeholder="Ex: 8" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">% hora extra</label>
+              <Input type="number" value={percentual} onChange={(e) => setPercentual(e.target.value)} className="rounded-xl" placeholder="Ex: 50" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">⏰ Horário de almoço (minutos)</label>
+            <Input type="number" value={almoco} onChange={(e) => setAlmoco(e.target.value)} className="rounded-xl" placeholder="Ex: 60" />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Tempo de intervalo que será usado como padrão ao registrar ponto. CLT exige mínimo de 1h para jornadas &gt; 6h.
+            </p>
+          </div>
+
           <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
-            {saving ? 'Salvando...' : 'Salvar'}
+            {saving ? 'Salvando...' : 'Salvar configurações'}
           </Button>
         </div>
 

@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS intervalo_almoco integer NOT NULL DEFAULT 60;
