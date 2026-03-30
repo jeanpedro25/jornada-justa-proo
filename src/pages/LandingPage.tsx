@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, Shield, BarChart3, FileText, ChevronRight, Star, Zap, TrendingUp } from 'lucide-react';
+import { Shield, BarChart3, FileText, ChevronRight, Zap, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import HoraJustaLogo from '@/components/HoraJustaLogo';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
