@@ -76,17 +76,25 @@ const RelatorioPage: React.FC = () => {
 
       const { html } = response.data;
 
-      // Open HTML in new window for printing as PDF
-      const printWindow = window.open('', '_blank');
+      // Create a proper blob and open it
+      const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
       if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
+        printWindow.addEventListener('afterprint', () => URL.revokeObjectURL(url));
         setTimeout(() => {
           printWindow.print();
-        }, 500);
+        }, 800);
+      } else {
+        // Fallback: download as HTML
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-hora-justa-${new Date().toISOString().slice(0, 7)}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
       }
 
-      toast({ title: 'Relatório gerado!', description: 'Use Ctrl+P ou o botão de imprimir para salvar como PDF.' });
+      toast({ title: 'Relatório gerado!', description: 'Use Ctrl+P para salvar como PDF.' });
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar relatório', variant: 'destructive' });
     }

@@ -53,7 +53,7 @@ const AppPage: React.FC = () => {
   // Active record (last one without saída)
   const activeRecord = registros.find(r => !r.saida);
 
-  // Timer for active record
+  // Timer — reads from DB timestamp so it survives page reload
   useEffect(() => {
     if (!activeRecord) { setElapsed(0); return; }
     const entradaTs = new Date(activeRecord.entrada).getTime();
@@ -67,9 +67,14 @@ const AppPage: React.FC = () => {
     if (!user) return;
     setLoading(true);
     const now = new Date().toISOString();
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('registros_ponto')
-      .insert({ user_id: user.id, data: today, entrada: now, intervalo_minutos: 0 })
+      .insert({
+        user_id: user.id,
+        data: today,
+        entrada: now,
+        intervalo_minutos: 0,
+      })
       .select()
       .single();
     if (error) {
@@ -89,34 +94,34 @@ const AppPage: React.FC = () => {
     const { error } = await supabase
       .from('registros_ponto')
       .update({ saida: now })
-      .eq('id', activeRecord.id)
-      .select()
-      .single();
+      .eq('id', activeRecord.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
-      await fetchToday();
-      const completedCount = registros.filter(r => r.saida).length + 1;
+      // Re-fetch to get fresh data
+      const { data: updatedRegistros } = await supabase
+        .from('registros_ponto')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('data', today)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true });
+
+      const regs = updatedRegistros || [];
+      setRegistros(regs);
+
+      const completedCount = regs.filter(r => r.saida).length;
       if (completedCount === 1) {
         toast({ title: 'Saída registrada!', description: 'Bom almoço! Não esqueça de bater o ponto na volta.' });
       } else {
         toast({ title: 'Saída registrada!', description: 'Bom descanso!' });
         // Generate alerts on final exit
-        const { data: updatedRegistros } = await supabase
-          .from('registros_ponto')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('data', today)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: true });
-        if (updatedRegistros && updatedRegistros.length > 0) {
-          // Use last record with total calculated interval
-          const totalWorkedMin = calcTotalWorkedMinutes(updatedRegistros);
-          const lunchMin = calcLunchMinutes(updatedRegistros);
-          const lastRec = updatedRegistros[updatedRegistros.length - 1];
+        if (regs.length >= 2) {
+          const lunchMin = calcLunchMinutes(regs);
+          const lastRec = regs[regs.length - 1];
           const syntheticRecord: Registro = {
             ...lastRec,
-            entrada: updatedRegistros[0].entrada,
+            entrada: regs[0].entrada,
             saida: now,
             intervalo_minutos: lunchMin,
           };
@@ -128,12 +133,12 @@ const AppPage: React.FC = () => {
     setLoading(false);
   };
 
-  // Calculations
+  // Calculations — sum actual worked minutes from each record pair
   const calcTotalWorkedMinutes = (regs: Registro[]) => {
     return regs.reduce((total, r) => {
       if (!r.saida) return total;
-      const diff = (new Date(r.saida).getTime() - new Date(r.entrada).getTime()) / 60000;
-      return total + diff;
+      const diffMs = new Date(r.saida).getTime() - new Date(r.entrada).getTime();
+      return total + Math.max(0, diffMs / 60000);
     }, 0);
   };
 
@@ -155,13 +160,14 @@ const AppPage: React.FC = () => {
   const totalWorkedHours = totalWorkedMin / 60;
   const lunchMin = calcLunchMinutes(registros);
   const allDone = registros.length > 0 && !activeRecord;
-  const jornadaCompleta = completedRecords.length >= 2 && allDone;
+  // Jornada completa: at least 1 completed record and no active record
+  const jornadaCompleta = completedRecords.length >= 1 && allDone;
 
   const horaExtra = jornadaCompleta ? calcHoraExtra(totalWorkedHours, profile?.carga_horaria_diaria ?? 8) : 0;
   const valorHE = profile ? calcValorHoraExtra(profile.salario_base ?? 0, profile.hora_extra_percentual ?? 50) : 0;
   const valorReceber = horaExtra * valorHE;
 
-  // Live alerts
+  // Live alerts based on total elapsed
   const totalElapsedMin = totalWorkedMin + (activeRecord ? elapsed / 60000 : 0);
   const totalElapsedHours = totalElapsedMin / 60;
   const alertaSemIntervalo = activeRecord && registros.length === 1 && totalElapsedHours > 6;
@@ -170,7 +176,7 @@ const AppPage: React.FC = () => {
   // Determine current state
   const noRecords = registros.length === 0;
   const isWorking = !!activeRecord;
-  const isOnLunch = completedRecords.length === 1 && !activeRecord;
+  const isOnLunch = completedRecords.length === 1 && !activeRecord && completedRecords.length < 2;
   const pairCount = completedRecords.length;
 
   // Step label
@@ -194,11 +200,10 @@ const AppPage: React.FC = () => {
           {['Entrada', 'Almoço', 'Volta', 'Saída'].map((label, i) => {
             const stepNum = i + 1;
             const done = (stepNum === 1 && pairCount >= 1) ||
-                         (stepNum === 2 && (isOnLunch || pairCount >= 1 && registros.length > 1)) ||
+                         (stepNum === 2 && (isOnLunch || (pairCount >= 1 && registros.length > 1))) ||
                          (stepNum === 3 && pairCount >= 2) ||
                          (stepNum === 4 && jornadaCompleta);
-            const active = (stepNum === 1 && noRecords) ||
-                           (stepNum === 1 && isWorking && pairCount === 0) ||
+            const active = (stepNum === 1 && (noRecords || (isWorking && pairCount === 0))) ||
                            (stepNum === 2 && isOnLunch) ||
                            (stepNum === 3 && isWorking && pairCount >= 1) ||
                            (stepNum === 4 && isWorking && pairCount >= 1);
@@ -294,7 +299,7 @@ const AppPage: React.FC = () => {
               <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${
                 horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
               }`}>
-                {horaExtra > 0 ? `+${horaExtra.toFixed(1)}h extra` : 'Jornada normal'}
+                {horaExtra > 0 ? `+${horaExtra.toFixed(1)}h extra · O patrão te deve ${formatCurrency(valorReceber)}` : 'Jornada normal ✓'}
               </span>
             </>
           )}
