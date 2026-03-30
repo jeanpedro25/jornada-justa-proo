@@ -174,6 +174,9 @@ const RelatorioPage: React.FC = () => {
         {registros.length === 0 && (
           <p className="text-xs text-muted-foreground text-center">Nenhum registro neste mês para gerar relatório.</p>
         )}
+        <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
+          Os valores são estimativas. Consulte um advogado trabalhista para análise do seu caso.
+        </p>
       </div>
       <BottomNav />
     </div>

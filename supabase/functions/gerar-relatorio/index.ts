@@ -166,7 +166,7 @@ serve(async (req) => {
   </table>
 
   <div class="legal">
-    <strong>⚠️ Aviso Legal:</strong> Este relatório foi gerado automaticamente pelo app Hora Justa com base nos registros do trabalhador. Serve como prova documental para fins trabalhistas conforme Art. 74 da CLT. Registros editados manualmente estão marcados com ✏️.
+    <strong>⚠️ Aviso Legal:</strong> Este documento foi gerado pelo app Hora Justa com base nos registros inseridos pelo próprio trabalhador. Os dados refletem exclusivamente o que foi registrado pelo usuário. Os valores calculados são estimativas baseadas nas informações fornecidas e não constituem laudo pericial. Este documento pode ser utilizado como elemento de prova complementar em processos trabalhistas, sujeito à avaliação do juízo competente. Hora Justa não presta assessoria jurídica. Registros editados manualmente estão marcados com ✏️.
   </div>
 
   <div class="footer">

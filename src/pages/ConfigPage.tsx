@@ -7,7 +7,7 @@ import BottomNav from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, Download, User, CreditCard, Info } from 'lucide-react';
+import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide-react';
 
 const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
