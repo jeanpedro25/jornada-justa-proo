@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Paperclip, Upload, Loader2, ExternalLink } from 'lucide-react';
+import { Calendar, Paperclip, Upload, Loader2, ExternalLink, Filter } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Registro = Tables<'registros_ponto'>;
