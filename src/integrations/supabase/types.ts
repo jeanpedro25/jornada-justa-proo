@@ -65,6 +65,7 @@ export type Database = {
           created_at: string | null
           hora_extra_percentual: number | null
           id: string
+          intervalo_almoco: number
           nome: string | null
           onboarding_completo: boolean | null
           plano: string | null
@@ -75,6 +76,7 @@ export type Database = {
           created_at?: string | null
           hora_extra_percentual?: number | null
           id: string
+          intervalo_almoco?: number
           nome?: string | null
           onboarding_completo?: boolean | null
           plano?: string | null
@@ -85,6 +87,7 @@ export type Database = {
           created_at?: string | null
           hora_extra_percentual?: number | null
           id?: string
+          intervalo_almoco?: number
           nome?: string | null
           onboarding_completo?: boolean | null
           plano?: string | null
