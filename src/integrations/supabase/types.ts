@@ -14,7 +14,163 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alertas: {
+        Row: {
+          created_at: string | null
+          id: string
+          lido: boolean | null
+          mensagem: string
+          registro_id: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lido?: boolean | null
+          mensagem: string
+          registro_id: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lido?: boolean | null
+          mensagem?: string
+          registro_id?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertas_registro_id_fkey"
+            columns: ["registro_id"]
+            isOneToOne: false
+            referencedRelation: "registros_ponto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertas_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          carga_horaria_diaria: number | null
+          created_at: string | null
+          hora_extra_percentual: number | null
+          id: string
+          nome: string | null
+          onboarding_completo: boolean | null
+          plano: string | null
+          salario_base: number | null
+        }
+        Insert: {
+          carga_horaria_diaria?: number | null
+          created_at?: string | null
+          hora_extra_percentual?: number | null
+          id: string
+          nome?: string | null
+          onboarding_completo?: boolean | null
+          plano?: string | null
+          salario_base?: number | null
+        }
+        Update: {
+          carga_horaria_diaria?: number | null
+          created_at?: string | null
+          hora_extra_percentual?: number | null
+          id?: string
+          nome?: string | null
+          onboarding_completo?: boolean | null
+          plano?: string | null
+          salario_base?: number | null
+        }
+        Relationships: []
+      }
+      registros_ponto: {
+        Row: {
+          created_at: string | null
+          data: string
+          deleted_at: string | null
+          entrada: string
+          id: string
+          intervalo_minutos: number | null
+          observacao: string | null
+          saida: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: string
+          deleted_at?: string | null
+          entrada: string
+          id?: string
+          intervalo_minutos?: number | null
+          observacao?: string | null
+          saida?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          deleted_at?: string | null
+          entrada?: string
+          id?: string
+          intervalo_minutos?: number | null
+          observacao?: string | null
+          saida?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_ponto_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registros_ponto_historico: {
+        Row: {
+          alterado_em: string | null
+          campo_alterado: string
+          id: string
+          registro_id: string
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          alterado_em?: string | null
+          campo_alterado: string
+          id?: string
+          registro_id: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          alterado_em?: string | null
+          campo_alterado?: string
+          id?: string
+          registro_id?: string
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registros_ponto_historico_registro_id_fkey"
+            columns: ["registro_id"]
+            isOneToOne: false
+            referencedRelation: "registros_ponto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
