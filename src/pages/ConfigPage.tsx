@@ -179,7 +179,7 @@ const ConfigPage: React.FC = () => {
             if (!confirm('Tem certeza? Isso vai deletar TODOS os seus dados permanentemente. Essa ação não pode ser desfeita.')) return;
             setDeleting(true);
             try {
-              const { error } = await supabase.rpc('delete_my_account' as any);
+              const { error } = await supabase.rpc('delete_my_account' as never);
               if (error) throw error;
               await signOut();
               navigate('/auth');
