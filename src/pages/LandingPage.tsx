@@ -435,12 +435,7 @@ const LandingPage: React.FC = () => {
 
       {/* FOOTER */}
       <footer className="py-8 px-5 border-t border-border/50 text-center">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-lg bg-accent flex items-center justify-center">
-            <Clock className="h-3 w-3 text-accent-foreground" />
-          </div>
-          <span className="text-sm font-bold text-foreground">Hora Justa</span>
-        </div>
+        <HoraJustaLogo size={28} showText />
         <p className="text-[10px] text-muted-foreground">
           Os registros são de responsabilidade do usuário. Valores são estimativas.
         </p>
