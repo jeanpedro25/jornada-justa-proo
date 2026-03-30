@@ -1,0 +1,17 @@
+{
+  "name": "Hora Justa",
+  "short_name": "Hora Justa",
+  "description": "Registre sua jornada. Prove seus direitos.",
+  "start_url": "/app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "/placeholder.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
