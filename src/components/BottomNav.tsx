@@ -19,7 +19,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ unreadAlerts = 0 }) => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
+      <p className="text-[10px] text-muted-foreground/60 text-center pt-1">
+        Os registros são de responsabilidade do usuário. Valores são estimativas.
+      </p>
+      <div className="flex justify-around items-center h-14 max-w-lg mx-auto">
         {tabs.map(({ icon: Icon, label, path }) => {
           const active = location.pathname === path;
           return (

@@ -7,11 +7,12 @@ import BottomNav from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { LogOut, Download, User, CreditCard, Info } from 'lucide-react';
+import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide-react';
 
 const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
   const [nome, setNome] = useState('');
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState('');
@@ -153,6 +154,15 @@ const ConfigPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Privacy */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <button onClick={() => navigate('/privacidade')} className="flex items-center gap-2 w-full">
+            <Shield size={16} className="text-accent" />
+            <span className="font-semibold text-sm">Privacidade</span>
+            <span className="ml-auto text-xs text-muted-foreground">→</span>
+          </button>
+        </div>
+
         {/* Sign out */}
         <Button
           onClick={handleSignOut}
@@ -161,6 +171,29 @@ const ConfigPage: React.FC = () => {
         >
           <LogOut size={16} />
           Sair
+        </Button>
+
+        {/* Delete account */}
+        <Button
+          onClick={async () => {
+            if (!confirm('Tem certeza? Isso vai deletar TODOS os seus dados permanentemente. Essa ação não pode ser desfeita.')) return;
+            setDeleting(true);
+            try {
+              const { error } = await supabase.rpc('delete_my_account' as never);
+              if (error) throw error;
+              await signOut();
+              navigate('/auth');
+            } catch (e: any) {
+              toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+              setDeleting(false);
+            }
+          }}
+          disabled={deleting}
+          variant="ghost"
+          className="w-full rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 text-xs"
+        >
+          <Trash2 size={14} />
+          {deleting ? 'Deletando...' : 'Deletar minha conta e todos os dados'}
         </Button>
       </div>
       <BottomNav />

@@ -10,6 +10,7 @@ import AppPage from "./pages/AppPage";
 import HistoricoPage from "./pages/HistoricoPage";
 import RelatorioPage from "./pages/RelatorioPage";
 import ConfigPage from "./pages/ConfigPage";
+import PrivacidadePage from "./pages/PrivacidadePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/historico" element={<ProtectedRoute><HistoricoPage /></ProtectedRoute>} />
             <Route path="/relatorio" element={<ProtectedRoute><RelatorioPage /></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} />
+            <Route path="/privacidade" element={<ProtectedRoute><PrivacidadePage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
