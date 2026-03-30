@@ -313,7 +313,7 @@ const HistoricoPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            {dayGroups.map((day) => {
+            {filteredDayGroups.map((day) => {
               const date = new Date(day.data + 'T12:00:00');
               return (
                 <button
