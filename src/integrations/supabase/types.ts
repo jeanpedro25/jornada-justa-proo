@@ -94,9 +94,13 @@ export type Database = {
       }
       registros_ponto: {
         Row: {
+          anexo_url: string | null
           created_at: string | null
           data: string
           deleted_at: string | null
+          editado_em: string | null
+          editado_manualmente: boolean
+          editado_por: string | null
           entrada: string
           id: string
           intervalo_minutos: number | null
@@ -105,9 +109,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          anexo_url?: string | null
           created_at?: string | null
           data: string
           deleted_at?: string | null
+          editado_em?: string | null
+          editado_manualmente?: boolean
+          editado_por?: string | null
           entrada: string
           id?: string
           intervalo_minutos?: number | null
@@ -116,9 +124,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          anexo_url?: string | null
           created_at?: string | null
           data?: string
           deleted_at?: string | null
+          editado_em?: string | null
+          editado_manualmente?: boolean
+          editado_por?: string | null
           entrada?: string
           id?: string
           intervalo_minutos?: number | null
