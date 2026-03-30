@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Paperclip, Upload, Loader2, ExternalLink } from 'lucide-react';
+import { Calendar, Paperclip, Upload, Loader2, ExternalLink, Filter } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Registro = Tables<'registros_ponto'>;
@@ -27,6 +27,9 @@ const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [filter, setFilter] = useState<FilterPeriod>('month');
+  const [filtroHorasMin, setFiltroHorasMin] = useState('');
+  const [filtroHorasMax, setFiltroHorasMax] = useState('');
+  const [showTimeFilter, setShowTimeFilter] = useState(false);
   const [selectedDay, setSelectedDay] = useState<DayGroup | null>(null);
   const [editFields, setEditFields] = useState<Array<{ id: string; entrada: string; saida: string }>>([]);
   const [editObs, setEditObs] = useState('');
@@ -103,8 +106,19 @@ const HistoricoPage: React.FC = () => {
     });
   }, [registros, carga]);
 
-  const totalHoras = dayGroups.reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = dayGroups.reduce((s, d) => s + d.extraHours, 0);
+  // Apply time filter
+  const filteredDayGroups = React.useMemo(() => {
+    const minHours = filtroHorasMin ? parseFloat(filtroHorasMin) : 0;
+    const maxHours = filtroHorasMax ? parseFloat(filtroHorasMax) : Infinity;
+    if (!filtroHorasMin && !filtroHorasMax) return dayGroups;
+    return dayGroups.filter(d => {
+      const hours = d.totalMin / 60;
+      return hours >= minHours && hours <= maxHours;
+    });
+  }, [dayGroups, filtroHorasMin, filtroHorasMax]);
+
+  const totalHoras = filteredDayGroups.reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = filteredDayGroups.reduce((s, d) => s + d.extraHours, 0);
 
   const openEdit = (day: DayGroup) => {
     setSelectedDay(day);
@@ -245,15 +259,61 @@ const HistoricoPage: React.FC = () => {
           ))}
         </div>
 
+        {/* Time Filter */}
+        <div>
+          <button
+            onClick={() => setShowTimeFilter(!showTimeFilter)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              showTimeFilter || filtroHorasMin || filtroHorasMax
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-secondary text-secondary-foreground'
+            }`}
+          >
+            <Filter size={12} />
+            Filtrar por horas
+          </button>
+          {showTimeFilter && (
+            <div className="flex gap-2 mt-2 items-center">
+              <Input
+                type="number"
+                placeholder="Mín (h)"
+                value={filtroHorasMin}
+                onChange={(e) => setFiltroHorasMin(e.target.value)}
+                className="rounded-xl h-8 text-xs w-20"
+                step="0.5"
+                min="0"
+              />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input
+                type="number"
+                placeholder="Máx (h)"
+                value={filtroHorasMax}
+                onChange={(e) => setFiltroHorasMax(e.target.value)}
+                className="rounded-xl h-8 text-xs w-20"
+                step="0.5"
+                min="0"
+              />
+              {(filtroHorasMin || filtroHorasMax) && (
+                <button
+                  onClick={() => { setFiltroHorasMin(''); setFiltroHorasMax(''); }}
+                  className="text-[10px] text-destructive underline"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* List grouped by day */}
-        {dayGroups.length === 0 ? (
+        {filteredDayGroups.length === 0 ? (
           <div className="text-center py-12">
             <Calendar size={40} className="mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Nenhum registro neste período</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {dayGroups.map((day) => {
+            {filteredDayGroups.map((day) => {
               const date = new Date(day.data + 'T12:00:00');
               return (
                 <button
