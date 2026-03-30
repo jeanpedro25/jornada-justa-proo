@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from '@/components/AppHeader';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Paperclip, Upload, Loader2, ExternalLink } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Registro = Tables<'registros_ponto'>;
@@ -25,6 +25,9 @@ const HistoricoPage: React.FC = () => {
   const [editIntervalo, setEditIntervalo] = useState('');
   const [editObs, setEditObs] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [anexoUrl, setAnexoUrl] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const getDateRange = (period: FilterPeriod) => {
     const now = new Date();
@@ -57,7 +60,6 @@ const HistoricoPage: React.FC = () => {
     setRegistros(data || []);
   }, [user, filter]);
 
-  // Mark alerts as read
   useEffect(() => {
     if (!user) return;
     supabase.from('alertas').update({ lido: true }).eq('user_id', user.id).eq('lido', false).then(() => {});
@@ -82,13 +84,49 @@ const HistoricoPage: React.FC = () => {
     setEditSaida(r.saida ? new Date(r.saida).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
     setEditIntervalo(String(r.intervalo_minutos ?? 60));
     setEditObs(r.observacao || '');
+    setAnexoUrl((r as any).anexo_url || null);
+  };
+
+  const handleUploadAtestado = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !selected) return;
+    setUploading(true);
+
+    const ext = file.name.split('.').pop();
+    const path = `${user.id}/${selected.id}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('atestados')
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      toast({ title: 'Erro no upload', description: uploadError.message, variant: 'destructive' });
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from('atestados').getPublicUrl(path);
+    const publicUrl = urlData.publicUrl;
+
+    const { error: updateError } = await supabase
+      .from('registros_ponto')
+      .update({ anexo_url: publicUrl } as any)
+      .eq('id', selected.id);
+
+    if (updateError) {
+      toast({ title: 'Erro', description: updateError.message, variant: 'destructive' });
+    } else {
+      setAnexoUrl(publicUrl);
+      toast({ title: 'Atestado anexado!', description: 'Arquivo salvo como prova.' });
+      fetchRegistros();
+    }
+    setUploading(false);
   };
 
   const handleSave = async () => {
-    if (!selected) return;
+    if (!selected || !user) return;
     setSaving(true);
 
-    // Save history
     const changes: Array<{ registro_id: string; campo_alterado: string; valor_anterior: string; valor_novo: string }> = [];
     const currentEntrada = formatTime(new Date(selected.entrada));
     if (editEntrada !== currentEntrada) {
@@ -106,7 +144,6 @@ const HistoricoPage: React.FC = () => {
       await supabase.from('registros_ponto_historico').insert(changes);
     }
 
-    // Parse times back to full timestamps
     const baseDate = selected.data;
     const parseTime = (timeStr: string, base: string) => {
       const [h, m] = timeStr.split(':').map(Number);
@@ -118,6 +155,9 @@ const HistoricoPage: React.FC = () => {
     const updateData: any = {
       intervalo_minutos: Number(editIntervalo),
       observacao: editObs || null,
+      editado_manualmente: true,
+      editado_em: new Date().toISOString(),
+      editado_por: user.id,
     };
     if (editEntrada) updateData.entrada = parseTime(editEntrada, baseDate);
     if (editSaida) updateData.saida = parseTime(editSaida, baseDate);
@@ -197,6 +237,7 @@ const HistoricoPage: React.FC = () => {
               const ht = r.saida ? calcHorasTrabalhadas(r.entrada, r.saida, r.intervalo_minutos ?? 60) : 0;
               const he = r.saida ? calcHoraExtra(ht, profile?.carga_horaria_diaria ?? 8) : 0;
               const date = new Date(r.data + 'T12:00:00');
+              const hasAnexo = !!(r as any).anexo_url;
               return (
                 <button
                   key={r.id}
@@ -207,8 +248,10 @@ const HistoricoPage: React.FC = () => {
                     {diaSemanaAbrev(date)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-medium flex items-center gap-1">
                       {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      {hasAnexo && <Paperclip size={12} className="text-accent" />}
+                      {(r as any).editado_manualmente && <span className="text-[10px] text-warning">✏️</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatTime(new Date(r.entrada))}
@@ -228,18 +271,20 @@ const HistoricoPage: React.FC = () => {
 
       {/* Edit Sheet */}
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Editar registro</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Entrada</label>
-              <Input value={editEntrada} onChange={(e) => setEditEntrada(e.target.value)} placeholder="08:00" className="rounded-xl" />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Saída</label>
-              <Input value={editSaida} onChange={(e) => setEditSaida(e.target.value)} placeholder="17:00" className="rounded-xl" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Entrada</label>
+                <Input type="time" value={editEntrada} onChange={(e) => setEditEntrada(e.target.value)} className="rounded-xl" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Saída</label>
+                <Input type="time" value={editSaida} onChange={(e) => setEditSaida(e.target.value)} className="rounded-xl" />
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">Intervalo (min)</label>
@@ -249,6 +294,42 @@ const HistoricoPage: React.FC = () => {
               <label className="text-sm font-medium mb-1 block">Observação</label>
               <Input value={editObs} onChange={(e) => setEditObs(e.target.value)} placeholder="Opcional" className="rounded-xl" />
             </div>
+
+            {/* Anexar Atestado */}
+            <div className="border border-dashed border-border rounded-xl p-4">
+              <label className="text-sm font-medium mb-2 block flex items-center gap-1">
+                <Paperclip size={14} />
+                Anexar atestado / documento
+              </label>
+              {anexoUrl && (
+                <a href={anexoUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-accent underline flex items-center gap-1 mb-2">
+                  <ExternalLink size={12} />
+                  Ver documento anexado
+                </a>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*,.pdf,.doc,.docx"
+                onChange={handleUploadAtestado}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+                className="gap-2 rounded-lg"
+              >
+                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {uploading ? 'Enviando...' : anexoUrl ? 'Trocar arquivo' : 'Escolher arquivo'}
+              </Button>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Foto, PDF ou documento. Serve como prova jurídica.
+              </p>
+            </div>
+
             <div className="flex gap-2">
               <Button onClick={handleSave} disabled={saving} className="flex-1 rounded-xl bg-primary text-primary-foreground">
                 {saving ? 'Salvando...' : 'Salvar'}
