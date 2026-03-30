@@ -26,7 +26,7 @@ export const formatTimer = (ms: number) => {
 export const calcHorasTrabalhadas = (entrada: string, saida: string | null, intervaloMin: number) => {
   if (!saida) return 0;
   const diff = (new Date(saida).getTime() - new Date(entrada).getTime()) / 60000;
-  return (diff - intervaloMin) / 60;
+  return Math.max(0, (diff - intervaloMin) / 60);
 };
 
 export const calcHoraExtra = (horasTrabalhadas: number, cargaDiaria: number) =>
