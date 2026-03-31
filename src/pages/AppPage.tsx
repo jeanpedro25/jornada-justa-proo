@@ -64,6 +64,14 @@ const AppPage: React.FC = () => {
     fetchUnread();
   }, [fetchToday, fetchUnread]);
 
+  // Auto-show paywall after 2 days of use
+  useEffect(() => {
+    if (shouldShowPaywall('auto') && !sessionStorage.getItem('hj_paywall_shown')) {
+      sessionStorage.setItem('hj_paywall_shown', '1');
+      setTimeout(() => setShowPaywall(true), 2000);
+    }
+  }, [shouldShowPaywall]);
+
   // Determine current step based on records
   const getCurrentStep = (): number => {
     if (registros.length === 0) return 0; // No records — next: Entrada
