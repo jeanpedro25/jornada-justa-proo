@@ -264,6 +264,10 @@ const RelatorioPage: React.FC = () => {
   }).length;
 
   const handleGeneratePDF = () => {
+    if (!canExportPdf) {
+      setShowPaywall(true);
+      return;
+    }
     setGenerating(true);
     try {
       const now = new Date();
