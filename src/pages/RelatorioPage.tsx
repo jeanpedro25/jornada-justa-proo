@@ -211,7 +211,15 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
   doc.save(`relatorio-hora-justa-${new Date().toISOString().slice(0, 7)}.pdf`);
 }
 
+interface Irregularidade {
+  tipo: string;
+  mensagem: string;
+  rota: string;
+  params?: string;
+}
+
 const RelatorioPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [generating, setGenerating] = useState(false);
