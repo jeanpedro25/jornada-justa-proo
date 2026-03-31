@@ -6,7 +6,7 @@ import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import { formatCurrency, calcHorasTrabalhadas, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
-import { FileText, Shield, TrendingUp, Download, Loader2 } from 'lucide-react';
+import { FileText, Shield, TrendingUp, Download, Loader2, AlertTriangle } from 'lucide-react';
 import AvisoLegal from '@/components/AvisoLegal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
