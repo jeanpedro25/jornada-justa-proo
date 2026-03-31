@@ -272,7 +272,7 @@ const RelatorioPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <AppHeader title="Relatório oficial" subtitle="Gerar prova para advogado" />
+      <AppHeader title="Relatório de Jornada" subtitle="Gerar relatório para análise" />
       <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
         {/* Preview Card */}
         <div className="bg-primary text-primary-foreground rounded-2xl p-5 space-y-3">
