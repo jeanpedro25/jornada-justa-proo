@@ -287,8 +287,17 @@ const AppPage: React.FC = () => {
               <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-full ${
                 horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
               }`}>
-                {horaExtra > 0 ? `+${horaExtra.toFixed(1)}h extra · Estimativa: ${formatCurrency(valorReceber)}` : 'Jornada normal ✓'}
+                {horaExtra > 0 ? (
+                  canSeeMoney
+                    ? `+${horaExtra.toFixed(1)}h extra · Estimativa: ${formatCurrency(valorReceber)}`
+                    : `+${horaExtra.toFixed(1)}h extra`
+                ) : 'Jornada normal ✓'}
               </span>
+              {horaExtra > 0 && !canSeeMoney && (
+                <button onClick={() => setShowPaywall(true)} className="text-[10px] text-accent underline mt-1 block mx-auto">
+                  Ver valor em dinheiro
+                </button>
+              )}
             </>
           ) : null}
         </div>
