@@ -19,6 +19,10 @@ const ConfigPage: React.FC = () => {
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
   const [almoco, setAlmoco] = useState('60');
+  const [modoTrabalho, setModoTrabalho] = useState('horas_extras');
+  const [prazoComp, setPrazoComp] = useState('180');
+  const [regraConv, setRegraConv] = useState('1.5x');
+  const [limiteBH, setLimiteBH] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
