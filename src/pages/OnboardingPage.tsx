@@ -23,7 +23,7 @@ const OnboardingPage: React.FC = () => {
   const canAdvance = () => {
     if (step === 1) return nome.trim().length > 0;
     if (step === 2) return salario.trim().length > 0 && Number(salario) > 0;
-    if (step === 3) return carga !== null || (cargaCustom.trim().length > 0 && Number(cargaCustom) > 0);
+    if (step === 3) return carga !== null;
     if (step === 4) return percentual !== null;
     return false;
   };
