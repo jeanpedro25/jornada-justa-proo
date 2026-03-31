@@ -399,7 +399,8 @@ function gerarExtratoPDF(
   doc.setFillColor(255, 248, 225);
   doc.setDrawColor(243, 156, 18);
   const avisoTexto =
-    'Este relatorio foi gerado com base em informacoes fornecidas pelo usuario no aplicativo Hora Justa. ' +
+    'Este documento foi gerado com base em informacoes fornecidas pelo usuario no aplicativo Hora Justa. ' +
+    'O nome da empresa e demais dados sao informados pelo proprio usuario para fins de controle pessoal. ' +
     'Os dados apresentados possuem carater estimativo e informativo, nao sendo considerados documentos oficiais ou prova legal absoluta. ' +
     'Recomenda-se a validacao das informacoes com um profissional qualificado antes de qualquer utilizacao legal.';
   const avisoLines = doc.splitTextToSize(avisoTexto, contentW - 6);
