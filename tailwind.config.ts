@@ -50,6 +50,9 @@ export default {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
         },
+        "surface-low": "hsl(var(--surface-low))",
+        "surface-high": "hsl(var(--surface-high))",
+        "accent-container": "hsl(var(--accent-container))",
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
