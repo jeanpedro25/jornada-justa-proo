@@ -98,10 +98,18 @@ export type Database = {
       profiles: {
         Row: {
           aceite_termos: boolean
+          alternancia_turno: string
           carga_horaria_diaria: number | null
           created_at: string | null
+          dias_trabalhados_semana: number
           empresa: string | null
+          escala_dias_folga: number | null
+          escala_dias_trabalho: number | null
+          escala_inicio: string | null
+          escala_tipo: string | null
           hora_extra_percentual: number | null
+          horario_entrada_padrao: string | null
+          horario_saida_padrao: string | null
           id: string
           intervalo_almoco: number
           limite_banco_horas: number | null
@@ -112,13 +120,28 @@ export type Database = {
           prazo_compensacao_dias: number
           regra_conversao: string
           salario_base: number | null
+          tipo_jornada: string
+          turno_a_fim: string | null
+          turno_a_inicio: string | null
+          turno_b_fim: string | null
+          turno_b_inicio: string | null
+          turno_c_fim: string | null
+          turno_c_inicio: string | null
         }
         Insert: {
           aceite_termos?: boolean
+          alternancia_turno?: string
           carga_horaria_diaria?: number | null
           created_at?: string | null
+          dias_trabalhados_semana?: number
           empresa?: string | null
+          escala_dias_folga?: number | null
+          escala_dias_trabalho?: number | null
+          escala_inicio?: string | null
+          escala_tipo?: string | null
           hora_extra_percentual?: number | null
+          horario_entrada_padrao?: string | null
+          horario_saida_padrao?: string | null
           id: string
           intervalo_almoco?: number
           limite_banco_horas?: number | null
@@ -129,13 +152,28 @@ export type Database = {
           prazo_compensacao_dias?: number
           regra_conversao?: string
           salario_base?: number | null
+          tipo_jornada?: string
+          turno_a_fim?: string | null
+          turno_a_inicio?: string | null
+          turno_b_fim?: string | null
+          turno_b_inicio?: string | null
+          turno_c_fim?: string | null
+          turno_c_inicio?: string | null
         }
         Update: {
           aceite_termos?: boolean
+          alternancia_turno?: string
           carga_horaria_diaria?: number | null
           created_at?: string | null
+          dias_trabalhados_semana?: number
           empresa?: string | null
+          escala_dias_folga?: number | null
+          escala_dias_trabalho?: number | null
+          escala_inicio?: string | null
+          escala_tipo?: string | null
           hora_extra_percentual?: number | null
+          horario_entrada_padrao?: string | null
+          horario_saida_padrao?: string | null
           id?: string
           intervalo_almoco?: number
           limite_banco_horas?: number | null
@@ -146,6 +184,13 @@ export type Database = {
           prazo_compensacao_dias?: number
           regra_conversao?: string
           salario_base?: number | null
+          tipo_jornada?: string
+          turno_a_fim?: string | null
+          turno_a_inicio?: string | null
+          turno_b_fim?: string | null
+          turno_b_inicio?: string | null
+          turno_c_fim?: string | null
+          turno_c_inicio?: string | null
         }
         Relationships: []
       }
