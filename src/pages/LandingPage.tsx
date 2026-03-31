@@ -435,7 +435,7 @@ const LandingPage: React.FC = () => {
 
       {/* FOOTER */}
       <footer className="py-8 px-5 border-t border-border/50 text-center">
-        <HoraJustaLogo size={28} showText />
+        <HoraJustaLogo size={28} showText showTagline />
         <p className="text-[10px] text-muted-foreground">
           Os registros são de responsabilidade do usuário. Valores são estimativas.
         </p>
