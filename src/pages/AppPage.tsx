@@ -12,6 +12,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import AttachFile from '@/components/AttachFile';
 import EditRegistro from '@/components/EditRegistro';
 import BancoHorasCards from '@/components/BancoHorasCards';
+import AvisoLegal from '@/components/AvisoLegal';
 import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
 
 type Registro = Tables<'registros_ponto'>;
