@@ -361,6 +361,7 @@ const AppPage: React.FC = () => {
         <AvisoLegal />
       </div>
 
+      <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorReceber} />
       <BottomNav unreadAlerts={unreadAlerts} />
     </div>
   );
