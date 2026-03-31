@@ -197,7 +197,7 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
     doc.setTextColor(150, 150, 150);
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `Hora Justa — Protegendo o trabalhador brasileiro | Pagina ${p} de ${totalPaginas}`,
+      `Hora Justa — Dados informados pelo usuario. Valores estimados. | Pagina ${p} de ${totalPaginas}`,
       largura / 2,
       doc.internal.pageSize.getHeight() - 8,
       { align: 'center' }
