@@ -16,6 +16,7 @@ const ConfigPage: React.FC = () => {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [nome, setNome] = useState('');
+  const [empresa, setEmpresa] = useState('');
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
