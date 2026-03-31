@@ -322,6 +322,9 @@ const AppPage: React.FC = () => {
           </div>
         )}
 
+        {/* Banco de Horas Cards */}
+        <BancoHorasCards />
+
         {/* Mini-cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card rounded-xl p-4 border border-border">
@@ -331,7 +334,7 @@ const AppPage: React.FC = () => {
             </p>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">o patrão te deve (est.)</p>
+            <p className="text-xs text-muted-foreground mb-1">valor estimado hoje</p>
             <p className={`text-lg font-bold ${valorReceber > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
               {valorReceber > 0 ? formatCurrency(valorReceber) : '—'}
             </p>
