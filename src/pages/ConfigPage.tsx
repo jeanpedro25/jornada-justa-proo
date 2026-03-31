@@ -47,6 +47,7 @@ const ConfigPage: React.FC = () => {
     setSaving(true);
     const { error } = await supabase.from('profiles').update({
       nome: nome.trim(),
+      empresa: empresa.trim() || null,
       salario_base: Number(salario),
       carga_horaria_diaria: Number(carga),
       hora_extra_percentual: Number(percentual),
