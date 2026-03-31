@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide-react';
 import BancoHorasConfig from '@/components/BancoHorasConfig';
+import JornadaConfig from '@/components/JornadaConfig';
 import AvisoLegal from '@/components/AvisoLegal';
 
 const ConfigPage: React.FC = () => {
@@ -21,24 +22,59 @@ const ConfigPage: React.FC = () => {
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
   const [almoco, setAlmoco] = useState('60');
+  const [saving, setSaving] = useState(false);
+
+  // Banco de Horas
   const [modoTrabalho, setModoTrabalho] = useState('horas_extras');
   const [prazoComp, setPrazoComp] = useState('180');
   const [regraConv, setRegraConv] = useState('1.5x');
   const [limiteBH, setLimiteBH] = useState('');
-  const [saving, setSaving] = useState(false);
+
+  // Jornada
+  const [tipoJornada, setTipoJornada] = useState('jornada_fixa');
+  const [diasTrabalhados, setDiasTrabalhados] = useState('5');
+  const [horarioEntrada, setHorarioEntrada] = useState('');
+  const [horarioSaida, setHorarioSaida] = useState('');
+  const [escalaTipo, setEscalaTipo] = useState('');
+  const [escalaDiasTrabalho, setEscalaDiasTrabalho] = useState('');
+  const [escalaDiasFolga, setEscalaDiasFolga] = useState('');
+  const [escalaInicio, setEscalaInicio] = useState('');
+  const [turnoAInicio, setTurnoAInicio] = useState('');
+  const [turnoAFim, setTurnoAFim] = useState('');
+  const [turnoBInicio, setTurnoBInicio] = useState('');
+  const [turnoBFim, setTurnoBFim] = useState('');
+  const [turnoCInicio, setTurnoCInicio] = useState('');
+  const [turnoCFim, setTurnoCFim] = useState('');
+  const [alternanciaTurno, setAlternanciaTurno] = useState('manual');
 
   useEffect(() => {
     if (profile) {
-      setNome(profile.nome || '');
-      setEmpresa((profile as any).empresa || '');
-      setSalario(String(profile.salario_base || ''));
-      setCarga(String(profile.carga_horaria_diaria || ''));
-      setPercentual(String(profile.hora_extra_percentual || ''));
-      setAlmoco(String((profile as any).intervalo_almoco ?? 60));
-      setModoTrabalho((profile as any).modo_trabalho || 'horas_extras');
-      setPrazoComp(String((profile as any).prazo_compensacao_dias || 180));
-      setRegraConv((profile as any).regra_conversao || '1.5x');
-      setLimiteBH((profile as any).limite_banco_horas ? String((profile as any).limite_banco_horas / 60) : '');
+      const p = profile as any;
+      setNome(p.nome || '');
+      setEmpresa(p.empresa || '');
+      setSalario(String(p.salario_base || ''));
+      setCarga(String(p.carga_horaria_diaria || ''));
+      setPercentual(String(p.hora_extra_percentual || ''));
+      setAlmoco(String(p.intervalo_almoco ?? 60));
+      setModoTrabalho(p.modo_trabalho || 'horas_extras');
+      setPrazoComp(String(p.prazo_compensacao_dias || 180));
+      setRegraConv(p.regra_conversao || '1.5x');
+      setLimiteBH(p.limite_banco_horas ? String(p.limite_banco_horas / 60) : '');
+      setTipoJornada(p.tipo_jornada || 'jornada_fixa');
+      setDiasTrabalhados(String(p.dias_trabalhados_semana || 5));
+      setHorarioEntrada(p.horario_entrada_padrao || '');
+      setHorarioSaida(p.horario_saida_padrao || '');
+      setEscalaTipo(p.escala_tipo || '');
+      setEscalaDiasTrabalho(p.escala_dias_trabalho ? String(p.escala_dias_trabalho) : '');
+      setEscalaDiasFolga(p.escala_dias_folga ? String(p.escala_dias_folga) : '');
+      setEscalaInicio(p.escala_inicio || '');
+      setTurnoAInicio(p.turno_a_inicio || '');
+      setTurnoAFim(p.turno_a_fim || '');
+      setTurnoBInicio(p.turno_b_inicio || '');
+      setTurnoBFim(p.turno_b_fim || '');
+      setTurnoCInicio(p.turno_c_inicio || '');
+      setTurnoCFim(p.turno_c_fim || '');
+      setAlternanciaTurno(p.alternancia_turno || 'manual');
     }
   }, [profile]);
 
@@ -56,6 +92,21 @@ const ConfigPage: React.FC = () => {
       prazo_compensacao_dias: prazoComp === 'custom' ? Number(limiteBH) || 180 : Number(prazoComp),
       regra_conversao: regraConv,
       limite_banco_horas: limiteBH ? Number(limiteBH) * 60 : null,
+      tipo_jornada: tipoJornada,
+      dias_trabalhados_semana: Number(diasTrabalhados) || 5,
+      horario_entrada_padrao: horarioEntrada || null,
+      horario_saida_padrao: horarioSaida || null,
+      escala_tipo: escalaTipo || null,
+      escala_dias_trabalho: escalaDiasTrabalho ? Number(escalaDiasTrabalho) : null,
+      escala_dias_folga: escalaDiasFolga ? Number(escalaDiasFolga) : null,
+      escala_inicio: escalaInicio || null,
+      turno_a_inicio: turnoAInicio || null,
+      turno_a_fim: turnoAFim || null,
+      turno_b_inicio: turnoBInicio || null,
+      turno_b_fim: turnoBFim || null,
+      turno_c_inicio: turnoCInicio || null,
+      turno_c_fim: turnoCFim || null,
+      alternancia_turno: alternanciaTurno,
     } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -96,7 +147,7 @@ const ConfigPage: React.FC = () => {
         <div className="bg-card rounded-xl border border-border p-4 space-y-4">
           <div className="flex items-center gap-2 mb-1">
             <User size={16} className="text-accent" />
-            <span className="font-semibold text-sm">Configurações de trabalho</span>
+            <span className="font-semibold text-sm">Dados pessoais</span>
           </div>
 
           <div>
@@ -135,30 +186,42 @@ const ConfigPage: React.FC = () => {
             <label className="text-xs text-muted-foreground mb-1 block">⏰ Horário de almoço (minutos)</label>
             <Input type="number" value={almoco} onChange={(e) => setAlmoco(e.target.value)} className="rounded-xl" placeholder="Ex: 60" />
             <p className="text-[10px] text-muted-foreground mt-1">
-              Tempo de intervalo que será usado como padrão ao registrar ponto. CLT exige mínimo de 1h para jornadas &gt; 6h.
+              Tempo de intervalo padrão. CLT exige mínimo de 1h para jornadas &gt; 6h.
             </p>
           </div>
-
-          <p className="text-[10px] text-muted-foreground/50 text-center">
-            Os cálculos são estimativas baseadas nas configurações definidas pelo usuário.
-          </p>
-
-          <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
-            {saving ? 'Salvando...' : 'Salvar configurações'}
-          </Button>
         </div>
+
+        {/* Jornada */}
+        <JornadaConfig
+          tipoJornada={tipoJornada} setTipoJornada={setTipoJornada}
+          diasTrabalhados={diasTrabalhados} setDiasTrabalhados={setDiasTrabalhados}
+          horarioEntrada={horarioEntrada} setHorarioEntrada={setHorarioEntrada}
+          horarioSaida={horarioSaida} setHorarioSaida={setHorarioSaida}
+          escalaTipo={escalaTipo} setEscalaTipo={setEscalaTipo}
+          escalaDiasTrabalho={escalaDiasTrabalho} setEscalaDiasTrabalho={setEscalaDiasTrabalho}
+          escalaDiasFolga={escalaDiasFolga} setEscalaDiasFolga={setEscalaDiasFolga}
+          escalaInicio={escalaInicio} setEscalaInicio={setEscalaInicio}
+          turnoAInicio={turnoAInicio} setTurnoAInicio={setTurnoAInicio}
+          turnoAFim={turnoAFim} setTurnoAFim={setTurnoAFim}
+          turnoBInicio={turnoBInicio} setTurnoBInicio={setTurnoBInicio}
+          turnoBFim={turnoBFim} setTurnoBFim={setTurnoBFim}
+          turnoCInicio={turnoCInicio} setTurnoCInicio={setTurnoCInicio}
+          turnoCFim={turnoCFim} setTurnoCFim={setTurnoCFim}
+          alternanciaTurno={alternanciaTurno} setAlternanciaTurno={setAlternanciaTurno}
+        />
 
         {/* Banco de Horas */}
         <BancoHorasConfig
-          modoTrabalho={modoTrabalho}
-          setModoTrabalho={setModoTrabalho}
-          prazo={prazoComp}
-          setPrazo={setPrazoComp}
-          conversao={regraConv}
-          setConversao={setRegraConv}
-          limite={limiteBH}
-          setLimite={setLimiteBH}
+          modoTrabalho={modoTrabalho} setModoTrabalho={setModoTrabalho}
+          prazo={prazoComp} setPrazo={setPrazoComp}
+          conversao={regraConv} setConversao={setRegraConv}
+          limite={limiteBH} setLimite={setLimiteBH}
         />
+
+        {/* Save */}
+        <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
+          {saving ? 'Salvando...' : 'Salvar configurações'}
+        </Button>
 
         {/* Plan */}
         <div className="bg-card rounded-xl border border-border p-4">
@@ -205,11 +268,7 @@ const ConfigPage: React.FC = () => {
         </div>
 
         {/* Sign out */}
-        <Button
-          onClick={handleSignOut}
-          variant="destructive"
-          className="w-full rounded-xl h-12 font-semibold gap-2"
-        >
+        <Button onClick={handleSignOut} variant="destructive" className="w-full rounded-xl h-12 font-semibold gap-2">
           <LogOut size={16} />
           Sair
         </Button>
