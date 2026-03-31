@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide-react';
 import BancoHorasConfig from '@/components/BancoHorasConfig';
+import AvisoLegal from '@/components/AvisoLegal';
 
 const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
