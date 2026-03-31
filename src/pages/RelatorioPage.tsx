@@ -48,7 +48,7 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
   doc.setFont('helvetica', 'bold');
   doc.text('AVISO LEGAL:', margem + 3, y + 5);
   doc.setFont('helvetica', 'normal');
-  const avisoTexto = 'Este relatorio foi gerado com base nos registros inseridos pelo trabalhador. Os valores sao estimativas e nao constituem laudo pericial. Pode ser utilizado como prova complementar em processos trabalhistas, sujeito a avaliacao do juizo competente. Hora Justa nao presta assessoria juridica.';
+  const avisoTexto = 'Este relatorio foi gerado com base em informacoes fornecidas pelo usuario no aplicativo Hora Justa. Os dados apresentados possuem carater estimativo e informativo, nao sendo considerados documentos oficiais ou prova legal absoluta. Recomenda-se a validacao das informacoes com um profissional qualificado antes de qualquer utilizacao legal.';
   const avisoLinhas = doc.splitTextToSize(avisoTexto, largura - margem * 2 - 6);
   doc.text(avisoLinhas, margem + 3, y + 10);
   y += 26;
