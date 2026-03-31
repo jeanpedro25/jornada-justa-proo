@@ -113,7 +113,7 @@ const OnboardingPage: React.FC = () => {
                     key={label}
                     onClick={() => { setCarga(valor); setCargaCustom(''); }}
                     className={`py-3 rounded-xl border-2 font-semibold transition-colors ${
-                      carga === valor
+                      carga === valor && !cargaCustom
                         ? 'border-accent bg-accent/10 text-accent'
                         : 'border-border text-foreground'
                     }`}
@@ -122,7 +122,30 @@ const OnboardingPage: React.FC = () => {
                   </button>
                 );
               })}
+              <button
+                onClick={() => { setCarga(null); setCargaCustom(''); }}
+                className={`py-3 rounded-xl border-2 font-semibold transition-colors ${
+                  carga === null || cargaCustom
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-border text-foreground'
+                }`}
+              >
+                Outro
+              </button>
             </div>
+            {(carga === null || cargaCustom) && (
+              <Input
+                type="number"
+                placeholder="Ex: 8.5"
+                value={cargaCustom}
+                onChange={(e) => { setCargaCustom(e.target.value); setCarga(null); }}
+                className="rounded-xl h-12 text-base"
+                min={1}
+                max={24}
+                step="0.5"
+                autoFocus
+              />
+            )}
           </div>
         )}
 
