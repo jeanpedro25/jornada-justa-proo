@@ -6,6 +6,7 @@ import BottomNav from '@/components/BottomNav';
 import { formatCurrency, calcHorasTrabalhadas, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { FileText, Shield, TrendingUp, Download, Loader2 } from 'lucide-react';
+import AvisoLegal from '@/components/AvisoLegal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import type { Tables } from '@/integrations/supabase/types';
