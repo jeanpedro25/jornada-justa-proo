@@ -341,6 +341,8 @@ const AppPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        <AvisoLegal />
       </div>
 
       <BottomNav unreadAlerts={unreadAlerts} />
