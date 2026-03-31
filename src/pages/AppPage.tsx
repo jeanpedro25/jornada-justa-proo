@@ -14,6 +14,9 @@ import EditRegistro from '@/components/EditRegistro';
 import BancoHorasCards from '@/components/BancoHorasCards';
 import AvisoLegal from '@/components/AvisoLegal';
 import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
+import ProGate from '@/components/ProGate';
+import PaywallModal from '@/components/PaywallModal';
+import { usePaywall } from '@/hooks/usePaywall';
 
 type Registro = Tables<'registros_ponto'>;
 
