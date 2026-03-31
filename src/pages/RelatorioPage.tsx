@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import { formatCurrency, calcHorasTrabalhadas, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
-import { FileText, Shield, TrendingUp, Download, Loader2 } from 'lucide-react';
+import { FileText, Shield, TrendingUp, Download, Loader2, AlertTriangle } from 'lucide-react';
 import AvisoLegal from '@/components/AvisoLegal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
@@ -210,7 +211,15 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
   doc.save(`relatorio-hora-justa-${new Date().toISOString().slice(0, 7)}.pdf`);
 }
 
+interface Irregularidade {
+  tipo: string;
+  mensagem: string;
+  rota: string;
+  params?: string;
+}
+
 const RelatorioPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -256,11 +265,61 @@ const RelatorioPage: React.FC = () => {
     return calcHorasTrabalhadas(r.entrada, r.saida, r.intervalo_minutos ?? 60) > 10;
   }).length;
 
-  const irregularidades = registros.filter((r) => {
-    if (!r.saida) return false;
-    const ht = calcHorasTrabalhadas(r.entrada, r.saida, r.intervalo_minutos ?? 60);
-    return ht > 10 || (r.intervalo_minutos ?? 60) < 60;
-  }).length;
+  const listaIrregularidades: Irregularidade[] = useMemo(() => {
+    const lista: Irregularidade[] = [];
+
+    // Check profile config issues
+    if (!profile?.salario_base || profile.salario_base === 0) {
+      lista.push({
+        tipo: 'config_salario',
+        mensagem: 'Salário base não configurado — valores estimados ficam zerados.',
+        rota: '/configuracoes',
+        params: 'salario',
+      });
+    }
+    if (!profile?.carga_horaria_diaria) {
+      lista.push({
+        tipo: 'config_carga',
+        mensagem: 'Carga horária diária não configurada.',
+        rota: '/configuracoes',
+        params: 'carga',
+      });
+    }
+
+    // Check record-level issues
+    registros.forEach((r) => {
+      if (!r.saida) return;
+      const ht = calcHorasTrabalhadas(r.entrada, r.saida, r.intervalo_minutos ?? 60);
+      const dateLabel = new Date(r.entrada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+      if (ht > 10) {
+        lista.push({
+          tipo: 'jornada_excessiva',
+          mensagem: `Jornada acima de 10h em ${dateLabel} (${ht.toFixed(1)}h). Revise o registro.`,
+          rota: '/historico',
+        });
+      }
+      if ((r.intervalo_minutos ?? 60) < 60 && ht > 6) {
+        lista.push({
+          tipo: 'intervalo_curto',
+          mensagem: `Intervalo menor que 1h em ${dateLabel}. CLT exige mínimo de 1h para jornadas acima de 6h.`,
+          rota: '/historico',
+        });
+      }
+    });
+
+    // Check for days without exit
+    const semSaida = registros.filter(r => !r.saida);
+    if (semSaida.length > 0) {
+      lista.push({
+        tipo: 'sem_saida',
+        mensagem: `${semSaida.length} registro(s) sem saída. Complete no histórico.`,
+        rota: '/historico',
+      });
+    }
+
+    return lista;
+  }, [registros, profile]);
 
   const handleGeneratePDF = () => {
     if (!canExportPdf) {
@@ -307,10 +366,22 @@ const RelatorioPage: React.FC = () => {
               <p className="font-bold">{diasExcessivos}</p>
             </div>
           </div>
-          {irregularidades > 0 && (
-            <p className="text-xs text-warning mt-2">
-              ⚠ {irregularidades} irregularidade{irregularidades > 1 ? 's' : ''} encontrada{irregularidades > 1 ? 's' : ''}
-            </p>
+          {listaIrregularidades.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              <p className="text-xs text-warning font-semibold">
+                ⚠ {listaIrregularidades.length} irregularidade{listaIrregularidades.length > 1 ? 's' : ''} encontrada{listaIrregularidades.length > 1 ? 's' : ''}
+              </p>
+              {listaIrregularidades.slice(0, 5).map((irr, i) => (
+                <button
+                  key={`${irr.tipo}-${i}`}
+                  onClick={() => navigate(irr.rota)}
+                  className="w-full text-left flex items-start gap-2 bg-warning/10 rounded-lg px-3 py-2 hover:bg-warning/20 transition-colors"
+                >
+                  <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
+                  <span className="text-[11px] text-warning underline">{irr.mensagem}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
