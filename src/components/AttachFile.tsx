@@ -37,11 +37,10 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
       return;
     }
 
-    const { data: urlData } = supabase.storage.from('atestados').getPublicUrl(path);
-
+    // Store the path (not public URL) since bucket is private
     const { error: updateError } = await supabase
       .from('registros_ponto')
-      .update({ anexo_url: urlData.publicUrl } as any)
+      .update({ anexo_url: path } as any)
       .eq('id', registroId);
 
     if (updateError) {
