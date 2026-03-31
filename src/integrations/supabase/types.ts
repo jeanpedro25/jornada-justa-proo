@@ -100,6 +100,7 @@ export type Database = {
           aceite_termos: boolean
           carga_horaria_diaria: number | null
           created_at: string | null
+          empresa: string | null
           hora_extra_percentual: number | null
           id: string
           intervalo_almoco: number
@@ -116,6 +117,7 @@ export type Database = {
           aceite_termos?: boolean
           carga_horaria_diaria?: number | null
           created_at?: string | null
+          empresa?: string | null
           hora_extra_percentual?: number | null
           id: string
           intervalo_almoco?: number
@@ -132,6 +134,7 @@ export type Database = {
           aceite_termos?: boolean
           carga_horaria_diaria?: number | null
           created_at?: string | null
+          empresa?: string | null
           hora_extra_percentual?: number | null
           id?: string
           intervalo_almoco?: number
