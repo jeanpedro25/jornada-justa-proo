@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS aceite_termos boolean NOT NULL DEFAULT false;
