@@ -30,6 +30,7 @@ const ConfigPage: React.FC = () => {
   useEffect(() => {
     if (profile) {
       setNome(profile.nome || '');
+      setEmpresa((profile as any).empresa || '');
       setSalario(String(profile.salario_base || ''));
       setCarga(String(profile.carga_horaria_diaria || ''));
       setPercentual(String(profile.hora_extra_percentual || ''));
