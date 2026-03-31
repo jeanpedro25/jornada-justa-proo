@@ -11,6 +11,7 @@ import { FileText, Shield, TrendingUp, Download, Loader2, AlertTriangle, Clock, 
 import AvisoLegal from '@/components/AvisoLegal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { Tables } from '@/integrations/supabase/types';
 import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
