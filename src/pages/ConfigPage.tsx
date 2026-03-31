@@ -48,6 +48,10 @@ const ConfigPage: React.FC = () => {
       carga_horaria_diaria: Number(carga),
       hora_extra_percentual: Number(percentual),
       intervalo_almoco: Number(almoco),
+      modo_trabalho: modoTrabalho,
+      prazo_compensacao_dias: prazoComp === 'custom' ? Number(limiteBH) || 180 : Number(prazoComp),
+      regra_conversao: regraConv,
+      limite_banco_horas: limiteBH ? Number(limiteBH) * 60 : null,
     } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
