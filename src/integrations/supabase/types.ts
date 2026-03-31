@@ -59,6 +59,42 @@ export type Database = {
           },
         ]
       }
+      banco_horas: {
+        Row: {
+          created_at: string | null
+          data: string
+          expira_em: string
+          id: string
+          minutos: number
+          nota: string | null
+          registro_id: string | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: string
+          expira_em: string
+          id?: string
+          minutos: number
+          nota?: string | null
+          registro_id?: string | null
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          expira_em?: string
+          id?: string
+          minutos?: number
+          nota?: string | null
+          registro_id?: string | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           carga_horaria_diaria: number | null
@@ -66,9 +102,13 @@ export type Database = {
           hora_extra_percentual: number | null
           id: string
           intervalo_almoco: number
+          limite_banco_horas: number | null
+          modo_trabalho: string
           nome: string | null
           onboarding_completo: boolean | null
           plano: string | null
+          prazo_compensacao_dias: number
+          regra_conversao: string
           salario_base: number | null
         }
         Insert: {
@@ -77,9 +117,13 @@ export type Database = {
           hora_extra_percentual?: number | null
           id: string
           intervalo_almoco?: number
+          limite_banco_horas?: number | null
+          modo_trabalho?: string
           nome?: string | null
           onboarding_completo?: boolean | null
           plano?: string | null
+          prazo_compensacao_dias?: number
+          regra_conversao?: string
           salario_base?: number | null
         }
         Update: {
@@ -88,9 +132,13 @@ export type Database = {
           hora_extra_percentual?: number | null
           id?: string
           intervalo_almoco?: number
+          limite_banco_horas?: number | null
+          modo_trabalho?: string
           nome?: string | null
           onboarding_completo?: boolean | null
           plano?: string | null
+          prazo_compensacao_dias?: number
+          regra_conversao?: string
           salario_base?: number | null
         }
         Relationships: []
