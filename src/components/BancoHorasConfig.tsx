@@ -12,6 +12,8 @@ interface BancoHorasConfigProps {
   setConversao: (v: string) => void;
   limite: string;
   setLimite: (v: string) => void;
+  prazoDiasCustom?: string;
+  setPrazoDiasCustom?: (v: string) => void;
 }
 
 const BancoHorasConfig: React.FC<BancoHorasConfigProps> = ({
