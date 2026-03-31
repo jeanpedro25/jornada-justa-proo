@@ -132,6 +132,18 @@ const ConfigPage: React.FC = () => {
           </Button>
         </div>
 
+        {/* Banco de Horas */}
+        <BancoHorasConfig
+          modoTrabalho={modoTrabalho}
+          setModoTrabalho={setModoTrabalho}
+          prazo={prazoComp}
+          setPrazo={setPrazoComp}
+          conversao={regraConv}
+          setConversao={setRegraConv}
+          limite={limiteBH}
+          setLimite={setLimiteBH}
+        />
+
         {/* Plan */}
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-2">
