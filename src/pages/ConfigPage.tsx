@@ -105,6 +105,14 @@ const ConfigPage: React.FC = () => {
           </div>
 
           <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Empresa (opcional)</label>
+            <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Nome da empresa" className="rounded-xl" />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Informado pelo usuário para fins de organização pessoal.
+            </p>
+          </div>
+
+          <div>
             <label className="text-xs text-muted-foreground mb-1 block">Salário base (R$)</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
