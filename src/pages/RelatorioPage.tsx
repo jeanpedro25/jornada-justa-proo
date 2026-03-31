@@ -92,7 +92,7 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
   const cards = [
     { label: 'Total Trabalhado', valor: `${totalH}h ${totalMin}min`, cor: [39, 174, 96] as const },
     { label: 'Horas Extras', valor: totalMinutosExtra > 0 ? `+${extraH}h ${extraMin2}min` : '--', cor: [231, 76, 60] as const },
-    { label: 'O Patrao Te Deve', valor: valorAReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
+    { label: 'Estimativa a Receber', valor: valorAReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
     { label: 'Dias Registrados', valor: `${registrosValidos.length}`, cor: [52, 152, 219] as const },
   ];
 
