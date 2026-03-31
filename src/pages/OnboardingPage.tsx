@@ -104,43 +104,25 @@ const OnboardingPage: React.FC = () => {
         {step === 3 && (
           <div className="space-y-4">
             <h2 className="text-xl font-bold">Quantas horas você trabalha por dia?</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[6, 7, 8].map((h) => (
-                <button
-                  key={h}
-                  onClick={() => { setCarga(h); setCargaCustom(''); }}
-                  className={`py-3 rounded-xl border-2 font-semibold transition-colors ${
-                    carga === h
-                      ? 'border-accent bg-accent/10 text-accent'
-                      : 'border-border text-foreground'
-                  }`}
-                >
-                  {h}h
-                </button>
-              ))}
-              <button
-                onClick={() => { setCarga(null); }}
-                className={`py-3 rounded-xl border-2 font-semibold transition-colors ${
-                  carga === null && cargaCustom
-                    ? 'border-accent bg-accent/10 text-accent'
-                    : 'border-border text-foreground'
-                }`}
-              >
-                Outro
-              </button>
+            <div className="grid grid-cols-3 gap-3">
+              {[6, 7, '7h30', 8, '8h30', 9, 10, 12].map((h) => {
+                const valor = typeof h === 'string' ? parseFloat(h.replace('h', '.').replace('30', '5')) : h;
+                const label = typeof h === 'string' ? h : `${h}h`;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => { setCarga(valor); setCargaCustom(''); }}
+                    className={`py-3 rounded-xl border-2 font-semibold transition-colors ${
+                      carga === valor
+                        ? 'border-accent bg-accent/10 text-accent'
+                        : 'border-border text-foreground'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
-            {carga === null && (
-              <Input
-                type="number"
-                placeholder="Quantas horas?"
-                value={cargaCustom}
-                onChange={(e) => setCargaCustom(e.target.value)}
-                className="rounded-xl h-12 text-base"
-                min={1}
-                max={24}
-                autoFocus
-              />
-            )}
           </div>
         )}
 
