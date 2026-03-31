@@ -121,7 +121,7 @@ const AppPage: React.FC = () => {
 
       await fetchToday();
 
-      // Generate alerts after final exit
+      // Generate alerts and banco de horas after final exit
       if (currentStep === 3) {
         const { data: regs } = await supabase
           .from('registros_ponto')
@@ -141,6 +141,25 @@ const AppPage: React.FC = () => {
           };
           await gerarAlertas(syntheticRecord, profile);
           fetchUnread();
+
+          // Banco de horas entry
+          const p = profile as any;
+          if (p.modo_trabalho === 'banco_horas') {
+            const totalWorkedMin = regs.reduce((t: number, r: Registro) => {
+              if (!r.saida) return t;
+              return t + (new Date(r.saida).getTime() - new Date(r.entrada).getTime()) / 60000;
+            }, 0);
+            const cargaMin = (profile.carga_horaria_diaria ?? 8) * 60;
+            const diff = totalWorkedMin - lunchMin - cargaMin;
+            const bhConfig: BancoHorasConfig = {
+              modoTrabalho: 'banco_horas',
+              prazoCompensacaoDias: p.prazo_compensacao_dias ?? 180,
+              regraConversao: p.regra_conversao ?? '1.5x',
+              limiteBancoHoras: p.limite_banco_horas,
+            };
+            const entry = calcularEntradaBancoHoras(user.id, today, diff, bhConfig, regs[0].id);
+            if (entry) await insertBancoHorasEntry(entry);
+          }
         }
       }
     } catch (err: any) {
