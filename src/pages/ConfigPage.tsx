@@ -32,6 +32,10 @@ const ConfigPage: React.FC = () => {
       setCarga(String(profile.carga_horaria_diaria || ''));
       setPercentual(String(profile.hora_extra_percentual || ''));
       setAlmoco(String((profile as any).intervalo_almoco ?? 60));
+      setModoTrabalho((profile as any).modo_trabalho || 'horas_extras');
+      setPrazoComp(String((profile as any).prazo_compensacao_dias || 180));
+      setRegraConv((profile as any).regra_conversao || '1.5x');
+      setLimiteBH((profile as any).limite_banco_horas ? String((profile as any).limite_banco_horas / 60) : '');
     }
   }, [profile]);
 
