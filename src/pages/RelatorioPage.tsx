@@ -59,13 +59,13 @@ function gerarExtratoPDF(
   let y = 0;
 
   // ════════════════════════════════════════
-  // 1. CABEÇALHO
+  // 1. CABEÇALHO PROFISSIONAL
   // ════════════════════════════════════════
   doc.setFillColor(26, 26, 46);
-  doc.rect(0, 0, largura, 38, 'F');
+  doc.rect(0, 0, largura, 44, 'F');
   // accent line
   doc.setFillColor(78, 205, 196);
-  doc.rect(0, 38, largura, 1.5, 'F');
+  doc.rect(0, 44, largura, 1.5, 'F');
 
   doc.setTextColor(78, 205, 196);
   doc.setFontSize(10);
@@ -78,11 +78,22 @@ function gerarExtratoPDF(
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(180, 200, 210);
-  doc.text(`${perfil?.nome || 'Trabalhador'} · ${periodoLabel}`, margem, 30);
-  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, largura - margem, 30, { align: 'right' });
+  doc.setTextColor(200, 215, 225);
+  const nomeFunc = perfil?.nome || 'Trabalhador';
+  const empresaStr = (perfil as any)?.empresa;
+  doc.text(`Funcionario: ${nomeFunc}`, margem, 30);
+  if (empresaStr) {
+    doc.text(`Empresa: ${empresaStr}`, margem, 35);
+    doc.setFontSize(6.5);
+    doc.setTextColor(150, 170, 180);
+    doc.text('Empresa informada pelo usuario para fins de organizacao pessoal', margem, 39);
+  }
+  doc.setFontSize(9);
+  doc.setTextColor(200, 215, 225);
+  doc.text(`Periodo: ${periodoLabel}`, largura - margem, 30, { align: 'right' });
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, largura - margem, 35, { align: 'right' });
 
-  y = 46;
+  y = 52;
 
   // ════════════════════════════════════════
   // 2. RESUMO GERAL
