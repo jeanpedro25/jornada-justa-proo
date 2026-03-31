@@ -6,6 +6,7 @@ import BottomNav from '@/components/BottomNav';
 import { formatCurrency, calcHorasTrabalhadas, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { FileText, Shield, TrendingUp, Download, Loader2 } from 'lucide-react';
+import AvisoLegal from '@/components/AvisoLegal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import type { Tables } from '@/integrations/supabase/types';
@@ -48,7 +49,7 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
   doc.setFont('helvetica', 'bold');
   doc.text('AVISO LEGAL:', margem + 3, y + 5);
   doc.setFont('helvetica', 'normal');
-  const avisoTexto = 'Este relatorio foi gerado com base nos registros inseridos pelo trabalhador. Os valores sao estimativas e nao constituem laudo pericial. Pode ser utilizado como prova complementar em processos trabalhistas, sujeito a avaliacao do juizo competente. Hora Justa nao presta assessoria juridica.';
+  const avisoTexto = 'Este relatorio foi gerado com base em informacoes fornecidas pelo usuario no aplicativo Hora Justa. Os dados apresentados possuem carater estimativo e informativo, nao sendo considerados documentos oficiais ou prova legal absoluta. Recomenda-se a validacao das informacoes com um profissional qualificado antes de qualquer utilizacao legal.';
   const avisoLinhas = doc.splitTextToSize(avisoTexto, largura - margem * 2 - 6);
   doc.text(avisoLinhas, margem + 3, y + 10);
   y += 26;
@@ -92,7 +93,7 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
   const cards = [
     { label: 'Total Trabalhado', valor: `${totalH}h ${totalMin}min`, cor: [39, 174, 96] as const },
     { label: 'Horas Extras', valor: totalMinutosExtra > 0 ? `+${extraH}h ${extraMin2}min` : '--', cor: [231, 76, 60] as const },
-    { label: 'O Patrao Te Deve', valor: valorAReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
+    { label: 'Estimativa a Receber', valor: valorAReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
     { label: 'Dias Registrados', valor: `${registrosValidos.length}`, cor: [52, 152, 219] as const },
   ];
 
@@ -197,7 +198,7 @@ function gerarPDF(registros: Registro[], perfil: any, periodoLabel: string) {
     doc.setTextColor(150, 150, 150);
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `Hora Justa — Protegendo o trabalhador brasileiro | Pagina ${p} de ${totalPaginas}`,
+      `Hora Justa — Dados informados pelo usuario. Valores estimados. | Pagina ${p} de ${totalPaginas}`,
       largura / 2,
       doc.internal.pageSize.getHeight() - 8,
       { align: 'center' }
@@ -272,7 +273,7 @@ const RelatorioPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <AppHeader title="Relatório oficial" subtitle="Gerar prova para advogado" />
+      <AppHeader title="Relatório de Jornada" subtitle="Gerar relatório para análise" />
       <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
         {/* Preview Card */}
         <div className="bg-primary text-primary-foreground rounded-2xl p-5 space-y-3">
@@ -290,7 +291,7 @@ const RelatorioPage: React.FC = () => {
               <p className="font-bold text-accent">{totalExtra.toFixed(1)}h</p>
             </div>
             <div>
-              <p className="opacity-60 text-xs">O patrão te deve</p>
+              <p className="opacity-60 text-xs">Estimativa a receber</p>
               <p className="font-bold text-accent">{formatCurrency(valorTotal)}</p>
             </div>
             <div>
@@ -337,15 +338,13 @@ const RelatorioPage: React.FC = () => {
           {generating ? (
             <><Loader2 size={18} className="animate-spin" /> Gerando...</>
           ) : (
-            <><Download size={18} /> Baixar PDF oficial</>
+            <><Download size={18} /> Baixar Relatório PDF</>
           )}
         </Button>
         {registros.length === 0 && (
           <p className="text-xs text-muted-foreground text-center">Nenhum registro neste mês para gerar relatório.</p>
         )}
-        <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
-          Os valores são estimativas. Consulte um advogado trabalhista para análise do seu caso.
-        </p>
+        <AvisoLegal />
       </div>
       <BottomNav />
     </div>

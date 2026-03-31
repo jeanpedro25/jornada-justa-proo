@@ -6,28 +6,43 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
+import AceiteTermosPage from "./pages/AceiteTermosPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import AppPage from "./pages/AppPage";
 import HistoricoPage from "./pages/HistoricoPage";
 import RelatorioPage from "./pages/RelatorioPage";
 import ConfigPage from "./pages/ConfigPage";
 import PrivacidadePage from "./pages/PrivacidadePage";
+import PrivacidadePublicaPage from "./pages/PrivacidadePublicaPage";
+import TermosUsoPage from "./pages/TermosUsoPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!session) return <Navigate to="/auth" replace />;
+  if (profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
+  if (profile && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 };
 
 const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, profile, loading } = useAuth();
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
+  if (session && profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
   if (session && profile?.onboarding_completo) return <Navigate to="/app" replace />;
   if (session && !profile?.onboarding_completo) return <Navigate to="/onboarding" replace />;
+  return <>{children}</>;
+};
+
+const TermsRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { session, profile, loading } = useAuth();
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
+  if (!session) return <Navigate to="/auth" replace />;
+  if (profile && (profile as any).aceite_termos && profile.onboarding_completo) return <Navigate to="/app" replace />;
+  if (profile && (profile as any).aceite_termos && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 };
 
@@ -41,6 +56,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
+            <Route path="/aceite-termos" element={<TermsRoute><AceiteTermosPage /></TermsRoute>} />
+            <Route path="/termos" element={<TermosUsoPage />} />
+            <Route path="/privacidade-publica" element={<PrivacidadePublicaPage />} />
             <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
             <Route path="/app" element={<ProtectedRoute><AppPage /></ProtectedRoute>} />
             <Route path="/historico" element={<ProtectedRoute><HistoricoPage /></ProtectedRoute>} />

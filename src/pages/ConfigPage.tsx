@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide-react';
 import BancoHorasConfig from '@/components/BancoHorasConfig';
+import AvisoLegal from '@/components/AvisoLegal';
 
 const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -126,6 +127,10 @@ const ConfigPage: React.FC = () => {
               Tempo de intervalo que será usado como padrão ao registrar ponto. CLT exige mínimo de 1h para jornadas &gt; 6h.
             </p>
           </div>
+
+          <p className="text-[10px] text-muted-foreground/50 text-center">
+            Os cálculos são estimativas baseadas nas configurações definidas pelo usuário.
+          </p>
 
           <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
             {saving ? 'Salvando...' : 'Salvar configurações'}

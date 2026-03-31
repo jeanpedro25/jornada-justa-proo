@@ -97,6 +97,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          aceite_termos: boolean
           carga_horaria_diaria: number | null
           created_at: string | null
           hora_extra_percentual: number | null
@@ -112,6 +113,7 @@ export type Database = {
           salario_base: number | null
         }
         Insert: {
+          aceite_termos?: boolean
           carga_horaria_diaria?: number | null
           created_at?: string | null
           hora_extra_percentual?: number | null
@@ -127,6 +129,7 @@ export type Database = {
           salario_base?: number | null
         }
         Update: {
+          aceite_termos?: boolean
           carga_horaria_diaria?: number | null
           created_at?: string | null
           hora_extra_percentual?: number | null

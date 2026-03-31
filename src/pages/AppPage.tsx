@@ -12,6 +12,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import AttachFile from '@/components/AttachFile';
 import EditRegistro from '@/components/EditRegistro';
 import BancoHorasCards from '@/components/BancoHorasCards';
+import AvisoLegal from '@/components/AvisoLegal';
 import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
 
 type Registro = Tables<'registros_ponto'>;
@@ -281,7 +282,7 @@ const AppPage: React.FC = () => {
               <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-full ${
                 horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
               }`}>
-                {horaExtra > 0 ? `+${horaExtra.toFixed(1)}h extra · O patrão te deve ${formatCurrency(valorReceber)}` : 'Jornada normal ✓'}
+                {horaExtra > 0 ? `+${horaExtra.toFixed(1)}h extra · Estimativa: ${formatCurrency(valorReceber)}` : 'Jornada normal ✓'}
               </span>
             </>
           ) : null}
@@ -340,6 +341,8 @@ const AppPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        <AvisoLegal />
       </div>
 
       <BottomNav unreadAlerts={unreadAlerts} />
