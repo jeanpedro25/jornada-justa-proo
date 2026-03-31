@@ -16,6 +16,7 @@ const ConfigPage: React.FC = () => {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [nome, setNome] = useState('');
+  const [empresa, setEmpresa] = useState('');
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
@@ -29,6 +30,7 @@ const ConfigPage: React.FC = () => {
   useEffect(() => {
     if (profile) {
       setNome(profile.nome || '');
+      setEmpresa((profile as any).empresa || '');
       setSalario(String(profile.salario_base || ''));
       setCarga(String(profile.carga_horaria_diaria || ''));
       setPercentual(String(profile.hora_extra_percentual || ''));
@@ -45,6 +47,7 @@ const ConfigPage: React.FC = () => {
     setSaving(true);
     const { error } = await supabase.from('profiles').update({
       nome: nome.trim(),
+      empresa: empresa.trim() || null,
       salario_base: Number(salario),
       carga_horaria_diaria: Number(carga),
       hora_extra_percentual: Number(percentual),
@@ -99,6 +102,14 @@ const ConfigPage: React.FC = () => {
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Seu nome</label>
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" className="rounded-xl" />
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Empresa (opcional)</label>
+            <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Nome da empresa" className="rounded-xl" />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Informado pelo usuário para fins de organização pessoal.
+            </p>
           </div>
 
           <div>

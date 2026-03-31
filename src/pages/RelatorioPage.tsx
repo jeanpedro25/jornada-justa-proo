@@ -59,13 +59,13 @@ function gerarExtratoPDF(
   let y = 0;
 
   // ════════════════════════════════════════
-  // 1. CABEÇALHO
+  // 1. CABEÇALHO PROFISSIONAL
   // ════════════════════════════════════════
   doc.setFillColor(26, 26, 46);
-  doc.rect(0, 0, largura, 38, 'F');
+  doc.rect(0, 0, largura, 44, 'F');
   // accent line
   doc.setFillColor(78, 205, 196);
-  doc.rect(0, 38, largura, 1.5, 'F');
+  doc.rect(0, 44, largura, 1.5, 'F');
 
   doc.setTextColor(78, 205, 196);
   doc.setFontSize(10);
@@ -78,11 +78,22 @@ function gerarExtratoPDF(
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(180, 200, 210);
-  doc.text(`${perfil?.nome || 'Trabalhador'} · ${periodoLabel}`, margem, 30);
-  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, largura - margem, 30, { align: 'right' });
+  doc.setTextColor(200, 215, 225);
+  const nomeFunc = perfil?.nome || 'Trabalhador';
+  const empresaStr = (perfil as any)?.empresa;
+  doc.text(`Funcionario: ${nomeFunc}`, margem, 30);
+  if (empresaStr) {
+    doc.text(`Empresa: ${empresaStr}`, margem, 35);
+    doc.setFontSize(6.5);
+    doc.setTextColor(150, 170, 180);
+    doc.text('Empresa informada pelo usuario para fins de organizacao pessoal', margem, 39);
+  }
+  doc.setFontSize(9);
+  doc.setTextColor(200, 215, 225);
+  doc.text(`Periodo: ${periodoLabel}`, largura - margem, 30, { align: 'right' });
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, largura - margem, 35, { align: 'right' });
 
-  y = 46;
+  y = 52;
 
   // ════════════════════════════════════════
   // 2. RESUMO GERAL
@@ -388,7 +399,8 @@ function gerarExtratoPDF(
   doc.setFillColor(255, 248, 225);
   doc.setDrawColor(243, 156, 18);
   const avisoTexto =
-    'Este relatorio foi gerado com base em informacoes fornecidas pelo usuario no aplicativo Hora Justa. ' +
+    'Este documento foi gerado com base em informacoes fornecidas pelo usuario no aplicativo Hora Justa. ' +
+    'O nome da empresa e demais dados sao informados pelo proprio usuario para fins de controle pessoal. ' +
     'Os dados apresentados possuem carater estimativo e informativo, nao sendo considerados documentos oficiais ou prova legal absoluta. ' +
     'Recomenda-se a validacao das informacoes com um profissional qualificado antes de qualquer utilizacao legal.';
   const avisoLines = doc.splitTextToSize(avisoTexto, contentW - 6);
@@ -408,13 +420,15 @@ function gerarExtratoPDF(
   for (let p = 1; p <= totalPaginas; p++) {
     doc.setPage(p);
     const pH = doc.internal.pageSize.getHeight();
+    // separator line
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.3);
+    doc.line(margem, pH - 12, largura - margem, pH - 12);
     doc.setFontSize(7);
     doc.setTextColor(170, 170, 180);
     doc.setFont('helvetica', 'normal');
-    doc.text(
-      `Hora Justa — Dados informados pelo usuario. Valores estimados. | Pagina ${p} de ${totalPaginas}`,
-      largura / 2, pH - 6, { align: 'center' }
-    );
+    doc.text('Hora Justa · Controle de Jornada Inteligente', margem, pH - 6);
+    doc.text(`Pagina ${p} de ${totalPaginas}`, largura - margem, pH - 6, { align: 'right' });
   }
 
   doc.save(`extrato-jornada-${new Date().toISOString().slice(0, 7)}.pdf`);
