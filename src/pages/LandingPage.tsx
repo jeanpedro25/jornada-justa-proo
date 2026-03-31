@@ -32,7 +32,7 @@ const LandingPage: React.FC = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-xl border-b border-border/50">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-5 h-16">
           <div className="flex items-center gap-2">
-            <HoraJustaLogo size={36} showText />
+            <HoraJustaLogo size={36} showText showTagline />
           </div>
           <Button variant="outline" size="sm" className="rounded-full text-xs font-semibold" onClick={() => navigate('/auth')}>
             Entrar
