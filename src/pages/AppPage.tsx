@@ -11,6 +11,8 @@ import { LogIn, LogOut, Coffee, CheckCircle2, AlertTriangle, Clock } from 'lucid
 import type { Tables } from '@/integrations/supabase/types';
 import AttachFile from '@/components/AttachFile';
 import EditRegistro from '@/components/EditRegistro';
+import BancoHorasCards from '@/components/BancoHorasCards';
+import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
 
 type Registro = Tables<'registros_ponto'>;
 
@@ -119,7 +121,7 @@ const AppPage: React.FC = () => {
 
       await fetchToday();
 
-      // Generate alerts after final exit
+      // Generate alerts and banco de horas after final exit
       if (currentStep === 3) {
         const { data: regs } = await supabase
           .from('registros_ponto')
@@ -139,6 +141,25 @@ const AppPage: React.FC = () => {
           };
           await gerarAlertas(syntheticRecord, profile);
           fetchUnread();
+
+          // Banco de horas entry
+          const p = profile as any;
+          if (p.modo_trabalho === 'banco_horas') {
+            const totalWorkedMin = regs.reduce((t: number, r: Registro) => {
+              if (!r.saida) return t;
+              return t + (new Date(r.saida).getTime() - new Date(r.entrada).getTime()) / 60000;
+            }, 0);
+            const cargaMin = (profile.carga_horaria_diaria ?? 8) * 60;
+            const diff = totalWorkedMin - lunchMin - cargaMin;
+            const bhConfig: BancoHorasConfig = {
+              modoTrabalho: 'banco_horas',
+              prazoCompensacaoDias: p.prazo_compensacao_dias ?? 180,
+              regraConversao: p.regra_conversao ?? '1.5x',
+              limiteBancoHoras: p.limite_banco_horas,
+            };
+            const entry = calcularEntradaBancoHoras(user.id, today, diff, bhConfig, regs[0].id);
+            if (entry) await insertBancoHorasEntry(entry);
+          }
         }
       }
     } catch (err: any) {
@@ -301,6 +322,9 @@ const AppPage: React.FC = () => {
           </div>
         )}
 
+        {/* Banco de Horas Cards */}
+        <BancoHorasCards />
+
         {/* Mini-cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card rounded-xl p-4 border border-border">
@@ -310,7 +334,7 @@ const AppPage: React.FC = () => {
             </p>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">o patrão te deve (est.)</p>
+            <p className="text-xs text-muted-foreground mb-1">valor estimado hoje</p>
             <p className={`text-lg font-bold ${valorReceber > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
               {valorReceber > 0 ? formatCurrency(valorReceber) : '—'}
             </p>

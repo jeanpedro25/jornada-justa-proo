@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { fetchBancoHorasEntries, summarizeBancoHoras } from '@/lib/banco-horas';
 
 type Registro = Tables<'registros_ponto'>;
 type Profile = Tables<'profiles'>;
@@ -48,6 +49,42 @@ export async function gerarAlertas(registro: Registro, perfil: Profile) {
       user_id: perfil.id,
       registro_id: registro.id,
     });
+  }
+
+  // Banco de horas alerts
+  const p = perfil as any;
+  if (p.modo_trabalho === 'banco_horas') {
+    try {
+      const entries = await fetchBancoHorasEntries(perfil.id);
+      const summary = summarizeBancoHoras(entries, perfil.salario_base ?? 0, perfil.hora_extra_percentual ?? 50);
+
+      if (summary.expirandoEm10Dias > 0) {
+        alertas.push({
+          tipo: 'banco_horas_vencendo',
+          mensagem: `Você tem horas próximas de vencer no banco de horas. Compense antes que expirem!`,
+          user_id: perfil.id,
+          registro_id: registro.id,
+        });
+      }
+
+      if (summary.saldo > 40 * 60) {
+        alertas.push({
+          tipo: 'banco_horas_alto',
+          mensagem: `Seu banco de horas está alto (${Math.round(summary.saldo / 60)}h). Considere compensar.`,
+          user_id: perfil.id,
+          registro_id: registro.id,
+        });
+      }
+
+      if (summary.expirado > 0) {
+        alertas.push({
+          tipo: 'banco_horas_perdido',
+          mensagem: `Você pode estar perdendo horas! ${Math.round(summary.expirado / 60)}h venceram sem compensação.`,
+          user_id: perfil.id,
+          registro_id: registro.id,
+        });
+      }
+    } catch {}
   }
 
   if (alertas.length > 0) {

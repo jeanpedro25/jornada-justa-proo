@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide-react';
+import BancoHorasConfig from '@/components/BancoHorasConfig';
 
 const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -18,6 +19,10 @@ const ConfigPage: React.FC = () => {
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
   const [almoco, setAlmoco] = useState('60');
+  const [modoTrabalho, setModoTrabalho] = useState('horas_extras');
+  const [prazoComp, setPrazoComp] = useState('180');
+  const [regraConv, setRegraConv] = useState('1.5x');
+  const [limiteBH, setLimiteBH] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -27,6 +32,10 @@ const ConfigPage: React.FC = () => {
       setCarga(String(profile.carga_horaria_diaria || ''));
       setPercentual(String(profile.hora_extra_percentual || ''));
       setAlmoco(String((profile as any).intervalo_almoco ?? 60));
+      setModoTrabalho((profile as any).modo_trabalho || 'horas_extras');
+      setPrazoComp(String((profile as any).prazo_compensacao_dias || 180));
+      setRegraConv((profile as any).regra_conversao || '1.5x');
+      setLimiteBH((profile as any).limite_banco_horas ? String((profile as any).limite_banco_horas / 60) : '');
     }
   }, [profile]);
 
@@ -39,6 +48,10 @@ const ConfigPage: React.FC = () => {
       carga_horaria_diaria: Number(carga),
       hora_extra_percentual: Number(percentual),
       intervalo_almoco: Number(almoco),
+      modo_trabalho: modoTrabalho,
+      prazo_compensacao_dias: prazoComp === 'custom' ? Number(limiteBH) || 180 : Number(prazoComp),
+      regra_conversao: regraConv,
+      limite_banco_horas: limiteBH ? Number(limiteBH) * 60 : null,
     } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -118,6 +131,18 @@ const ConfigPage: React.FC = () => {
             {saving ? 'Salvando...' : 'Salvar configurações'}
           </Button>
         </div>
+
+        {/* Banco de Horas */}
+        <BancoHorasConfig
+          modoTrabalho={modoTrabalho}
+          setModoTrabalho={setModoTrabalho}
+          prazo={prazoComp}
+          setPrazo={setPrazoComp}
+          conversao={regraConv}
+          setConversao={setRegraConv}
+          limite={limiteBH}
+          setLimite={setLimiteBH}
+        />
 
         {/* Plan */}
         <div className="bg-card rounded-xl border border-border p-4">
