@@ -128,6 +128,10 @@ const ConfigPage: React.FC = () => {
             </p>
           </div>
 
+          <p className="text-[10px] text-muted-foreground/50 text-center">
+            Os cálculos são estimativas baseadas nas configurações definidas pelo usuário.
+          </p>
+
           <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
             {saving ? 'Salvando...' : 'Salvar configurações'}
           </Button>
