@@ -348,12 +348,14 @@ const AppPage: React.FC = () => {
               {horaExtra > 0 ? `${horaExtra.toFixed(1)}h` : '—'}
             </p>
           </div>
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">valor estimado hoje</p>
-            <p className={`text-lg font-bold ${valorReceber > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
-              {valorReceber > 0 ? formatCurrency(valorReceber) : '—'}
-            </p>
-          </div>
+          <ProGate action="money" blurred estimatedValue={valorReceber}>
+            <div className="bg-card rounded-xl p-4 border border-border">
+              <p className="text-xs text-muted-foreground mb-1">valor estimado hoje</p>
+              <p className={`text-lg font-bold ${valorReceber > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
+                {valorReceber > 0 ? formatCurrency(valorReceber) : '—'}
+              </p>
+            </div>
+          </ProGate>
         </div>
 
         <AvisoLegal />
