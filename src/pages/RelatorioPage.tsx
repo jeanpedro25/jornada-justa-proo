@@ -355,6 +355,7 @@ const RelatorioPage: React.FC = () => {
         )}
         <AvisoLegal />
       </div>
+      <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorTotal} trigger="pdf" />
       <BottomNav />
     </div>
   );
