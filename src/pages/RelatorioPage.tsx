@@ -420,13 +420,15 @@ function gerarExtratoPDF(
   for (let p = 1; p <= totalPaginas; p++) {
     doc.setPage(p);
     const pH = doc.internal.pageSize.getHeight();
+    // separator line
+    doc.setDrawColor(220, 220, 230);
+    doc.setLineWidth(0.3);
+    doc.line(margem, pH - 12, largura - margem, pH - 12);
     doc.setFontSize(7);
     doc.setTextColor(170, 170, 180);
     doc.setFont('helvetica', 'normal');
-    doc.text(
-      `Hora Justa — Dados informados pelo usuario. Valores estimados. | Pagina ${p} de ${totalPaginas}`,
-      largura / 2, pH - 6, { align: 'center' }
-    );
+    doc.text('Hora Justa · Controle de Jornada Inteligente', margem, pH - 6);
+    doc.text(`Pagina ${p} de ${totalPaginas}`, largura - margem, pH - 6, { align: 'right' });
   }
 
   doc.save(`extrato-jornada-${new Date().toISOString().slice(0, 7)}.pdf`);
