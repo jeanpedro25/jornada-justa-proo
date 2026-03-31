@@ -215,6 +215,8 @@ const RelatorioPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [generating, setGenerating] = useState(false);
+  const { canExportPdf } = usePaywall();
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     if (!user) return;
