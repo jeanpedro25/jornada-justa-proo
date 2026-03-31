@@ -29,6 +29,8 @@ const STEPS = [
 
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
+  const { shouldShowPaywall, canSeeMoney } = usePaywall();
+  const [showPaywall, setShowPaywall] = useState(false);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
