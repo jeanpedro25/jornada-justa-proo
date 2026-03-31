@@ -337,7 +337,7 @@ const RelatorioPage: React.FC = () => {
           {generating ? (
             <><Loader2 size={18} className="animate-spin" /> Gerando...</>
           ) : (
-            <><Download size={18} /> Baixar PDF oficial</>
+            <><Download size={18} /> Baixar Relatório PDF</>
           )}
         </Button>
         {registros.length === 0 && (
