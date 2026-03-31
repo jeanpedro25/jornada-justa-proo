@@ -290,7 +290,7 @@ const RelatorioPage: React.FC = () => {
               <p className="font-bold text-accent">{totalExtra.toFixed(1)}h</p>
             </div>
             <div>
-              <p className="opacity-60 text-xs">O patrão te deve</p>
+              <p className="opacity-60 text-xs">Estimativa a receber</p>
               <p className="font-bold text-accent">{formatCurrency(valorTotal)}</p>
             </div>
             <div>
