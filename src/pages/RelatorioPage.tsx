@@ -12,7 +12,6 @@ import jsPDF from 'jspdf';
 import type { Tables } from '@/integrations/supabase/types';
 import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
-import type { Tables } from '@/integrations/supabase/types';
 
 type Registro = Tables<'registros_ponto'>;
 
