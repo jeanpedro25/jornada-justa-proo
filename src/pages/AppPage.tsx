@@ -14,6 +14,9 @@ import EditRegistro from '@/components/EditRegistro';
 import BancoHorasCards from '@/components/BancoHorasCards';
 import AvisoLegal from '@/components/AvisoLegal';
 import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
+import ProGate from '@/components/ProGate';
+import PaywallModal from '@/components/PaywallModal';
+import { usePaywall } from '@/hooks/usePaywall';
 
 type Registro = Tables<'registros_ponto'>;
 
@@ -26,6 +29,8 @@ const STEPS = [
 
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
+  const { shouldShowPaywall, canSeeMoney } = usePaywall();
+  const [showPaywall, setShowPaywall] = useState(false);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
@@ -58,6 +63,14 @@ const AppPage: React.FC = () => {
     fetchToday();
     fetchUnread();
   }, [fetchToday, fetchUnread]);
+
+  // Auto-show paywall after 2 days of use
+  useEffect(() => {
+    if (shouldShowPaywall('auto') && !sessionStorage.getItem('hj_paywall_shown')) {
+      sessionStorage.setItem('hj_paywall_shown', '1');
+      setTimeout(() => setShowPaywall(true), 2000);
+    }
+  }, [shouldShowPaywall]);
 
   // Determine current step based on records
   const getCurrentStep = (): number => {
@@ -282,8 +295,17 @@ const AppPage: React.FC = () => {
               <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-full ${
                 horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
               }`}>
-                {horaExtra > 0 ? `+${horaExtra.toFixed(1)}h extra · Estimativa: ${formatCurrency(valorReceber)}` : 'Jornada normal ✓'}
+                {horaExtra > 0 ? (
+                  canSeeMoney
+                    ? `+${horaExtra.toFixed(1)}h extra · Estimativa: ${formatCurrency(valorReceber)}`
+                    : `+${horaExtra.toFixed(1)}h extra`
+                ) : 'Jornada normal ✓'}
               </span>
+              {horaExtra > 0 && !canSeeMoney && (
+                <button onClick={() => setShowPaywall(true)} className="text-[10px] text-accent underline mt-1 block mx-auto">
+                  Ver valor em dinheiro
+                </button>
+              )}
             </>
           ) : null}
         </div>
@@ -334,17 +356,20 @@ const AppPage: React.FC = () => {
               {horaExtra > 0 ? `${horaExtra.toFixed(1)}h` : '—'}
             </p>
           </div>
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">valor estimado hoje</p>
-            <p className={`text-lg font-bold ${valorReceber > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
-              {valorReceber > 0 ? formatCurrency(valorReceber) : '—'}
-            </p>
-          </div>
+          <ProGate action="money" blurred estimatedValue={valorReceber}>
+            <div className="bg-card rounded-xl p-4 border border-border">
+              <p className="text-xs text-muted-foreground mb-1">valor estimado hoje</p>
+              <p className={`text-lg font-bold ${valorReceber > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
+                {valorReceber > 0 ? formatCurrency(valorReceber) : '—'}
+              </p>
+            </div>
+          </ProGate>
         </div>
 
         <AvisoLegal />
       </div>
 
+      <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorReceber} />
       <BottomNav unreadAlerts={unreadAlerts} />
     </div>
   );

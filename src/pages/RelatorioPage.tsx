@@ -10,6 +10,8 @@ import AvisoLegal from '@/components/AvisoLegal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import type { Tables } from '@/integrations/supabase/types';
+import { usePaywall } from '@/hooks/usePaywall';
+import PaywallModal from '@/components/PaywallModal';
 
 type Registro = Tables<'registros_ponto'>;
 
@@ -212,6 +214,8 @@ const RelatorioPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [generating, setGenerating] = useState(false);
+  const { canExportPdf } = usePaywall();
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -259,6 +263,10 @@ const RelatorioPage: React.FC = () => {
   }).length;
 
   const handleGeneratePDF = () => {
+    if (!canExportPdf) {
+      setShowPaywall(true);
+      return;
+    }
     setGenerating(true);
     try {
       const now = new Date();
@@ -346,6 +354,7 @@ const RelatorioPage: React.FC = () => {
         )}
         <AvisoLegal />
       </div>
+      <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorTotal} trigger="pdf" />
       <BottomNav />
     </div>
   );
