@@ -197,25 +197,8 @@ function gerarExtratoPDF(
   y = checkPage(doc, y, 20);
   y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
 
-  const colunas = ['Data', 'Dia', 'Entrada', 'Saida', 'Intervalo', 'Trabalhado', 'Extra', 'Tipo'];
-  const larguras = [20, 12, 18, 18, 18, 22, 20, 28];
-
-  // header
-  doc.setFillColor(26, 26, 46);
-  doc.rect(margem, y, contentW, 7, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  let xC = margem;
-  colunas.forEach((col, i) => {
-    doc.text(col, xC + larguras[i] / 2, y + 4.8, { align: 'center' });
-    xC += larguras[i];
-  });
-  y += 7;
-
-  registros.forEach((r, idx) => {
-    y = checkPage(doc, y, 7);
-
+  // Build table data for autoTable
+  const tableBody = registros.map(r => {
     const entrada = new Date(r.entrada);
     const saida = r.saida ? new Date(r.saida) : null;
     const durMin = saida ? (saida.getTime() - entrada.getTime()) / 60000 : 0;
@@ -226,28 +209,12 @@ function gerarExtratoPDF(
     const hE = Math.floor(extraMin / 60);
     const mE = Math.round(extraMin % 60);
 
-    // Determine type
     let tipo = 'Normal';
     if (r.anexo_url) tipo = 'Atestado';
-    else if (extraMin > 0 && trabMin / 60 > 10) tipo = 'Hora extra';
     else if (extraMin > 0) tipo = 'Hora extra';
     else if (!saida) tipo = 'Incompleto';
 
-    // BG color
-    if (trabMin / 60 > 10) doc.setFillColor(255, 230, 230);
-    else if (extraMin > 0) doc.setFillColor(255, 253, 231);
-    else if (r.anexo_url) doc.setFillColor(230, 248, 255);
-    else if (idx % 2 === 0) doc.setFillColor(248, 249, 255);
-    else doc.setFillColor(255, 255, 255);
-
-    doc.rect(margem, y, contentW, 6, 'F');
-    doc.setDrawColor(230, 230, 240);
-    doc.line(margem, y + 6, largura - margem, y + 6);
-
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-
-    const valores = [
+    return [
       entrada.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       diasSemana[entrada.getDay()],
       entrada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -257,19 +224,33 @@ function gerarExtratoPDF(
       extraMin > 0 ? `+${hE}h${mE}m` : '—',
       tipo,
     ];
-
-    xC = margem;
-    valores.forEach((val, i) => {
-      if (i === 6 && extraMin > 0) doc.setTextColor(231, 76, 60);
-      else if (i === 7 && tipo === 'Atestado') doc.setTextColor(52, 152, 219);
-      else if (i === 7 && tipo === 'Hora extra') doc.setTextColor(243, 156, 18);
-      else doc.setTextColor(40, 40, 50);
-      doc.text(val, xC + larguras[i] / 2, y + 4, { align: 'center' });
-      xC += larguras[i];
-    });
-    y += 6;
   });
-  y += 4;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Data', 'Dia', 'Entrada', 'Saída', 'Intervalo', 'Trabalhado', 'Extra', 'Tipo']],
+    body: tableBody,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak', halign: 'center' },
+    headStyles: { fillColor: [26, 26, 46], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+    alternateRowStyles: { fillColor: [248, 249, 255] },
+    margin: { left: margem, right: margem },
+    didParseCell: (data) => {
+      if (data.section === 'body') {
+        const tipo = tableBody[data.row.index]?.[7];
+        const extra = tableBody[data.row.index]?.[6];
+        if (data.column.index === 6 && extra !== '—') {
+          data.cell.styles.textColor = [231, 76, 60];
+        }
+        if (data.column.index === 7) {
+          if (tipo === 'Hora extra') data.cell.styles.textColor = [243, 156, 18];
+          else if (tipo === 'Atestado') data.cell.styles.textColor = [52, 152, 219];
+        }
+      }
+    },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 6;
 
   // ════════════════════════════════════════
   // 5. EVENTOS IMPORTANTES
