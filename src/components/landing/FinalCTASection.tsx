@@ -43,7 +43,7 @@ const FinalCTASection: React.FC = () => {
           className="h-16 px-12 text-lg font-extrabold rounded-2xl bg-gradient-to-r from-primary to-accent-container text-primary-foreground shadow-2xl shadow-primary/15 transition-all hover:scale-105 active:scale-95"
           onClick={() => navigate('/auth')}
         >
-          Começar agora grátis
+          Começar agora
           <ChevronRight className="ml-2 h-6 w-6" />
         </Button>
         <button

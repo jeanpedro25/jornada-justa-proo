@@ -18,13 +18,13 @@ const features = [
   },
   {
     icon: Calculator,
-    title: 'Estimativa precisa',
-    text: 'Algoritmos atualizados com as últimas leis trabalhistas brasileiras.',
+    title: 'Estimativa clara',
+    text: 'Cálculos baseados nas configurações que você define no app.',
   },
   {
     icon: FileText,
     title: 'Relatórios profissionais',
-    text: 'Documentos prontos para apresentar ao RH ou para assessoria jurídica.',
+    text: 'Relatórios organizados para análise pessoal e tomada de decisão.',
   },
 ];
 

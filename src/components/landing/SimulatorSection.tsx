@@ -70,7 +70,7 @@ const SimulatorSection: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-muted-foreground italic">
-              *Estimativa baseada em CLT padrão 44h semanais.
+              *Estimativa baseada em CLT padrão 44h semanais e nos dados informados pelo usuário.
             </p>
           </div>
 

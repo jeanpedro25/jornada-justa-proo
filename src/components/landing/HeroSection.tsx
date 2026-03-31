@@ -47,7 +47,7 @@ const HeroSection: React.FC = () => {
             className="text-lg text-muted-foreground max-w-lg mx-auto md:mx-0 leading-relaxed"
             variants={fadeUp} initial="hidden" animate="visible" custom={1}
           >
-            Descubra exatamente quanto você deve receber de horas extras com a precisão de um especialista.
+            Descubra a estimativa do que suas horas extras valem com a precisão de um especialista.
           </motion.p>
 
           <motion.div
@@ -59,7 +59,7 @@ const HeroSection: React.FC = () => {
               className="h-14 px-8 text-base font-bold rounded-2xl bg-gradient-to-r from-primary to-accent-container text-primary-foreground shadow-xl shadow-primary/15 transition-all hover:shadow-2xl hover:shadow-primary/25 hover:-translate-y-0.5 hover:scale-[1.02]"
               onClick={() => navigate('/auth')}
             >
-              Começar agora grátis
+              Começar agora
               <ChevronRight className="ml-1 h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
@@ -68,9 +68,15 @@ const HeroSection: React.FC = () => {
                   <div key={i} className="w-9 h-9 rounded-full bg-surface-low flex items-center justify-center text-sm">{e}</div>
                 ))}
               </div>
-              <span className="text-xs font-semibold text-muted-foreground">+10k usuários</span>
+              <span className="text-xs font-semibold text-muted-foreground">5 estrelas • +10k usuários</span>
             </div>
           </motion.div>
+          <motion.p
+            className="text-xs text-muted-foreground"
+            variants={fadeUp} initial="hidden" animate="visible" custom={3}
+          >
+            Estimativa baseada nos dados informados pelo usuário.
+          </motion.p>
         </div>
 
         {/* Right — Damage card */}

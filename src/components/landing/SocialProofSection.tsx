@@ -44,7 +44,7 @@ const SocialProofSection: React.FC = () => (
         className="text-base text-muted-foreground italic leading-relaxed max-w-lg mx-auto"
         variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={3}
       >
-        "Antes do Hora Justa eu nem sabia que o adicional noturno incidia sobre o descanso semanal. Recuperei mais de 3 mil reais em acertos."
+        "Antes do Hora Justa eu nem sabia que o adicional noturno incidia sobre o descanso semanal. Identifiquei mais de 3 mil reais em diferenças estimadas."
       </motion.p>
     </div>
   </section>
