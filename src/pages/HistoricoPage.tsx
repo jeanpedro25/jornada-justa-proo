@@ -146,14 +146,12 @@ const HistoricoPage: React.FC = () => {
       return;
     }
 
-    const { data: urlData } = supabase.storage.from('atestados').getPublicUrl(path);
-
-    // Update all records of this day with the anexo
+    // Store the path (not public URL) since bucket is private
     for (const r of selectedDay.registros) {
-      await supabase.from('registros_ponto').update({ anexo_url: urlData.publicUrl } as any).eq('id', r.id);
+      await supabase.from('registros_ponto').update({ anexo_url: path } as any).eq('id', r.id);
     }
 
-    setAnexoUrl(urlData.publicUrl);
+    setAnexoUrl(path);
     toast({ title: 'Atestado anexado!', description: 'Arquivo salvo como prova.' });
     fetchRegistros();
     setUploading(false);

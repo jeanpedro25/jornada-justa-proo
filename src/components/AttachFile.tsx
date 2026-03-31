@@ -37,11 +37,10 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
       return;
     }
 
-    const { data: urlData } = supabase.storage.from('atestados').getPublicUrl(path);
-
+    // Store the path (not public URL) since bucket is private
     const { error: updateError } = await supabase
       .from('registros_ponto')
-      .update({ anexo_url: urlData.publicUrl } as any)
+      .update({ anexo_url: path } as any)
       .eq('id', registroId);
 
     if (updateError) {
@@ -71,10 +70,14 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
             Envie foto do atestado, declaração ou qualquer documento que comprove sua situação.
           </p>
           {currentUrl && (
-            <a href={currentUrl} target="_blank" rel="noopener noreferrer"
-              className="text-sm text-accent underline block">
+            <button
+              onClick={async () => {
+                const { data } = await supabase.storage.from('atestados').createSignedUrl(currentUrl, 3600);
+                if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+              }}
+              className="text-sm text-accent underline block text-left">
               📎 Ver documento atual
-            </a>
+            </button>
           )}
           <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
             <input
