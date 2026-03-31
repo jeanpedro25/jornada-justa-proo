@@ -2,22 +2,28 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { gerarAlertas } from '@/lib/alertas';
-import { formatTime, formatTimer, formatCurrency, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
+import { formatTime, formatCurrency, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { Play, Square, CheckCircle2, AlertTriangle, Coffee, Sun, Sunset, Paperclip } from 'lucide-react';
+import { LogIn, LogOut, Coffee, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 import AttachFile from '@/components/AttachFile';
 import EditRegistro from '@/components/EditRegistro';
 
 type Registro = Tables<'registros_ponto'>;
 
+const STEPS = [
+  { label: 'Entrada', icon: LogIn, action: 'entrada_manha' },
+  { label: 'Almoço', icon: Coffee, action: 'saida_almoco' },
+  { label: 'Volta', icon: LogIn, action: 'entrada_tarde' },
+  { label: 'Saída', icon: LogOut, action: 'saida_final' },
+] as const;
+
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
-  const [elapsed, setElapsed] = useState(0);
   const [loading, setLoading] = useState(false);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
 
@@ -50,77 +56,83 @@ const AppPage: React.FC = () => {
     fetchUnread();
   }, [fetchToday, fetchUnread]);
 
-  // Active record (last one without saída)
-  const activeRecord = registros.find(r => !r.saida);
+  // Determine current step based on records
+  const getCurrentStep = (): number => {
+    if (registros.length === 0) return 0; // No records — next: Entrada
+    const r0 = registros[0];
+    const r1 = registros[1];
+    if (!r0.saida) return 0; // shouldn't happen but safety
+    if (r0.saida && !r1) return 1; // Has entrada+saída manhã, waiting volta? Actually step 1 done, need step 2
+    // Let me think differently:
+    // Step 0: Entrada (creates record 1 with entrada)
+    // Step 1: Almoço (sets saída on record 1)
+    // Step 2: Volta (creates record 2 with entrada)
+    // Step 3: Saída (sets saída on record 2)
 
-  // Timer — reads from DB timestamp so it survives page reload
-  useEffect(() => {
-    if (!activeRecord) { setElapsed(0); return; }
-    const entradaTs = new Date(activeRecord.entrada).getTime();
-    const tick = () => setElapsed(Date.now() - entradaTs);
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [activeRecord]);
+    const rec1 = registros[0];
+    const rec2 = registros[1];
 
-  const handleEntrada = async () => {
-    if (!user) return;
-    setLoading(true);
-    const now = new Date().toISOString();
-    const { error } = await supabase
-      .from('registros_ponto')
-      .insert({
-        user_id: user.id,
-        data: today,
-        entrada: now,
-        intervalo_minutos: 0,
-      })
-      .select()
-      .single();
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    } else {
-      await fetchToday();
-      const periodo = registros.length === 0 ? 'manhã' : 'tarde';
-      toast({ title: 'Entrada registrada!', description: `Período da ${periodo} iniciado às ${formatTime(new Date(now))}` });
-    }
-    setLoading(false);
+    if (!rec1) return 0;
+    if (rec1 && !rec1.saida) return 1; // Entrada done, next: Almoço (saída)
+    if (rec1 && rec1.saida && !rec2) return 2; // Almoço done, next: Volta (entrada tarde)
+    if (rec2 && !rec2.saida) return 3; // Volta done, next: Saída final
+    if (rec2 && rec2.saida) return 4; // All done
+    return 0;
   };
 
-  const handleSaida = async () => {
-    if (!activeRecord || !user || !profile) return;
+  const currentStep = getCurrentStep();
+  const jornadaCompleta = currentStep === 4;
+
+  const handlePunch = async () => {
+    if (!user || !profile) return;
     setLoading(true);
     const now = new Date().toISOString();
-    const { error } = await supabase
-      .from('registros_ponto')
-      .update({ saida: now })
-      .eq('id', activeRecord.id);
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    } else {
-      // Re-fetch to get fresh data
-      const { data: updatedRegistros } = await supabase
-        .from('registros_ponto')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('data', today)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true });
 
-      const regs = updatedRegistros || [];
-      setRegistros(regs);
+    try {
+      if (currentStep === 0) {
+        // Entrada manhã — create record 1
+        await supabase.from('registros_ponto').insert({
+          user_id: user.id,
+          data: today,
+          entrada: now,
+          intervalo_minutos: 0,
+        });
+        toast({ title: '✅ Entrada registrada!', description: `${formatTime(new Date(now))} — Bom trabalho!` });
+      } else if (currentStep === 1) {
+        // Saída almoço — set saída on record 1
+        await supabase.from('registros_ponto').update({ saida: now }).eq('id', registros[0].id);
+        toast({ title: '🍽️ Saída pro almoço!', description: `${formatTime(new Date(now))} — Bom apetite!` });
+      } else if (currentStep === 2) {
+        // Volta do almoço — create record 2
+        await supabase.from('registros_ponto').insert({
+          user_id: user.id,
+          data: today,
+          entrada: now,
+          intervalo_minutos: 0,
+        });
+        toast({ title: '✅ Volta registrada!', description: `${formatTime(new Date(now))} — Boa tarde!` });
+      } else if (currentStep === 3) {
+        // Saída final — set saída on record 2
+        await supabase.from('registros_ponto').update({ saida: now }).eq('id', registros[1].id);
+        toast({ title: '🏠 Saída registrada!', description: `${formatTime(new Date(now))} — Bom descanso!` });
+      }
 
-      const completedCount = regs.filter(r => r.saida).length;
-      if (completedCount === 1) {
-        toast({ title: 'Saída registrada!', description: 'Bom almoço! Não esqueça de bater o ponto na volta.' });
-      } else {
-        toast({ title: 'Saída registrada!', description: 'Bom descanso!' });
-        // Generate alerts on final exit
-        if (regs.length >= 2) {
+      await fetchToday();
+
+      // Generate alerts after final exit
+      if (currentStep === 3) {
+        const { data: regs } = await supabase
+          .from('registros_ponto')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('data', today)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: true });
+
+        if (regs && regs.length >= 2) {
           const lunchMin = calcLunchMinutes(regs);
-          const lastRec = regs[regs.length - 1];
           const syntheticRecord: Registro = {
-            ...lastRec,
+            ...regs[regs.length - 1],
             entrada: regs[0].entrada,
             saida: now,
             intervalo_minutos: lunchMin,
@@ -129,11 +141,12 @@ const AppPage: React.FC = () => {
           fetchUnread();
         }
       }
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
     setLoading(false);
   };
 
-  // Calculations — sum actual worked minutes from each record pair
   const calcTotalWorkedMinutes = (regs: Registro[]) => {
     return regs.reduce((total, r) => {
       if (!r.saida) return total;
@@ -155,41 +168,24 @@ const AppPage: React.FC = () => {
     return Math.round(totalPause);
   };
 
-  const completedRecords = registros.filter(r => r.saida);
   const totalWorkedMin = calcTotalWorkedMinutes(registros);
   const totalWorkedHours = totalWorkedMin / 60;
   const lunchMin = calcLunchMinutes(registros);
-  const allDone = registros.length > 0 && !activeRecord;
-  // Jornada completa: at least 1 completed record and no active record
-  const jornadaCompleta = completedRecords.length >= 1 && allDone;
-
   const horaExtra = jornadaCompleta ? calcHoraExtra(totalWorkedHours, profile?.carga_horaria_diaria ?? 8) : 0;
   const valorHE = profile ? calcValorHoraExtra(profile.salario_base ?? 0, profile.hora_extra_percentual ?? 50) : 0;
   const valorReceber = horaExtra * valorHE;
 
-  // Live alerts based on total elapsed
-  const totalElapsedMin = totalWorkedMin + (activeRecord ? elapsed / 60000 : 0);
-  const totalElapsedHours = totalElapsedMin / 60;
-  const alertaSemIntervalo = activeRecord && registros.length === 1 && totalElapsedHours > 6;
-  const alertaJornada = totalElapsedHours > 10;
-
-  // Determine current state
-  const noRecords = registros.length === 0;
-  const isWorking = !!activeRecord;
-  const isOnLunch = completedRecords.length === 1 && !activeRecord && completedRecords.length < 2;
-  const pairCount = completedRecords.length;
-
-  // Step label
-  const getStepLabel = () => {
-    if (noRecords) return { step: 1, label: 'Entrada manhã', icon: Sun };
-    if (isWorking && pairCount === 0) return { step: 1, label: 'Trabalhando (manhã)', icon: Sun };
-    if (isOnLunch) return { step: 2, label: 'Intervalo (almoço)', icon: Coffee };
-    if (isWorking && pairCount >= 1) return { step: 3, label: 'Trabalhando (tarde)', icon: Sunset };
-    if (jornadaCompleta) return { step: 4, label: 'Jornada encerrada', icon: CheckCircle2 };
-    return { step: 0, label: '', icon: Sun };
+  const getButtonConfig = () => {
+    switch (currentStep) {
+      case 0: return { text: 'Bater Entrada', icon: LogIn, color: 'bg-success hover:bg-success/90 text-success-foreground' };
+      case 1: return { text: 'Saí pro Almoço', icon: Coffee, color: 'bg-warning hover:bg-warning/90 text-warning-foreground' };
+      case 2: return { text: 'Voltei do Almoço', icon: LogIn, color: 'bg-success hover:bg-success/90 text-success-foreground' };
+      case 3: return { text: 'Bater Saída', icon: LogOut, color: 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' };
+      default: return null;
+    }
   };
 
-  const stepInfo = getStepLabel();
+  const btnConfig = getButtonConfig();
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -197,139 +193,101 @@ const AppPage: React.FC = () => {
       <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
         {/* Progress Steps */}
         <div className="flex items-center justify-between px-2">
-          {['Entrada', 'Almoço', 'Volta', 'Saída'].map((label, i) => {
-            const stepNum = i + 1;
-            const done = (stepNum === 1 && pairCount >= 1) ||
-                         (stepNum === 2 && (isOnLunch || (pairCount >= 1 && registros.length > 1))) ||
-                         (stepNum === 3 && pairCount >= 2) ||
-                         (stepNum === 4 && jornadaCompleta);
-            const active = (stepNum === 1 && (noRecords || (isWorking && pairCount === 0))) ||
-                           (stepNum === 2 && isOnLunch) ||
-                           (stepNum === 3 && isWorking && pairCount >= 1) ||
-                           (stepNum === 4 && isWorking && pairCount >= 1);
+          {STEPS.map((step, i) => {
+            const done = i < currentStep;
+            const active = i === currentStep;
             return (
-              <div key={label} className="flex flex-col items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+              <div key={step.label} className="flex flex-col items-center gap-1">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                   done ? 'bg-success text-success-foreground' :
-                  active ? 'bg-accent text-accent-foreground' :
+                  active ? 'bg-accent text-accent-foreground scale-110 shadow-md' :
                   'bg-muted text-muted-foreground'
                 }`}>
-                  {done ? '✓' : stepNum}
+                  {done ? '✓' : <step.icon size={16} />}
                 </div>
-                <span className="text-[10px] text-muted-foreground">{label}</span>
+                <span className={`text-[10px] ${active ? 'text-accent font-semibold' : 'text-muted-foreground'}`}>
+                  {step.label}
+                </span>
               </div>
             );
           })}
         </div>
 
-        {/* Status Card */}
-        <div className="bg-secondary rounded-2xl p-5 text-center shadow-sm">
-          {noRecords && (
+        {/* Main Action Card */}
+        <div className="bg-secondary rounded-2xl p-6 text-center shadow-sm">
+          {!jornadaCompleta && btnConfig ? (
             <>
-              <p className="text-muted-foreground mb-4">Você ainda não registrou sua entrada hoje</p>
-              <Button
-                onClick={handleEntrada}
-                disabled={loading}
-                className="bg-success hover:bg-success/90 text-success-foreground rounded-xl h-14 text-base font-semibold w-full gap-2"
-              >
-                <Play size={18} />
-                {loading ? 'Registrando...' : 'Cheguei no trabalho'}
-              </Button>
-            </>
-          )}
-
-          {isWorking && (
-            <>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
-                <span className="text-success font-semibold text-sm">
-                  {pairCount === 0 ? 'Trabalhando (manhã)' : 'Trabalhando (tarde)'}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Clock size={16} className="text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-4xl font-bold tracking-tight mb-2">{formatTimer(elapsed)}</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                entrada às {formatTime(new Date(activeRecord!.entrada))} · carga: {profile?.carga_horaria_diaria ?? 8}h
-              </p>
-              <Button
-                onClick={handleSaida}
-                disabled={loading}
-                className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl h-12 w-full font-semibold gap-2"
-              >
-                <Square size={16} />
-                {loading ? 'Registrando...' : pairCount === 0 ? 'Saí pro almoço' : 'Fui embora'}
-              </Button>
-            </>
-          )}
 
-          {isOnLunch && (
-            <>
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Coffee size={20} className="text-warning" />
-                <span className="text-warning font-semibold text-sm">Intervalo de almoço</span>
-              </div>
               <p className="text-muted-foreground text-sm mb-4">
-                Saiu às {formatTime(new Date(completedRecords[0].saida!))} · Bom apetite!
+                {currentStep === 0 && 'Registre sua entrada e pode fechar o app.'}
+                {currentStep === 1 && 'Hora do almoço? Registre e vá descansar.'}
+                {currentStep === 2 && 'Voltou? Registre e continue seu dia.'}
+                {currentStep === 3 && 'Fim do expediente? Registre sua saída.'}
               </p>
-              <Button
-                onClick={handleEntrada}
-                disabled={loading}
-                className="bg-success hover:bg-success/90 text-success-foreground rounded-xl h-14 text-base font-semibold w-full gap-2"
-              >
-                <Play size={18} />
-                {loading ? 'Registrando...' : 'Voltei do almoço'}
-              </Button>
-            </>
-          )}
 
-          {jornadaCompleta && (
+              <Button
+                onClick={handlePunch}
+                disabled={loading}
+                className={`${btnConfig.color} rounded-xl h-14 text-base font-semibold w-full gap-2`}
+              >
+                <btnConfig.icon size={20} />
+                {loading ? 'Registrando...' : btnConfig.text}
+              </Button>
+
+              <p className="text-[11px] text-muted-foreground mt-3">
+                📱 Você pode fechar o app após registrar. Seu ponto está salvo.
+              </p>
+            </>
+          ) : jornadaCompleta ? (
             <>
               <div className="flex items-center justify-center gap-2 mb-2">
-                <CheckCircle2 size={20} className="text-success" />
-                <span className="font-semibold">Jornada encerrada</span>
+                <CheckCircle2 size={22} className="text-success" />
+                <span className="font-semibold text-lg">Jornada encerrada</span>
               </div>
               <p className="text-2xl font-bold mb-1">{totalWorkedHours.toFixed(1)}h trabalhadas</p>
               <p className="text-sm text-muted-foreground mb-1">
                 {formatTime(new Date(registros[0].entrada))} — {formatTime(new Date(registros[registros.length - 1].saida!))}
               </p>
               {lunchMin > 0 && (
-                <p className="text-xs text-muted-foreground mb-2">
-                  ☕ Almoço: {lunchMin}min
-                </p>
+                <p className="text-xs text-muted-foreground mb-2">☕ Almoço: {lunchMin}min</p>
               )}
-              <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${
+              <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-full ${
                 horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
               }`}>
                 {horaExtra > 0 ? `+${horaExtra.toFixed(1)}h extra · O patrão te deve ${formatCurrency(valorReceber)}` : 'Jornada normal ✓'}
               </span>
             </>
-          )}
+          ) : null}
         </div>
 
-        {/* Timeline */}
+        {/* Registros de hoje */}
         {registros.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-muted-foreground font-semibold">REGISTROS DE HOJE</p>
-              {registros.length > 0 && (
-                <AttachFile
-                  registroId={registros[0].id}
-                  currentUrl={(registros[0] as any).anexo_url}
-                  onAttached={fetchToday}
-                />
-              )}
+              <AttachFile
+                registroId={registros[0].id}
+                currentUrl={(registros[0] as any).anexo_url}
+                onAttached={fetchToday}
+              />
             </div>
             <div className="space-y-3">
               {registros.map((r, i) => (
                 <div key={r.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-sm">
-                    <div className={`w-2 h-2 rounded-full ${r.saida ? 'bg-success' : 'bg-warning'}`} />
-                    <span className="text-muted-foreground w-14">{i === 0 ? 'Manhã' : 'Tarde'}</span>
-                    <span className="font-medium">{formatTime(new Date(r.entrada))}</span>
+                    <div className={`w-2.5 h-2.5 rounded-full ${r.saida ? 'bg-success' : 'bg-warning animate-pulse'}`} />
+                    <span className="text-muted-foreground w-14 font-medium">{i === 0 ? 'Manhã' : 'Tarde'}</span>
+                    <span className="font-semibold">{formatTime(new Date(r.entrada))}</span>
                     <span className="text-muted-foreground">→</span>
-                    <span className="font-medium">{r.saida ? formatTime(new Date(r.saida)) : '...'}</span>
-                    {(r as any).editado_manualmente && (
-                      <span className="text-[10px] text-warning">✏️</span>
-                    )}
+                    <span className={`font-semibold ${r.saida ? '' : 'text-muted-foreground'}`}>
+                      {r.saida ? formatTime(new Date(r.saida)) : 'aguardando'}
+                    </span>
                   </div>
                   <EditRegistro
                     registroId={r.id}
@@ -358,24 +316,6 @@ const AppPage: React.FC = () => {
             </p>
           </div>
         </div>
-
-        {/* Alert Banners */}
-        {alertaSemIntervalo && (
-          <div className="bg-warning/10 border border-warning/40 rounded-xl p-4 flex gap-3 items-start">
-            <AlertTriangle size={20} className="text-warning shrink-0 mt-0.5" />
-            <p className="text-sm text-warning font-medium">
-              Você está há mais de 6h sem intervalo. A CLT exige pausa mínima de 1h.
-            </p>
-          </div>
-        )}
-        {alertaJornada && (
-          <div className="bg-destructive/10 border border-destructive/40 rounded-xl p-4 flex gap-3 items-start">
-            <AlertTriangle size={20} className="text-destructive shrink-0 mt-0.5" />
-            <p className="text-sm text-destructive font-medium">
-              Você já trabalhou mais de 10h hoje. Jornada acima de 10h é irregular pela CLT.
-            </p>
-          </div>
-        )}
       </div>
 
       <BottomNav unreadAlerts={unreadAlerts} />
