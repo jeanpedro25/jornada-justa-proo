@@ -31,7 +31,7 @@ const AppPage: React.FC = () => {
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [isDiaFolga, setIsDiaFolga] = useState(false);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = dataHojeLocal();
   const p = profile as any;
 
   const fetchToday = useCallback(async () => {
