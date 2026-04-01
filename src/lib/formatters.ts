@@ -1,14 +1,20 @@
+import { fusoLocal } from '@/lib/dataHora';
+
 export const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export const formatDatePtBR = (date: Date) => {
-  const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-  return `${dias[date.getDay()]}, ${date.getDate()} de ${meses[date.getMonth()]} de ${date.getFullYear()}`;
+  return date.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: fusoLocal,
+  });
 };
 
 export const formatTime = (date: Date) =>
-  date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: fusoLocal });
 
 export const diaSemanaAbrev = (date: Date) => {
   const abrevs = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -38,7 +44,7 @@ export const calcValorHoraExtra = (salarioBase: number, percentual: number) => {
 };
 
 export const mesAnoAtual = () => {
-  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const now = new Date();
-  return `${meses[now.getMonth()]} ${now.getFullYear()}`;
+  return now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: fusoLocal })
+    .replace(/^./, s => s.toUpperCase());
 };
