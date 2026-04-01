@@ -1,49 +1,44 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency, calcValorHoraExtra } from '@/lib/formatters';
+import { formatarHora, horaLocalAgora } from '@/lib/dataHora';
+import {
+  buscarMarcacoesDia, calcularJornada, proximoTipoAvancado, registrarMarcacao,
+  getEstadoJornada, calcularHoraExtra, formatarDuracaoJornada, formatarHoraLocal,
+  getCargaDiaria, isDiaTrabalhoEscala, hojeLocal, getMarcacaoVisual,
+  type Marcacao, type EstadoJornada,
+} from '@/lib/jornada';
 import { gerarAlertas } from '@/lib/alertas';
-import { formatCurrency, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
-import { formatarHora, dataHojeLocal, agoraUTC, horaLocalAgora } from '@/lib/dataHora';
-import { getCargaDiaria, calcTotalWorkedMinutes, calcPauseMinutes, isDiaTrabalhoEscala } from '@/lib/jornada';
+import { supabase } from '@/integrations/supabase/client';
+import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
-import { LogIn, LogOut, CheckCircle2, Clock, Plus } from 'lucide-react';
-import type { Tables } from '@/integrations/supabase/types';
-import EditRegistro from '@/components/EditRegistro';
 import BancoHorasCards from '@/components/BancoHorasCards';
 import AvisoLegal from '@/components/AvisoLegal';
-import ManualEntry from '@/components/ManualEntry';
-import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
 import ProGate from '@/components/ProGate';
 import PaywallModal from '@/components/PaywallModal';
 import { usePaywall } from '@/hooks/usePaywall';
-
-type Registro = Tables<'registros_ponto'>;
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import { CheckCircle2, Clock } from 'lucide-react';
 
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
   const { shouldShowPaywall, canSeeMoney } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
-  const [registros, setRegistros] = useState<Registro[]>([]);
+  const [marcacoes, setMarcacoes] = useState<Marcacao[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [isDiaFolga, setIsDiaFolga] = useState(false);
+  const [timerStr, setTimerStr] = useState('00:00:00');
 
-  const today = dataHojeLocal();
+  const today = hojeLocal();
   const p = profile as any;
 
-  const fetchToday = useCallback(async () => {
+  const fetchMarcacoes = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('registros_ponto')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('data', today)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: true });
-    setRegistros(data || []);
+    const m = await buscarMarcacoesDia(user.id, today);
+    setMarcacoes(m);
   }, [user, today]);
 
   const fetchUnread = useCallback(async () => {
@@ -56,12 +51,9 @@ const AppPage: React.FC = () => {
     setUnreadAlerts(count || 0);
   }, [user]);
 
-  useEffect(() => {
-    fetchToday();
-    fetchUnread();
-  }, [fetchToday, fetchUnread]);
+  useEffect(() => { fetchMarcacoes(); fetchUnread(); }, [fetchMarcacoes, fetchUnread]);
 
-  // Check if today is a rest day for escala
+  // Escala rest day check
   useEffect(() => {
     if (p?.tipo_jornada === 'escala' && p?.escala_tipo && p?.escala_inicio) {
       const isWork = isDiaTrabalhoEscala({
@@ -76,7 +68,7 @@ const AppPage: React.FC = () => {
     }
   }, [p, today]);
 
-  // Auto-show paywall
+  // Auto paywall
   useEffect(() => {
     if (shouldShowPaywall('auto') && !sessionStorage.getItem('hj_paywall_shown')) {
       sessionStorage.setItem('hj_paywall_shown', '1');
@@ -84,80 +76,84 @@ const AppPage: React.FC = () => {
     }
   }, [shouldShowPaywall]);
 
-  // Determine current action: entrada or saida for the latest open record
-  const lastRecord = registros[registros.length - 1];
-  const hasOpenRecord = lastRecord && !lastRecord.saida;
-  const allClosed = registros.length > 0 && registros.every(r => r.saida);
+  const jornada = calcularJornada(marcacoes);
+  const estado = getEstadoJornada(marcacoes);
+  const proximo = proximoTipoAvancado(marcacoes);
 
-  // Get carga diária based on jornada type
   const cargaDiaria = getCargaDiaria(
     (p?.tipo_jornada || 'jornada_fixa') as any,
     p?.escala_tipo || null,
     p?.carga_horaria_diaria ?? 8,
   );
 
-  const handleEntrada = async () => {
+  const horaExtra = estado === 'encerrada' ? calcularHoraExtra(jornada.totalTrabalhado, cargaDiaria) : 0;
+  const valorHE = profile ? calcValorHoraExtra(profile.salario_base ?? 0, profile.hora_extra_percentual ?? 50) : 0;
+  const valorReceber = horaExtra * valorHE;
+
+  // Live timer
+  useEffect(() => {
+    if (estado !== 'trabalhando') {
+      setTimerStr('00:00:00');
+      return;
+    }
+    const entradaTs = jornada.primeiraEntrada;
+    if (!entradaTs) return;
+
+    const tick = () => {
+      // Total worked time including current partial
+      const now = Date.now();
+      let totalMs = 0;
+      for (const per of jornada.periodos) {
+        if (per.parcial && per.inicio) {
+          totalMs += now - new Date(per.inicio).getTime();
+        } else if (per.fim) {
+          totalMs += new Date(per.fim).getTime() - new Date(per.inicio).getTime();
+        }
+      }
+      const totalSeg = Math.floor(totalMs / 1000);
+      const h = Math.floor(totalSeg / 3600);
+      const m = Math.floor((totalSeg % 3600) / 60);
+      const s = totalSeg % 60;
+      setTimerStr(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+    };
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [estado, jornada.periodos]);
+
+  const handleMarcacao = async (tipo: typeof proximo.tipo) => {
     if (!user) return;
     setLoading(true);
-    const now = agoraUTC();
     try {
-      await supabase.from('registros_ponto').insert({
-        user_id: user.id,
-        data: today,
-        entrada: now,
-        intervalo_minutos: 0,
+      await registrarMarcacao(user.id, tipo);
+      toast({
+        title: tipo === 'entrada' ? '✅ Entrada registrada!' :
+          tipo === 'saida_intervalo' ? '🍽 Saída para intervalo!' :
+          tipo === 'volta_intervalo' ? '↩ Volta registrada!' :
+          '🏠 Saída final registrada!',
+        description: horaLocalAgora(),
       });
-      toast({ title: '✅ Entrada registrada!', description: `${formatarHora(now)} — Bom trabalho!` });
-      await fetchToday();
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-    }
-    setLoading(false);
-  };
+      await fetchMarcacoes();
 
-  const handleSaida = async () => {
-    if (!user || !lastRecord) return;
-    setLoading(true);
-    const now = agoraUTC();
-    try {
-      await supabase.from('registros_ponto').update({ saida: now }).eq('id', lastRecord.id);
-      toast({ title: '🏠 Saída registrada!', description: `${formatarHora(now)}` });
-      await fetchToday();
-
-      // After closing a record, check if we should generate alerts/banco
-      const { data: regs } = await supabase
-        .from('registros_ponto')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('data', today)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: true });
-
-      if (regs && regs.length > 0) {
-        const pauseMin = calcPauseMinutes(regs);
-        const syntheticRecord: Registro = {
-          ...regs[regs.length - 1],
-          entrada: regs[0].entrada,
-          saida: now,
-          intervalo_minutos: pauseMin,
-        };
-        await gerarAlertas(syntheticRecord, profile!);
-        fetchUnread();
+      // If saida_final, generate alerts and banco de horas
+      if (tipo === 'saida_final') {
+        const updated = await buscarMarcacoesDia(user.id, today);
+        const jornadaFinal = calcularJornada(updated);
 
         // Banco de horas
-        if (p?.modo_trabalho === 'banco_horas') {
-          const totalWorkedMin = calcTotalWorkedMinutes(regs);
-          const cargaMin = cargaDiaria * 60;
-          const diff = totalWorkedMin - pauseMin - cargaMin;
+        if (p?.modo_trabalho === 'banco_horas' && jornadaFinal.totalTrabalhado > 0) {
+          const diff = jornadaFinal.totalTrabalhado - cargaDiaria * 60;
           const bhConfig: BancoHorasConfig = {
             modoTrabalho: 'banco_horas',
             prazoCompensacaoDias: p.prazo_compensacao_dias ?? 180,
             regraConversao: p.regra_conversao ?? '1.5x',
             limiteBancoHoras: p.limite_banco_horas,
           };
-          const entry = calcularEntradaBancoHoras(user.id, today, diff, bhConfig, regs[0].id);
+          const entry = calcularEntradaBancoHoras(user.id, today, diff, bhConfig, updated[0]?.id);
           if (entry) await insertBancoHorasEntry(entry);
         }
+        fetchUnread();
       }
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -165,18 +161,14 @@ const AppPage: React.FC = () => {
     setLoading(false);
   };
 
-  const totalWorkedMin = calcTotalWorkedMinutes(registros);
-  const totalWorkedHours = totalWorkedMin / 60;
-  const pauseMin = calcPauseMinutes(registros);
-  const horaExtra = allClosed ? calcHoraExtra(totalWorkedHours, cargaDiaria) : 0;
-  const valorHE = profile ? calcValorHoraExtra(profile.salario_base ?? 0, profile.hora_extra_percentual ?? 50) : 0;
-  const valorReceber = horaExtra * valorHE;
-
-  const getPeriodLabel = (index: number) => {
-    if (registros.length <= 2) {
-      return index === 0 ? 'Manhã' : 'Tarde';
+  const getButtonStyle = (cor: string) => {
+    switch (cor) {
+      case 'success': return 'bg-success hover:bg-success/90 text-success-foreground';
+      case 'warning': return 'bg-warning hover:bg-warning/90 text-warning-foreground';
+      case 'accent': return 'bg-accent hover:bg-accent/90 text-accent-foreground';
+      case 'destructive': return 'bg-destructive hover:bg-destructive/90 text-destructive-foreground';
+      default: return 'bg-primary hover:bg-primary/90 text-primary-foreground';
     }
-    return `Período ${index + 1}`;
   };
 
   return (
@@ -193,18 +185,18 @@ const AppPage: React.FC = () => {
 
         {/* Main Action Card */}
         <div className="bg-secondary rounded-2xl p-6 text-center shadow-sm">
-          {allClosed && registros.length > 0 ? (
+          {estado === 'encerrada' ? (
             <>
               <div className="flex items-center justify-center gap-2 mb-2">
                 <CheckCircle2 size={22} className="text-success" />
                 <span className="font-semibold text-lg">Jornada encerrada</span>
               </div>
-              <p className="text-2xl font-bold mb-1">{totalWorkedHours.toFixed(1)}h trabalhadas</p>
+              <p className="text-2xl font-bold mb-1">{formatarDuracaoJornada(jornada.totalTrabalhado)} trabalhadas</p>
               <p className="text-sm text-muted-foreground mb-1">
-                {formatarHora(registros[0].entrada)} — {formatarHora(registros[registros.length - 1].saida)}
+                {formatarHoraLocal(jornada.primeiraEntrada)} — {formatarHoraLocal(jornada.ultimaSaida)}
               </p>
-              {pauseMin > 0 && (
-                <p className="text-xs text-muted-foreground mb-2">☕ Intervalo: {pauseMin}min</p>
+              {jornada.totalIntervalo > 0 && (
+                <p className="text-xs text-muted-foreground mb-2">☕ Intervalo: {formatarDuracaoJornada(jornada.totalIntervalo)}</p>
               )}
               <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-full ${
                 horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
@@ -220,55 +212,77 @@ const AppPage: React.FC = () => {
                   Ver valor em dinheiro
                 </button>
               )}
-
-              {/* Add extra period */}
+              {/* Allow new entry after encerrada */}
               <Button
-                onClick={handleEntrada}
+                onClick={() => handleMarcacao('entrada')}
                 disabled={loading}
                 variant="outline"
                 className="mt-4 rounded-xl gap-2 text-xs"
               >
-                <Plus size={14} />
-                Adicionar período extra
+                ▶ Adicionar período extra
               </Button>
+            </>
+          ) : estado === 'em_intervalo' ? (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <span className="text-2xl">🍽</span>
+                <span className="font-semibold text-lg">Em intervalo</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Saiu às {formatarHoraLocal(marcacoes.filter(m => m.tipo === 'saida_intervalo').pop()?.horario || null)}
+              </p>
+              <Button
+                onClick={() => handleMarcacao('volta_intervalo')}
+                disabled={loading}
+                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle('accent')}`}
+              >
+                ↩ {loading ? 'Registrando...' : 'Voltei do Intervalo'}
+              </Button>
+            </>
+          ) : estado === 'trabalhando' ? (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
+                <span className="font-semibold">Trabalhando agora</span>
+              </div>
+              <p className="text-3xl font-bold font-mono mb-1">{timerStr}</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Entrada: {formatarHoraLocal(jornada.primeiraEntrada)} · Carga: {cargaDiaria}h
+              </p>
+              <Button
+                onClick={() => handleMarcacao(proximo.tipo)}
+                disabled={loading}
+                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle(proximo.cor)}`}
+              >
+                {proximo.icone} {loading ? 'Registrando...' : proximo.label}
+              </Button>
+              {proximo.alternativo && (
+                <Button
+                  onClick={() => handleMarcacao(proximo.alternativo!.tipo)}
+                  disabled={loading}
+                  variant="outline"
+                  className="mt-2 rounded-xl gap-2 text-xs w-full"
+                >
+                  {proximo.alternativo.icone} {proximo.alternativo.label}
+                </Button>
+              )}
             </>
           ) : (
             <>
               <div className="flex items-center justify-center gap-2 mb-3">
                 <Clock size={16} className="text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {horaLocalAgora()}
-                </span>
+                <span className="text-sm text-muted-foreground">{horaLocalAgora()}</span>
               </div>
-
               <p className="text-muted-foreground text-sm mb-4">
-                {registros.length === 0
-                  ? 'Registre sua entrada e pode fechar o app.'
-                  : hasOpenRecord
-                    ? 'Registre a saída quando terminar.'
-                    : 'Continue seu dia registrando uma nova entrada.'}
+                Registre sua entrada e pode fechar o app.
               </p>
-
-              {hasOpenRecord ? (
-                <Button
-                  onClick={handleSaida}
-                  disabled={loading}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-xl h-14 text-base font-semibold w-full gap-2"
-                >
-                  <LogOut size={20} />
-                  {loading ? 'Registrando...' : 'Bater Saída'}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleEntrada}
-                  disabled={loading}
-                  className="bg-success hover:bg-success/90 text-success-foreground rounded-xl h-14 text-base font-semibold w-full gap-2"
-                >
-                  <LogIn size={20} />
-                  {loading ? 'Registrando...' : registros.length === 0 ? 'Bater Entrada' : 'Nova Entrada'}
-                </Button>
-              )}
-
+              <Button
+                onClick={() => handleMarcacao('entrada')}
+                disabled={loading}
+                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle('success')}`}
+              >
+                ▶ {loading ? 'Registrando...' : 'Bater Entrada'}
+              </Button>
               <p className="text-[11px] text-muted-foreground mt-3">
                 📱 Você pode fechar o app após registrar. Seu ponto está salvo.
               </p>
@@ -277,29 +291,20 @@ const AppPage: React.FC = () => {
         </div>
 
         {/* Registros de hoje */}
-        {registros.length > 0 && (
+        {marcacoes.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground font-semibold mb-3">REGISTROS DE HOJE</p>
-            <div className="space-y-3">
-              {registros.map((r, i) => (
-                <div key={r.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className={`w-2.5 h-2.5 rounded-full ${r.saida ? 'bg-success' : 'bg-warning animate-pulse'}`} />
-                    <span className="text-muted-foreground w-16 font-medium text-xs">{getPeriodLabel(i)}</span>
-                    <span className="font-semibold">{formatarHora(r.entrada)}</span>
-                    <span className="text-muted-foreground">→</span>
-                    <span className={`font-semibold ${r.saida ? '' : 'text-muted-foreground'}`}>
-                      {r.saida ? formatarHora(r.saida) : 'aguardando'}
-                    </span>
+            <div className="space-y-2">
+              {marcacoes.map((m) => {
+                const visual = getMarcacaoVisual(m.tipo);
+                return (
+                  <div key={m.id} className="flex items-center gap-3 text-sm">
+                    <span>{visual.icone}</span>
+                    <span className="text-muted-foreground text-xs w-28">{visual.label}</span>
+                    <span className="font-semibold">{formatarHoraLocal(m.horario)}</span>
                   </div>
-                  <EditRegistro
-                    registroId={r.id}
-                    entrada={r.entrada}
-                    saida={r.saida}
-                    onEdited={fetchToday}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -324,9 +329,6 @@ const AppPage: React.FC = () => {
             </div>
           </ProGate>
         </div>
-
-        {/* Manual entry */}
-        <ManualEntry onAdded={fetchToday} />
 
         <AvisoLegal />
       </div>

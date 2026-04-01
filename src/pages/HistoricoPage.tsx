@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from '@/components/AppHeader';
@@ -7,37 +7,39 @@ import { mesAnoAtual, diaSemanaAbrev } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Calendar } from 'lucide-react';
-import EditRegistroDia from '@/components/EditRegistroDia';
+import ManualEntry from '@/components/ManualEntry';
+import EditMarcacoesDia from '@/components/EditMarcacoesDia';
+import {
+  calcularJornada, calcularHoraExtra, formatarDuracaoJornada,
+  formatarHoraLocal, getCargaDiaria, type Marcacao,
+} from '@/lib/jornada';
 
 type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
 
 interface DaySummary {
-  id: string;
   data: string;
-  manha_estado: string;
-  tarde_estado: string;
-  manha_entrada: string | null;
-  manha_saida: string | null;
-  manha_atestado_url: string | null;
-  tarde_entrada: string | null;
-  tarde_saida: string | null;
-  tarde_atestado_url: string | null;
-  intervalo_minutos: number | null;
-  observacao: string | null;
-  editado_manualmente: boolean;
+  marcacoes: Marcacao[];
   totalMin: number;
   extraHours: number;
+  intervaloMin: number;
+  primeiraEntrada: string | null;
+  ultimaSaida: string | null;
 }
 
 const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
-  const [registros, setRegistros] = useState<any[]>([]);
+  const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
   const [filter, setFilter] = useState<FilterPeriod>('month');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
-  const [selectedReg, setSelectedReg] = useState<DaySummary | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  const carga = (profile as any)?.carga_horaria_diaria ?? 8;
+  const p = profile as any;
+  const carga = getCargaDiaria(
+    (p?.tipo_jornada || 'jornada_fixa') as any,
+    p?.escala_tipo || null,
+    p?.carga_horaria_diaria ?? 8,
+  );
 
   const getDateRange = (period: FilterPeriod) => {
     const now = new Date();
@@ -54,18 +56,18 @@ const HistoricoPage: React.FC = () => {
     return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
   };
 
-  const fetchRegistros = useCallback(async () => {
+  const fetchMarcacoes = useCallback(async () => {
     if (!user) return;
     const { start, end } = getDateRange(filter);
     const { data } = await supabase
-      .from('registros_ponto')
+      .from('marcacoes_ponto')
       .select('*')
       .eq('user_id', user.id)
       .is('deleted_at', null)
       .gte('data', start)
       .lte('data', end)
-      .order('data', { ascending: false });
-    setRegistros(data || []);
+      .order('horario', { ascending: true });
+    setAllMarcacoes((data as Marcacao[]) || []);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
@@ -73,78 +75,38 @@ const HistoricoPage: React.FC = () => {
     supabase.from('alertas').update({ lido: true }).eq('user_id', user.id).eq('lido', false).then(() => {});
   }, [user]);
 
-  useEffect(() => { fetchRegistros(); }, [fetchRegistros]);
+  useEffect(() => { fetchMarcacoes(); }, [fetchMarcacoes]);
 
-  const horaParaMin = (t: string | null): number => {
-    if (!t) return 0;
-    const clean = t.includes(':') ? t.substring(0, 5) : t;
-    const [h, m] = clean.split(':').map(Number);
-    return h * 60 + (m || 0);
-  };
-
-  const daySummaries: DaySummary[] = React.useMemo(() => {
-    // Group by data - take first row per day (new structure = 1 row/day)
-    const map = new Map<string, any>();
-    registros.forEach(r => { if (!map.has(r.data)) map.set(r.data, r); });
-
-    return Array.from(map.values()).map(r => {
-      let totalMin = 0;
-      const manhaEstado = r.manha_estado || 'pendente';
-      const tardeEstado = r.tarde_estado || 'pendente';
-
-      if (manhaEstado === 'registrado' && r.manha_entrada && r.manha_saida) {
-        totalMin += horaParaMin(r.manha_saida) - horaParaMin(r.manha_entrada);
-      }
-      if (tardeEstado === 'registrado' && r.tarde_entrada && r.tarde_saida) {
-        totalMin += horaParaMin(r.tarde_saida) - horaParaMin(r.tarde_entrada);
-      }
-
-      // Subtract interval
-      const intervalo = r.intervalo_minutos ?? 60;
-      if (manhaEstado === 'registrado' && tardeEstado === 'registrado') {
-        totalMin -= intervalo;
-      }
-      totalMin = Math.max(0, totalMin);
-
-      // Hora extra
-      const temAtestadoParcial = (manhaEstado === 'atestado') !== (tardeEstado === 'atestado');
-      const ambosAtestado = manhaEstado === 'atestado' && tardeEstado === 'atestado';
-      const cargaEsperada = ambosAtestado ? 0 : (temAtestadoParcial ? carga / 2 : carga);
-      const extraHours = cargaEsperada > 0 ? Math.max(0, totalMin / 60 - cargaEsperada) : 0;
-
-      return {
-        id: r.id,
-        data: r.data,
-        manha_estado: manhaEstado,
-        tarde_estado: tardeEstado,
-        manha_entrada: r.manha_entrada,
-        manha_saida: r.manha_saida,
-        manha_atestado_url: r.manha_atestado_url,
-        tarde_entrada: r.tarde_entrada,
-        tarde_saida: r.tarde_saida,
-        tarde_atestado_url: r.tarde_atestado_url,
-        intervalo_minutos: r.intervalo_minutos,
-        observacao: r.observacao,
-        editado_manualmente: r.editado_manualmente,
-        totalMin,
-        extraHours,
-      };
+  const daySummaries: DaySummary[] = useMemo(() => {
+    // Group by data
+    const map = new Map<string, Marcacao[]>();
+    allMarcacoes.forEach(m => {
+      if (!map.has(m.data)) map.set(m.data, []);
+      map.get(m.data)!.push(m);
     });
-  }, [registros, carga]);
+
+    const summaries: DaySummary[] = [];
+    map.forEach((marcacoes, data) => {
+      const jornada = calcularJornada(marcacoes);
+      const extra = calcularHoraExtra(jornada.totalTrabalhado, carga);
+      summaries.push({
+        data,
+        marcacoes,
+        totalMin: jornada.totalTrabalhado,
+        extraHours: extra,
+        intervaloMin: jornada.totalIntervalo,
+        primeiraEntrada: jornada.primeiraEntrada,
+        ultimaSaida: jornada.ultimaSaida,
+      });
+    });
+
+    return summaries.sort((a, b) => b.data.localeCompare(a.data));
+  }, [allMarcacoes, carga]);
 
   const totalHoras = daySummaries.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = daySummaries.reduce((s, d) => s + d.extraHours, 0);
 
   const getDayStyle = (day: DaySummary) => {
-    const m = day.manha_estado;
-    const t = day.tarde_estado;
-
-    if (m === 'atestado' || t === 'atestado') {
-      return { bg: 'bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' };
-    }
-    if (m === 'pendente' || t === 'pendente') {
-      return { bg: 'bg-warning/5 border-warning/30', badge: 'bg-warning/20 text-warning' };
-    }
     if (day.totalMin / 60 > 10) {
       return { bg: 'bg-card border-border', badge: 'bg-destructive/20 text-destructive' };
     }
@@ -152,18 +114,6 @@ const HistoricoPage: React.FC = () => {
       return { bg: 'bg-card border-border', badge: 'bg-warning/20 text-warning' };
     }
     return { bg: 'bg-card border-border', badge: 'bg-success/20 text-success' };
-  };
-
-  const getPendingLabel = (day: DaySummary) => {
-    if (day.manha_estado === 'pendente' && day.tarde_estado === 'pendente') return 'Nenhum período registrado';
-    if (day.manha_estado === 'pendente') return 'Período manhã não registrado';
-    if (day.tarde_estado === 'pendente') return 'Período tarde não registrado';
-    return null;
-  };
-
-  const formatTimeStr = (t: string | null) => {
-    if (!t) return '';
-    return t.substring(0, 5);
   };
 
   return (
@@ -207,6 +157,9 @@ const HistoricoPage: React.FC = () => {
           </div>
         )}
 
+        {/* Manual entry - only in histórico */}
+        <ManualEntry onAdded={fetchMarcacoes} />
+
         {/* Day list */}
         {daySummaries.length === 0 ? (
           <div className="text-center py-12">
@@ -218,47 +171,23 @@ const HistoricoPage: React.FC = () => {
             {daySummaries.map((day) => {
               const date = new Date(day.data + 'T12:00:00');
               const style = getDayStyle(day);
-              const pending = getPendingLabel(day);
-              const hasAtestado = day.manha_estado === 'atestado' || day.tarde_estado === 'atestado';
 
               return (
-                <button key={day.data} onClick={() => setSelectedReg(day)}
+                <button key={day.data} onClick={() => setSelectedDay(day.data)}
                   className={`w-full rounded-xl p-4 border text-left hover:bg-secondary/50 transition-colors ${style.bg}`}>
                   <div className="flex items-center gap-3">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${style.badge}`}>
                       {diaSemanaAbrev(date)}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium flex items-center gap-1">
-                        {hasAtestado && '🏥 '}
+                      <p className="text-sm font-medium">
                         {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                        {day.editado_manualmente && <span className="text-[10px] text-warning">✏️</span>}
                       </p>
-
-                      {hasAtestado && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 inline-block mt-0.5 mb-1">
-                          {day.manha_estado === 'atestado' && day.tarde_estado === 'atestado'
-                            ? 'Atestado integral'
-                            : day.manha_estado === 'atestado' ? 'Atestado manhã' : 'Atestado tarde'}
-                        </span>
-                      )}
-
-                      {/* Period summaries */}
-                      {day.manha_estado === 'atestado' ? (
-                        <p className="text-xs text-blue-500 italic">🌅 Coberto por atestado</p>
-                      ) : day.manha_estado === 'registrado' ? (
-                        <p className="text-xs text-muted-foreground">🌅 {formatTimeStr(day.manha_entrada)} → {formatTimeStr(day.manha_saida)}</p>
-                      ) : null}
-
-                      {day.tarde_estado === 'atestado' ? (
-                        <p className="text-xs text-blue-500 italic">🌇 Coberto por atestado</p>
-                      ) : day.tarde_estado === 'registrado' ? (
-                        <p className="text-xs text-muted-foreground">🌇 {formatTimeStr(day.tarde_entrada)} → {formatTimeStr(day.tarde_saida)}</p>
-                      ) : null}
-
-                      {pending && (
-                        <p className="text-[10px] text-warning mt-0.5">⚠️ {pending} · 👉 Toque para ajustar</p>
-                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
+                        {' · '}{formatarDuracaoJornada(day.totalMin)}
+                        {day.intervaloMin > 0 && ` · intervalo ${formatarDuracaoJornada(day.intervaloMin)}`}
+                      </p>
                     </div>
                     {day.extraHours > 0 && (
                       <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(1)}h</span>
@@ -271,11 +200,11 @@ const HistoricoPage: React.FC = () => {
         )}
       </div>
 
-      <EditRegistroDia
-        open={!!selectedReg}
-        onClose={() => setSelectedReg(null)}
-        registro={selectedReg}
-        onSaved={fetchRegistros}
+      <EditMarcacoesDia
+        open={!!selectedDay}
+        onClose={() => setSelectedDay(null)}
+        data={selectedDay}
+        onSaved={fetchMarcacoes}
       />
 
       <BottomNav />

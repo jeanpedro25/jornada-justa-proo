@@ -95,6 +95,39 @@ export type Database = {
         }
         Relationships: []
       }
+      marcacoes_ponto: {
+        Row: {
+          created_at: string | null
+          data: string
+          deleted_at: string | null
+          horario: string
+          id: string
+          origem: string | null
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: string
+          deleted_at?: string | null
+          horario: string
+          id?: string
+          origem?: string | null
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          deleted_at?: string | null
+          horario?: string
+          id?: string
+          origem?: string | null
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           aceite_termos: boolean
