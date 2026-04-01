@@ -99,7 +99,7 @@ const AppPage: React.FC = () => {
   const handleEntrada = async () => {
     if (!user) return;
     setLoading(true);
-    const now = new Date().toISOString();
+    const now = agoraUTC();
     try {
       await supabase.from('registros_ponto').insert({
         user_id: user.id,
@@ -107,7 +107,7 @@ const AppPage: React.FC = () => {
         entrada: now,
         intervalo_minutos: 0,
       });
-      toast({ title: '✅ Entrada registrada!', description: `${formatTime(new Date(now))} — Bom trabalho!` });
+      toast({ title: '✅ Entrada registrada!', description: `${formatarHora(now)} — Bom trabalho!` });
       await fetchToday();
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
