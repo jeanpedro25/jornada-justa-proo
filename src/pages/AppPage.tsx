@@ -14,6 +14,7 @@ import AttachFile from '@/components/AttachFile';
 import EditRegistro from '@/components/EditRegistro';
 import BancoHorasCards from '@/components/BancoHorasCards';
 import AvisoLegal from '@/components/AvisoLegal';
+import ManualEntry from '@/components/ManualEntry';
 import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
 import ProGate from '@/components/ProGate';
 import PaywallModal from '@/components/PaywallModal';
@@ -330,6 +331,9 @@ const AppPage: React.FC = () => {
             </div>
           </ProGate>
         </div>
+
+        {/* Manual entry */}
+        <ManualEntry onAdded={fetchToday} />
 
         <AvisoLegal />
       </div>
