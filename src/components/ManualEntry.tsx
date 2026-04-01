@@ -20,8 +20,10 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [entradaTime, setEntradaTime] = useState('08:00');
-  const [saidaTime, setSaidaTime] = useState('17:00');
+  const [entrada1, setEntrada1] = useState('08:00');
+  const [saida1, setSaida1] = useState('12:00');
+  const [entrada2, setEntrada2] = useState('13:00');
+  const [saida2, setSaida2] = useState('17:00');
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
@@ -29,38 +31,70 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
       toast({ title: 'Selecione uma data', variant: 'destructive' });
       return;
     }
-    if (!entradaTime) {
+    if (!entrada1) {
       toast({ title: 'Informe o horário de entrada', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
     const dateStr = format(date, 'yyyy-MM-dd');
-    const entrada = new Date(`${dateStr}T${entradaTime}:00`).toISOString();
-    const saida = saidaTime ? new Date(`${dateStr}T${saidaTime}:00`).toISOString() : null;
+    const now = new Date().toISOString();
 
-    const insertData: any = {
-      user_id: user.id,
-      data: dateStr,
-      entrada,
-      saida,
-      intervalo_minutos: 0,
-      editado_manualmente: true,
-      editado_em: new Date().toISOString(),
-      editado_por: user.id,
-    };
+    const periodos: Array<{
+      user_id: string;
+      data: string;
+      entrada: string;
+      saida: string | null;
+      intervalo_minutos: number;
+      editado_manualmente: boolean;
+      editado_em: string;
+      editado_por: string;
+    }> = [];
 
-    const { error } = await supabase.from('registros_ponto').insert(insertData);
+    // Período 1 (manhã)
+    if (entrada1) {
+      periodos.push({
+        user_id: user.id,
+        data: dateStr,
+        entrada: new Date(`${dateStr}T${entrada1}:00`).toISOString(),
+        saida: saida1 ? new Date(`${dateStr}T${saida1}:00`).toISOString() : null,
+        intervalo_minutos: 0,
+        editado_manualmente: true,
+        editado_em: now,
+        editado_por: user.id,
+      });
+    }
+
+    // Período 2 (tarde)
+    if (entrada2) {
+      periodos.push({
+        user_id: user.id,
+        data: dateStr,
+        entrada: new Date(`${dateStr}T${entrada2}:00`).toISOString(),
+        saida: saida2 ? new Date(`${dateStr}T${saida2}:00`).toISOString() : null,
+        intervalo_minutos: 0,
+        editado_manualmente: true,
+        editado_em: now,
+        editado_por: user.id,
+      });
+    }
+
+    const { error } = await supabase.from('registros_ponto').insert(periodos);
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: '✅ Registro manual adicionado!', description: `${format(date, "dd/MM/yyyy", { locale: ptBR })} — ${entradaTime}${saidaTime ? ` → ${saidaTime}` : ''}` });
+      toast({
+        title: '✅ Registro manual adicionado!',
+        description: `${format(date, "dd/MM/yyyy", { locale: ptBR })} — ${periodos.length} período(s)`,
+      });
       onAdded();
       setOpen(false);
       setDate(undefined);
-      setEntradaTime('08:00');
-      setSaidaTime('17:00');
+      setEntrada1('08:00');
+      setSaida1('12:00');
+      setEntrada2('13:00');
+      setSaida2('17:00');
     }
     setLoading(false);
   };
@@ -112,23 +146,33 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
             </Popover>
           </div>
 
-          {/* Time inputs */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Entrada</label>
-              <Input
-                type="time"
-                value={entradaTime}
-                onChange={(e) => setEntradaTime(e.target.value)}
-              />
+          {/* Período 1 */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">PERÍODO 1 — Manhã</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Entrada</label>
+                <Input type="time" value={entrada1} onChange={(e) => setEntrada1(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Saída</label>
+                <Input type="time" value={saida1} onChange={(e) => setSaida1(e.target.value)} />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Saída (opcional)</label>
-              <Input
-                type="time"
-                value={saidaTime}
-                onChange={(e) => setSaidaTime(e.target.value)}
-              />
+          </div>
+
+          {/* Período 2 */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">PERÍODO 2 — Tarde</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Entrada</label>
+                <Input type="time" value={entrada2} onChange={(e) => setEntrada2(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Saída</label>
+                <Input type="time" value={saida2} onChange={(e) => setSaida2(e.target.value)} />
+              </div>
             </div>
           </div>
 
