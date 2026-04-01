@@ -28,7 +28,7 @@ const SocialProofSection: React.FC = () => (
         className="text-2xl md:text-3xl font-bold text-foreground mb-4 tracking-tight"
         variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={1}
       >
-        Milhares de trabalhadores já recuperaram o que é deles.
+        Usuários já utilizam o Hora Justa para organizar suas horas.
       </motion.h2>
 
       <motion.div
@@ -44,7 +44,7 @@ const SocialProofSection: React.FC = () => (
         className="text-base text-muted-foreground italic leading-relaxed max-w-lg mx-auto"
         variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={3}
       >
-        "Antes do Hora Justa eu nem sabia que o adicional noturno incidia sobre o descanso semanal. Identifiquei mais de 3 mil reais em diferenças estimadas."
+        "Antes do Hora Justa eu nem sabia que o adicional noturno incidia sobre o descanso semanal. Identifiquei mais de 3 mil reais em diferenças estimadas nos meus registros."
       </motion.p>
     </div>
   </section>

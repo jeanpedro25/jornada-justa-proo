@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Shield } from 'lucide-react';
+import { LEGAL_COPY } from '@/lib/legal-copy';
 
 const PrivacidadePublicaPage: React.FC = () => {
   const navigate = useNavigate();
@@ -55,8 +56,13 @@ const PrivacidadePublicaPage: React.FC = () => {
           </div>
 
           <div>
-            <p className="font-semibold text-foreground mb-1">Armazenamento:</p>
-            <p>Os dados são armazenados em ambiente seguro.</p>
+            <p className="font-semibold text-foreground mb-1">Armazenamento e retenção:</p>
+            <p>{LEGAL_COPY.privacy}</p>
+          </div>
+
+          <div>
+            <p className="font-semibold text-foreground mb-1">Dados sensíveis:</p>
+            <p>{LEGAL_COPY.sensitiveData}</p>
           </div>
 
           <div>
@@ -66,6 +72,11 @@ const PrivacidadePublicaPage: React.FC = () => {
               <li>Solicitar acesso aos dados</li>
               <li>Corrigir informações</li>
             </ul>
+          </div>
+
+          <div>
+            <p className="font-semibold text-foreground mb-1">Base legal:</p>
+            <p>Execução de contrato (Art. 7º, V da LGPD).</p>
           </div>
 
           <div>

@@ -18,11 +18,11 @@ const LandingFooter: React.FC = () => {
           </button>
         </div>
         <p className="text-xs text-muted-foreground text-center md:text-right">
-          © {new Date().getFullYear()} Hora Justa. O Advogado Financeiro do Trabalhador Moderno.
+          © {new Date().getFullYear()} Hora Justa. Ferramenta de Controle de Jornada.
         </p>
       </div>
       <p className="text-center text-[10px] text-muted-foreground mt-4">
-        Os registros são de responsabilidade do usuário. Valores são estimativas.
+        Os registros são de responsabilidade do usuário. Valores são estimativas baseadas nos dados informados.
       </p>
     </footer>
   );

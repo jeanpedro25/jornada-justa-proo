@@ -128,10 +128,10 @@ serve(async (req) => {
       <div class="label">Horas extras</div>
       <div class="value accent">${totalExtra.toFixed(1)}h</div>
     </div>
-    <div class="summary-item">
-      <div class="label">O patrão te deve</div>
-      <div class="value warning">R$ ${valorTotal.toFixed(2).replace('.', ',')}</div>
-    </div>
+     <div class="summary-item">
+       <div class="label">Valor estimado de extras</div>
+       <div class="value warning">R$ ${valorTotal.toFixed(2).replace('.', ',')}</div>
+     </div>
     <div class="summary-item">
       <div class="label">Dias registrados</div>
       <div class="value">${rows.length}</div>
@@ -165,13 +165,13 @@ serve(async (req) => {
     </tbody>
   </table>
 
-  <div class="legal">
-    <strong>⚠️ Aviso Legal:</strong> Este documento foi gerado pelo app Hora Justa com base nos registros inseridos pelo próprio trabalhador. Os dados refletem exclusivamente o que foi registrado pelo usuário. Os valores calculados são estimativas baseadas nas informações fornecidas e não constituem laudo pericial. Este documento pode ser utilizado como elemento de prova complementar em processos trabalhistas, sujeito à avaliação do juízo competente. Hora Justa não presta assessoria jurídica. Registros editados manualmente estão marcados com ✏️.
-  </div>
+   <div class="legal">
+     <strong>⚠️ Aviso Legal:</strong> Este documento possui caráter informativo e estimativo. Não constitui prova legal absoluta. Os valores são baseados em dados fornecidos pelo usuário e regras gerais da legislação. Registros editados manualmente estão marcados com ✏️.
+   </div>
 
   <div class="footer">
     <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
-    <p>Hora Justa — Protegendo o trabalhador brasileiro</p>
+    <p>Hora Justa — Ferramenta de Controle de Jornada</p>
   </div>
 </body>
 </html>`;

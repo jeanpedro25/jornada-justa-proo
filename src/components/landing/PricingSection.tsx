@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LEGAL_COPY } from '@/lib/legal-copy';
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.95 },
@@ -26,9 +27,9 @@ const PricingSection: React.FC = () => {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-            Invista no que é seu por direito
+            Controle total da sua jornada
           </h2>
-          <p className="text-muted-foreground mt-3">Sem teste grátis • Cancele quando quiser</p>
+          <p className="text-muted-foreground mt-3">Cancele quando quiser</p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -74,7 +75,7 @@ const PricingSection: React.FC = () => {
             </div>
             <p className="text-sm opacity-70 mb-6">Menos de R$ 6,70/mês • Economize 33%</p>
             <ul className="space-y-3 mb-10 flex-1">
-              {['Tudo do plano mensal', 'Histórico ilimitado', 'Backup na nuvem', 'Alertas inteligentes', 'Simulação de valor acumulado'].map((f, i) => (
+              {['Tudo do plano mensal', 'Histórico ilimitado', 'Backup na nuvem', 'Alertas inteligentes', 'Simulação de valor estimado'].map((f, i) => (
                 <li key={i} className="flex items-center gap-3 text-sm">
                   <Check className="h-4 w-4 text-accent-container shrink-0" />
                   {f}
@@ -91,7 +92,7 @@ const PricingSection: React.FC = () => {
           </motion.div>
         </div>
         <p className="text-xs text-muted-foreground text-center mt-8">
-          Estimativas baseadas nos dados informados pelo usuário.
+          {LEGAL_COPY.subscription}
         </p>
       </div>
     </section>

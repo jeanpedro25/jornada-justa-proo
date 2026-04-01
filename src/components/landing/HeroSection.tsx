@@ -37,9 +37,9 @@ const HeroSection: React.FC = () => {
             className="text-4xl md:text-[3.5rem] font-extrabold leading-[1.08] tracking-tight text-foreground"
             variants={fadeUp} initial="hidden" animate="visible" custom={0}
           >
-            Pare de perder{' '}
+            Organize suas{' '}
             <span className="bg-gradient-to-r from-primary to-accent-container bg-clip-text text-transparent">
-              dinheiro.
+              horas extras.
             </span>
           </motion.h1>
 
@@ -47,7 +47,7 @@ const HeroSection: React.FC = () => {
             className="text-lg text-muted-foreground max-w-lg mx-auto md:mx-0 leading-relaxed"
             variants={fadeUp} initial="hidden" animate="visible" custom={1}
           >
-            Descubra a estimativa do que suas horas extras valem com a precisão de um especialista.
+            Descubra uma estimativa das suas horas extras com cálculos baseados em regras gerais da CLT.
           </motion.p>
 
           <motion.div
@@ -79,7 +79,7 @@ const HeroSection: React.FC = () => {
           </motion.p>
         </div>
 
-        {/* Right — Damage card */}
+        {/* Right — Example card */}
         <motion.div
           className="flex-1 w-full max-w-md relative"
           variants={scaleIn} initial="hidden" animate="visible" custom={3}
@@ -88,7 +88,7 @@ const HeroSection: React.FC = () => {
           <div className="bg-card p-8 rounded-3xl shadow-2xl shadow-primary/5 relative overflow-hidden">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Prejuízo Estimado</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Exemplo de valor estimado</p>
                 <h2 className="text-4xl font-extrabold text-destructive mt-1 tracking-tight">R$ 1.450,80</h2>
               </div>
               <div className="bg-destructive text-destructive-foreground p-3 rounded-xl">
@@ -102,14 +102,18 @@ const HeroSection: React.FC = () => {
 
             <div className="space-y-3">
               <div className="flex justify-between p-4 bg-surface-low rounded-xl">
-                <span className="text-sm text-muted-foreground">Horas não pagas</span>
+                <span className="text-sm text-muted-foreground">Horas registradas</span>
                 <span className="text-sm font-bold text-foreground">12,5h</span>
               </div>
               <div className="flex justify-between p-4 bg-surface-low rounded-xl">
-                <span className="text-sm text-muted-foreground">Adicional Noturno</span>
+                <span className="text-sm text-muted-foreground">Adicional estimado</span>
                 <span className="text-sm font-bold text-foreground">R$ 420,00</span>
               </div>
             </div>
+
+            <p className="text-[9px] text-muted-foreground/60 mt-4 text-center">
+              *Valores meramente ilustrativos para fins de demonstração.
+            </p>
           </div>
         </motion.div>
       </div>

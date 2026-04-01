@@ -141,7 +141,7 @@ const BancoHorasCards: React.FC = () => {
               <p>• Saldo atual: {formatMinutosHoras(summary.saldo)}</p>
               <p>• Baseado nos dados informados pelo usuário</p>
               <p>• Valores são estimativas, não valores exatos</p>
-              <p>• Consulte um advogado trabalhista para análise</p>
+              <p>• Consulte um profissional qualificado para análise</p>
             </div>
           </div>
         </DialogContent>

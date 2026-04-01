@@ -14,17 +14,17 @@ const problems = [
   {
     icon: Clock,
     title: 'Intervalos Ignorados',
-    text: 'Minutos que somam horas no final do mês e nunca aparecem no seu holerite.',
+    text: 'Minutos que somam horas no final do mês e podem não aparecer no seu holerite.',
   },
   {
     icon: Moon,
     title: 'Adicional Noturno',
-    text: 'Cálculos complexos que as empresas costumam simplificar contra o trabalhador.',
+    text: 'Cálculos complexos que podem gerar inconsistências nos registros de jornada.',
   },
   {
     icon: CalendarOff,
     title: 'Feriados e Domingos',
-    text: 'O valor dobrado que muitas vezes é pago como hora comum por "erro" de sistema.',
+    text: 'O valor diferenciado que muitas vezes é registrado como hora comum por falhas em sistemas de registro.',
   },
 ];
 
@@ -35,7 +35,7 @@ const ProblemSection: React.FC = () => (
         className="text-3xl md:text-4xl font-bold text-center text-foreground mb-16 tracking-tight"
         variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
       >
-        Onde o seu dinheiro desaparece?
+        Onde podem ocorrer diferenças nos registros de jornada?
       </motion.h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
