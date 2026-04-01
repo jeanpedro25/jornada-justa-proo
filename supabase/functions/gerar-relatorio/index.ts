@@ -171,7 +171,7 @@ serve(async (req) => {
 
   <div class="footer">
     <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
-    <p>Hora Justa — Protegendo o trabalhador brasileiro</p>
+    <p>Hora Justa — Ferramenta de Controle de Jornada</p>
   </div>
 </body>
 </html>`;
