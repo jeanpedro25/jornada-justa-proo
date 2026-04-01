@@ -282,9 +282,11 @@ const AppPage: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-muted-foreground font-semibold">REGISTROS DE HOJE</p>
               <AttachFile
-                registroId={registros[0].id}
-                currentUrl={(registros[0] as any).anexo_url}
+                registroIds={registros.map(r => r.id)}
+                currentUrl={registros[0]?.anexo_url}
+                currentPeriodo={(registros[0] as any)?.atestado_periodo || null}
                 onAttached={fetchToday}
+                onRemoved={fetchToday}
               />
             </div>
             <div className="space-y-3">
