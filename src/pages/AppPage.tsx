@@ -332,6 +332,9 @@ const AppPage: React.FC = () => {
           </ProGate>
         </div>
 
+        {/* Manual entry */}
+        <ManualEntry onAdded={fetchToday} />
+
         <AvisoLegal />
       </div>
 
