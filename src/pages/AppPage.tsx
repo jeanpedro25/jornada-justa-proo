@@ -118,10 +118,10 @@ const AppPage: React.FC = () => {
   const handleSaida = async () => {
     if (!user || !lastRecord) return;
     setLoading(true);
-    const now = new Date().toISOString();
+    const now = agoraUTC();
     try {
       await supabase.from('registros_ponto').update({ saida: now }).eq('id', lastRecord.id);
-      toast({ title: '🏠 Saída registrada!', description: `${formatTime(new Date(now))}` });
+      toast({ title: '🏠 Saída registrada!', description: `${formatarHora(now)}` });
       await fetchToday();
 
       // After closing a record, check if we should generate alerts/banco
