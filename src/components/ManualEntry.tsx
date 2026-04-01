@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -12,14 +11,12 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+import { inserirMarcacaoManual, type TipoMarcacao } from '@/lib/jornada';
 
 interface ManualEntryProps {
   onAdded: () => void;
 }
 
-/**
- * Add minutes to a "HH:mm" string and return "HH:mm".
- */
 function addMinutesToTime(time: string, minutes: number): string {
   const [h, m] = time.split(':').map(Number);
   const total = h * 60 + m + minutes;
@@ -37,16 +34,13 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
   const [loading, setLoading] = useState(false);
   const [usaIntervalo, setUsaIntervalo] = useState(true);
 
-  // Derive default times from user profile
   const entradaPadrao = p?.horario_entrada_padrao || '08:00';
   const saidaPadrao = p?.horario_saida_padrao || '17:00';
   const intervaloMin = p?.intervalo_almoco ?? 60;
   const cargaDiaria = p?.carga_horaria_diaria ?? 8;
 
-  // Calculate default period times based on profile
   function calcDefaults() {
     if (intervaloMin > 0) {
-      // Split workday: morning ends at entry + half of work hours
       const halfWork = (cargaDiaria * 60) / 2;
       const saida1Default = addMinutesToTime(entradaPadrao, halfWork);
       const entrada2Default = addMinutesToTime(saida1Default, intervaloMin);
@@ -57,12 +51,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
         saida2: saidaPadrao,
       };
     }
-    return {
-      entrada1: entradaPadrao,
-      saida1: saidaPadrao,
-      entrada2: '',
-      saida2: '',
-    };
+    return { entrada1: entradaPadrao, saida1: saidaPadrao, entrada2: '', saida2: '' };
   }
 
   const defaults = calcDefaults();
@@ -71,7 +60,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
   const [entrada2, setEntrada2] = useState(defaults.entrada2);
   const [saida2, setSaida2] = useState(defaults.saida2);
 
-  // Update defaults when profile changes or dialog opens
   useEffect(() => {
     if (open) {
       const d = calcDefaults();
@@ -82,21 +70,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
       setUsaIntervalo(intervaloMin > 0);
     }
   }, [open, p?.horario_entrada_padrao, p?.horario_saida_padrao, p?.intervalo_almoco]);
-
-  // Turno label
-  function getTurnoLabel(): string {
-    if (p?.tipo_jornada === 'turno') {
-      const [eh, em] = entradaPadrao.split(':').map(Number);
-      const entradaMinutos = eh * 60 + em;
-      if (entradaMinutos < 360) return '🌙 Turno Noturno';
-      if (entradaMinutos < 720) return '☀️ Turno Diurno';
-      return '🌅 Turno Vespertino';
-    }
-    if (p?.tipo_jornada === 'escala') {
-      return `📅 Escala ${p?.escala_tipo || ''}`;
-    }
-    return '🕐 Jornada Fixa';
-  }
 
   const handleSave = async () => {
     if (!user || !date) {
@@ -110,52 +83,36 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
 
     setLoading(true);
     const dateStr = format(date, 'yyyy-MM-dd');
-    const now = new Date().toISOString();
 
-    const base = {
-      user_id: user.id,
-      data: dateStr,
-      intervalo_minutos: 0,
-      editado_manualmente: true,
-      editado_em: now,
-      editado_por: user.id,
-    };
+    try {
+      // Create marcações based on the form
+      const marcacoes: { tipo: TipoMarcacao; horario: string }[] = [];
 
-    const periodos: Array<typeof base & { entrada: string; saida: string | null }> = [];
+      if (usaIntervalo && entrada2) {
+        // 4 marcações: entrada → saida_intervalo → volta_intervalo → saida_final
+        marcacoes.push({ tipo: 'entrada', horario: new Date(`${dateStr}T${entrada1}:00`).toISOString() });
+        if (saida1) marcacoes.push({ tipo: 'saida_intervalo', horario: new Date(`${dateStr}T${saida1}:00`).toISOString() });
+        marcacoes.push({ tipo: 'volta_intervalo', horario: new Date(`${dateStr}T${entrada2}:00`).toISOString() });
+        if (saida2) marcacoes.push({ tipo: 'saida_final', horario: new Date(`${dateStr}T${saida2}:00`).toISOString() });
+      } else {
+        // 2 marcações: entrada → saida_final
+        marcacoes.push({ tipo: 'entrada', horario: new Date(`${dateStr}T${entrada1}:00`).toISOString() });
+        if (saida1) marcacoes.push({ tipo: 'saida_final', horario: new Date(`${dateStr}T${saida1}:00`).toISOString() });
+      }
 
-    if (usaIntervalo && entrada2) {
-      // 2 períodos
-      periodos.push({
-        ...base,
-        entrada: new Date(`${dateStr}T${entrada1}:00`).toISOString(),
-        saida: saida1 ? new Date(`${dateStr}T${saida1}:00`).toISOString() : null,
-      });
-      periodos.push({
-        ...base,
-        entrada: new Date(`${dateStr}T${entrada2}:00`).toISOString(),
-        saida: saida2 ? new Date(`${dateStr}T${saida2}:00`).toISOString() : null,
-      });
-    } else {
-      // 1 período (sem intervalo)
-      periodos.push({
-        ...base,
-        entrada: new Date(`${dateStr}T${entrada1}:00`).toISOString(),
-        saida: saida1 ? new Date(`${dateStr}T${saida1}:00`).toISOString() : null,
-      });
-    }
+      for (const m of marcacoes) {
+        await inserirMarcacaoManual(user.id, dateStr, m.tipo, m.horario);
+      }
 
-    const { error } = await supabase.from('registros_ponto').insert(periodos);
-
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    } else {
       toast({
         title: '✅ Registro manual adicionado!',
-        description: `${format(date, "dd/MM/yyyy", { locale: ptBR })} — ${periodos.length} período(s)`,
+        description: `${format(date, "dd/MM/yyyy", { locale: ptBR })} — ${marcacoes.length} marcações`,
       });
       onAdded();
       setOpen(false);
       setDate(undefined);
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
     setLoading(false);
   };
@@ -177,14 +134,6 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
             ⚠️ Registros manuais ficam marcados como editados.
           </p>
 
-          {/* Turno info */}
-          <div className="bg-secondary/50 rounded-lg px-3 py-2">
-            <p className="text-xs font-medium">{getTurnoLabel()}</p>
-            <p className="text-[10px] text-muted-foreground">
-              Horários pré-preenchidos com base no seu cadastro. Edite se necessário.
-            </p>
-          </div>
-
           {/* Date picker */}
           <div>
             <label className="text-sm font-medium mb-1 block">Data</label>
@@ -192,10 +141,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
+                  className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {date ? format(date, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
@@ -223,56 +169,47 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
 
           {usaIntervalo ? (
             <>
-              {/* Período 1 */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">1º PERÍODO</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">🟢 ENTRADA → 🟡 SAÍDA INTERVALO</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium mb-1 block">Entrada</label>
                     <Input type="time" value={entrada1} onChange={(e) => setEntrada1(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Saída</label>
+                    <label className="text-sm font-medium mb-1 block">Saída intervalo</label>
                     <Input type="time" value={saida1} onChange={(e) => setSaida1(e.target.value)} />
                   </div>
                 </div>
               </div>
-
-              {/* Período 2 */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">2º PERÍODO</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">🔵 VOLTA INTERVALO → 🔴 SAÍDA FINAL</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Entrada</label>
+                    <label className="text-sm font-medium mb-1 block">Volta</label>
                     <Input type="time" value={entrada2} onChange={(e) => setEntrada2(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Saída</label>
+                    <label className="text-sm font-medium mb-1 block">Saída final</label>
                     <Input type="time" value={saida2} onChange={(e) => setSaida2(e.target.value)} />
                   </div>
                 </div>
               </div>
             </>
           ) : (
-            <div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Entrada</label>
-                  <Input type="time" value={entrada1} onChange={(e) => setEntrada1(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Saída</label>
-                  <Input type="time" value={saida1} onChange={(e) => setSaida1(e.target.value)} />
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Entrada</label>
+                <Input type="time" value={entrada1} onChange={(e) => setEntrada1(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Saída final</label>
+                <Input type="time" value={saida1} onChange={(e) => setSaida1(e.target.value)} />
               </div>
             </div>
           )}
 
-          <Button
-            onClick={handleSave}
-            disabled={loading || !date}
-            className="w-full rounded-xl"
-          >
+          <Button onClick={handleSave} disabled={loading || !date} className="w-full rounded-xl">
             {loading ? 'Salvando...' : 'Salvar registro'}
           </Button>
         </div>
