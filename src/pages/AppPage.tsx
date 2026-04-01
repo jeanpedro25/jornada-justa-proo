@@ -237,7 +237,7 @@ const AppPage: React.FC = () => {
               <div className="flex items-center justify-center gap-2 mb-3">
                 <Clock size={16} className="text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  {horaLocalAgora()}
                 </span>
               </div>
 
