@@ -3,9 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Paperclip, Upload, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Paperclip, Upload, Loader2, Camera } from 'lucide-react';
 
 interface AttachFileProps {
   registroId: string;
@@ -17,7 +17,9 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [periodo, setPeriodo] = useState<string>('integral');
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -25,7 +27,7 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
 
     setUploading(true);
     const ext = file.name.split('.').pop();
-    const path = `${user.id}/${registroId}.${ext}`;
+    const path = `${user.id}/${registroId}_${periodo}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('atestados')
@@ -37,16 +39,21 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
       return;
     }
 
-    // Store the path (not public URL) since bucket is private
     const { error: updateError } = await supabase
       .from('registros_ponto')
-      .update({ anexo_url: path } as any)
+      .update({
+        anexo_url: path,
+        observacao: `atestado_${periodo}`,
+      } as any)
       .eq('id', registroId);
 
     if (updateError) {
       toast({ title: 'Erro', description: updateError.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Atestado anexado!', description: 'Arquivo salvo como prova.' });
+      toast({
+        title: '✅ Atestado anexado!',
+        description: `Período: ${periodo === 'manha' ? 'Manhã' : periodo === 'tarde' ? 'Tarde' : 'Integral'}`,
+      });
       onAttached();
       setOpen(false);
     }
@@ -72,32 +79,70 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
           <p className="text-[10px] text-muted-foreground/60 italic">
             O envio de documentos pode envolver dados sensíveis. O usuário consente com o armazenamento para uso dentro do aplicativo.
           </p>
+
           {currentUrl && (
             <button
               onClick={async () => {
                 const { data } = await supabase.storage.from('atestados').createSignedUrl(currentUrl, 3600);
                 if (data?.signedUrl) window.open(data.signedUrl, '_blank');
               }}
-              className="text-sm text-accent underline block text-left">
+              className="text-sm text-accent underline block text-left"
+            >
               📎 Ver documento atual
             </button>
           )}
-          <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*,.pdf,.doc,.docx"
-              onChange={handleUpload}
-              className="hidden"
-            />
+
+          {/* Período do atestado */}
+          <div>
+            <label className="text-sm font-medium mb-1 block">Período do atestado</label>
+            <Select value={periodo} onValueChange={setPeriodo}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manha">☀️ Manhã</SelectItem>
+                <SelectItem value="tarde">🌅 Tarde</SelectItem>
+                <SelectItem value="integral">📋 Integral (dia todo)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* File inputs */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,.pdf,.doc,.docx"
+            onChange={handleUpload}
+            className="hidden"
+          />
+          {/* Camera input for mobile */}
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleUpload}
+            className="hidden"
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              disabled={uploading}
+              onClick={() => cameraRef.current?.click()}
+              className="gap-2 h-14 flex-col"
+            >
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
+              <span className="text-xs">{uploading ? 'Enviando...' : 'Tirar foto'}</span>
+            </Button>
             <Button
               variant="outline"
               disabled={uploading}
               onClick={() => fileRef.current?.click()}
-              className="gap-2"
+              className="gap-2 h-14 flex-col"
             >
-              {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-              {uploading ? 'Enviando...' : 'Escolher arquivo'}
+              {uploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+              <span className="text-xs">{uploading ? 'Enviando...' : 'Escolher arquivo'}</span>
             </Button>
           </div>
         </div>
