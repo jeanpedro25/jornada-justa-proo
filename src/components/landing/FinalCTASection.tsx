@@ -18,7 +18,7 @@ const FinalCTASection: React.FC = () => {
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
       >
-        Pronto para receber o que é seu?
+        Pronto para organizar sua jornada?
       </motion.h2>
 
       <motion.p
@@ -28,7 +28,7 @@ const FinalCTASection: React.FC = () => {
         viewport={{ once: true }}
         transition={{ delay: 0.1, duration: 0.6 }}
       >
-        Junte-se a milhares de trabalhadores que pararam de aceitar cálculos errados.
+        Junte-se a milhares de usuários que controlam suas horas de forma inteligente.
       </motion.p>
 
       <motion.div

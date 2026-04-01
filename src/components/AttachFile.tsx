@@ -67,7 +67,10 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroId, currentUrl, onAttac
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Envie foto do atestado, declaração ou qualquer documento que comprove sua situação.
+            Envie foto do atestado, declaração ou qualquer documento para seus registros.
+          </p>
+          <p className="text-[10px] text-muted-foreground/60 italic">
+            O envio de documentos pode envolver dados sensíveis. O usuário consente com o armazenamento para uso dentro do aplicativo.
           </p>
           {currentUrl && (
             <button

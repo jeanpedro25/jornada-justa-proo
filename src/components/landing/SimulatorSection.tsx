@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { LEGAL_COPY } from '@/lib/legal-copy';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -35,7 +36,7 @@ const SimulatorSection: React.FC = () => {
           {/* Left — sliders */}
           <div className="flex-1 space-y-8 w-full">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
-              Simule seus ganhos agora
+              Simule uma estimativa agora
             </h2>
             <div className="space-y-6">
               <div>
@@ -69,8 +70,8 @@ const SimulatorSection: React.FC = () => {
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground italic">
-              *Estimativa baseada em CLT padrão 44h semanais e nos dados informados pelo usuário.
+            <p className="text-xs text-muted-foreground italic leading-relaxed">
+              {LEGAL_COPY.simulatorDisclaimer}
             </p>
           </div>
 
@@ -81,7 +82,7 @@ const SimulatorSection: React.FC = () => {
                 <TrendingUp className="h-20 w-20" />
               </div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-accent-container mb-2">
-                Potencial de Ganhos
+                Estimativa de Ganhos
               </p>
               <h3 className="text-5xl md:text-6xl font-extrabold tracking-tighter mb-6">
                 R$ {resultado.total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -89,16 +90,19 @@ const SimulatorSection: React.FC = () => {
               <div className="flex items-center gap-2 mb-6">
                 <TrendingUp className="h-4 w-4 text-accent" />
                 <span className="text-sm font-semibold text-accent">
-                  + R$ {resultado.diferenca.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de diferença identificada
+                  + R$ {resultado.diferenca.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} de diferença estimada
                 </span>
               </div>
               <Button
                 className="w-full h-13 bg-accent-container text-primary font-bold rounded-xl hover:bg-white transition-colors text-base"
                 onClick={() => navigate('/auth')}
               >
-                Obter relatório completo
+                Simular com meus dados
                 <ChevronRight className="ml-1 h-5 w-5" />
               </Button>
+              <p className="text-[9px] text-primary-foreground/50 mt-3 text-center">
+                *Valores meramente estimativos.
+              </p>
             </div>
           </div>
         </motion.div>
