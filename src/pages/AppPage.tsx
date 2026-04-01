@@ -2,15 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { gerarAlertas } from '@/lib/alertas';
-import { formatTime, formatCurrency, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
+import { formatCurrency, calcHoraExtra, calcValorHoraExtra } from '@/lib/formatters';
+import { formatarHora, dataHojeLocal, agoraUTC, horaLocalAgora } from '@/lib/dataHora';
 import { getCargaDiaria, calcTotalWorkedMinutes, calcPauseMinutes, isDiaTrabalhoEscala } from '@/lib/jornada';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { LogIn, LogOut, Coffee, CheckCircle2, Clock, Plus } from 'lucide-react';
+import { LogIn, LogOut, CheckCircle2, Clock, Plus } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
-import AttachFile from '@/components/AttachFile';
 import EditRegistro from '@/components/EditRegistro';
 import BancoHorasCards from '@/components/BancoHorasCards';
 import AvisoLegal from '@/components/AvisoLegal';
@@ -31,7 +31,7 @@ const AppPage: React.FC = () => {
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [isDiaFolga, setIsDiaFolga] = useState(false);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = dataHojeLocal();
   const p = profile as any;
 
   const fetchToday = useCallback(async () => {
@@ -99,7 +99,7 @@ const AppPage: React.FC = () => {
   const handleEntrada = async () => {
     if (!user) return;
     setLoading(true);
-    const now = new Date().toISOString();
+    const now = agoraUTC();
     try {
       await supabase.from('registros_ponto').insert({
         user_id: user.id,
@@ -107,7 +107,7 @@ const AppPage: React.FC = () => {
         entrada: now,
         intervalo_minutos: 0,
       });
-      toast({ title: '✅ Entrada registrada!', description: `${formatTime(new Date(now))} — Bom trabalho!` });
+      toast({ title: '✅ Entrada registrada!', description: `${formatarHora(now)} — Bom trabalho!` });
       await fetchToday();
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -118,10 +118,10 @@ const AppPage: React.FC = () => {
   const handleSaida = async () => {
     if (!user || !lastRecord) return;
     setLoading(true);
-    const now = new Date().toISOString();
+    const now = agoraUTC();
     try {
       await supabase.from('registros_ponto').update({ saida: now }).eq('id', lastRecord.id);
-      toast({ title: '🏠 Saída registrada!', description: `${formatTime(new Date(now))}` });
+      toast({ title: '🏠 Saída registrada!', description: `${formatarHora(now)}` });
       await fetchToday();
 
       // After closing a record, check if we should generate alerts/banco
@@ -201,7 +201,7 @@ const AppPage: React.FC = () => {
               </div>
               <p className="text-2xl font-bold mb-1">{totalWorkedHours.toFixed(1)}h trabalhadas</p>
               <p className="text-sm text-muted-foreground mb-1">
-                {formatTime(new Date(registros[0].entrada))} — {formatTime(new Date(registros[registros.length - 1].saida!))}
+                {formatarHora(registros[0].entrada)} — {formatarHora(registros[registros.length - 1].saida)}
               </p>
               {pauseMin > 0 && (
                 <p className="text-xs text-muted-foreground mb-2">☕ Intervalo: {pauseMin}min</p>
@@ -237,7 +237,7 @@ const AppPage: React.FC = () => {
               <div className="flex items-center justify-center gap-2 mb-3">
                 <Clock size={16} className="text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  {horaLocalAgora()}
                 </span>
               </div>
 
@@ -279,26 +279,17 @@ const AppPage: React.FC = () => {
         {/* Registros de hoje */}
         {registros.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground font-semibold">REGISTROS DE HOJE</p>
-              <AttachFile
-                registroIds={registros.map(r => r.id)}
-                currentUrl={registros[0]?.anexo_url}
-                currentPeriodo={(registros[0] as any)?.atestado_periodo || null}
-                onAttached={fetchToday}
-                onRemoved={fetchToday}
-              />
-            </div>
+            <p className="text-xs text-muted-foreground font-semibold mb-3">REGISTROS DE HOJE</p>
             <div className="space-y-3">
               {registros.map((r, i) => (
                 <div key={r.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-sm">
                     <div className={`w-2.5 h-2.5 rounded-full ${r.saida ? 'bg-success' : 'bg-warning animate-pulse'}`} />
                     <span className="text-muted-foreground w-16 font-medium text-xs">{getPeriodLabel(i)}</span>
-                    <span className="font-semibold">{formatTime(new Date(r.entrada))}</span>
+                    <span className="font-semibold">{formatarHora(r.entrada)}</span>
                     <span className="text-muted-foreground">→</span>
                     <span className={`font-semibold ${r.saida ? '' : 'text-muted-foreground'}`}>
-                      {r.saida ? formatTime(new Date(r.saida)) : 'aguardando'}
+                      {r.saida ? formatarHora(r.saida) : 'aguardando'}
                     </span>
                   </div>
                   <EditRegistro
