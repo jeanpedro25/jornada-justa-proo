@@ -279,26 +279,17 @@ const AppPage: React.FC = () => {
         {/* Registros de hoje */}
         {registros.length > 0 && (
           <div className="bg-card rounded-xl p-4 border border-border">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-muted-foreground font-semibold">REGISTROS DE HOJE</p>
-              <AttachFile
-                registroIds={registros.map(r => r.id)}
-                currentUrl={registros[0]?.anexo_url}
-                currentPeriodo={(registros[0] as any)?.atestado_periodo || null}
-                onAttached={fetchToday}
-                onRemoved={fetchToday}
-              />
-            </div>
+            <p className="text-xs text-muted-foreground font-semibold mb-3">REGISTROS DE HOJE</p>
             <div className="space-y-3">
               {registros.map((r, i) => (
                 <div key={r.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-sm">
                     <div className={`w-2.5 h-2.5 rounded-full ${r.saida ? 'bg-success' : 'bg-warning animate-pulse'}`} />
                     <span className="text-muted-foreground w-16 font-medium text-xs">{getPeriodLabel(i)}</span>
-                    <span className="font-semibold">{formatTime(new Date(r.entrada))}</span>
+                    <span className="font-semibold">{formatarHora(r.entrada)}</span>
                     <span className="text-muted-foreground">→</span>
                     <span className={`font-semibold ${r.saida ? '' : 'text-muted-foreground'}`}>
-                      {r.saida ? formatTime(new Date(r.saida)) : 'aguardando'}
+                      {r.saida ? formatarHora(r.saida) : 'aguardando'}
                     </span>
                   </div>
                   <EditRegistro
