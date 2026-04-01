@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatDatePtBR } from '@/lib/formatters';
+import HoraJustaLogo from '@/components/HoraJustaLogo';
 
 interface AppHeaderProps {
   title?: string;
@@ -7,19 +8,40 @@ interface AppHeaderProps {
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
   const dias = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const timeStr = now.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
   return (
-    <header className="bg-primary text-primary-foreground px-4 py-4 pb-6">
-      <div className="max-w-lg mx-auto">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold">{title || 'Hora Justa'}</h1>
+    <header className="bg-primary text-primary-foreground px-4 pt-5 pb-8">
+      <div className="max-w-lg mx-auto flex flex-col items-center gap-3">
+        {/* Logo + title row */}
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <HoraJustaLogo size={36} />
+            <span className="text-lg font-bold">{title || 'Hora Justa'}</span>
+          </div>
           <span className="bg-accent text-accent-foreground text-xs font-bold px-2.5 py-1 rounded-full">
             {dias[now.getDay()]}
           </span>
         </div>
-        <p className="text-sm opacity-70 mt-1">
+
+        {/* Big real-time clock */}
+        <div className="text-5xl font-extrabold tabular-nums tracking-tight font-mono">
+          {timeStr}
+        </div>
+
+        <p className="text-sm opacity-70">
           {subtitle || formatDatePtBR(now)}
         </p>
       </div>
