@@ -121,7 +121,7 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
       editado_por: user.id,
     };
 
-    const periodos: typeof base & { entrada: string; saida: string | null }[] = [];
+    const periodos: Array<typeof base & { entrada: string; saida: string | null }> = [];
 
     if (usaIntervalo && entrada2) {
       // 2 períodos
