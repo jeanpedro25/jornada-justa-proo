@@ -1,0 +1,1 @@
+ALTER TABLE public.registros_ponto ADD COLUMN IF NOT EXISTS atestado_periodo text;

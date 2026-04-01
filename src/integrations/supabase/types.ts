@@ -197,6 +197,7 @@ export type Database = {
       registros_ponto: {
         Row: {
           anexo_url: string | null
+          atestado_periodo: string | null
           created_at: string | null
           data: string
           deleted_at: string | null
@@ -212,6 +213,7 @@ export type Database = {
         }
         Insert: {
           anexo_url?: string | null
+          atestado_periodo?: string | null
           created_at?: string | null
           data: string
           deleted_at?: string | null
@@ -227,6 +229,7 @@ export type Database = {
         }
         Update: {
           anexo_url?: string | null
+          atestado_periodo?: string | null
           created_at?: string | null
           data?: string
           deleted_at?: string | null
