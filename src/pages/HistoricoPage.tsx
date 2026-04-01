@@ -3,12 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
-import { formatTime, calcHorasTrabalhadas, calcHoraExtra, diaSemanaAbrev, mesAnoAtual } from '@/lib/formatters';
+import { formatTime, mesAnoAtual, diaSemanaAbrev } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, Paperclip, Upload, Loader2, ExternalLink } from 'lucide-react';
+import { Calendar, Loader2 } from 'lucide-react';
+import AttachFile from '@/components/AttachFile';
+import type { AtestadoPeriodo } from '@/components/AttachFile';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Registro = Tables<'registros_ponto'>;
@@ -21,6 +23,7 @@ interface DayGroup {
   extraHours: number;
   hasAnexo: boolean;
   editado: boolean;
+  atestadoPeriodo: AtestadoPeriodo | null;
 }
 
 const HistoricoPage: React.FC = () => {
@@ -33,26 +36,18 @@ const HistoricoPage: React.FC = () => {
   const [editFields, setEditFields] = useState<Array<{ id: string; entrada: string; saida: string }>>([]);
   const [editObs, setEditObs] = useState('');
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [anexoUrl, setAnexoUrl] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const carga = profile?.carga_horaria_diaria ?? 8;
 
   const getDateRange = (period: FilterPeriod) => {
     const now = new Date();
-    if (period === 'custom' && dataInicio && dataFim) {
-      return { start: dataInicio, end: dataFim };
-    }
+    if (period === 'custom' && dataInicio && dataFim) return { start: dataInicio, end: dataFim };
     if (period === 'week') {
-      const start = new Date(now);
-      start.setDate(now.getDate() - now.getDay());
-      start.setHours(0, 0, 0, 0);
+      const start = new Date(now); start.setDate(now.getDate() - now.getDay()); start.setHours(0, 0, 0, 0);
       return { start: start.toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
     }
     if (period === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { start: start.toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
+      return { start: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
     }
     const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const end = new Date(now.getFullYear(), now.getMonth(), 0);
@@ -81,7 +76,6 @@ const HistoricoPage: React.FC = () => {
 
   useEffect(() => { fetchRegistros(); }, [fetchRegistros]);
 
-  // Group records by day
   const dayGroups: DayGroup[] = React.useMemo(() => {
     const map = new Map<string, Registro[]>();
     registros.forEach(r => {
@@ -90,28 +84,32 @@ const HistoricoPage: React.FC = () => {
       map.set(r.data, existing);
     });
     return Array.from(map.entries()).map(([data, regs]) => {
+      const atestadoPeriodo = (regs[0] as any)?.atestado_periodo as AtestadoPeriodo | null;
       let totalMin = 0;
-      regs.forEach(r => {
+      regs.forEach((r, i) => {
+        if (atestadoPeriodo === 'integral') return;
+        if (atestadoPeriodo === 'manha' && i === 0) return;
+        if (atestadoPeriodo === 'tarde' && i === 1) return;
         if (r.saida) {
           totalMin += (new Date(r.saida).getTime() - new Date(r.entrada).getTime()) / 60000;
         }
       });
       const totalHours = totalMin / 60;
+      const cargaEfetiva = atestadoPeriodo === 'integral' ? 0 : (atestadoPeriodo ? carga / 2 : carga);
       return {
         data,
         registros: regs,
         totalMin,
-        extraHours: Math.max(0, totalHours - carga),
-        hasAnexo: regs.some(r => !!(r as any).anexo_url),
-        editado: regs.some(r => !!(r as any).editado_manualmente),
+        extraHours: cargaEfetiva > 0 ? Math.max(0, totalHours - cargaEfetiva) : 0,
+        hasAnexo: regs.some(r => !!r.anexo_url),
+        editado: regs.some(r => r.editado_manualmente),
+        atestadoPeriodo,
       };
     });
   }, [registros, carga]);
 
-  const filteredDayGroups = dayGroups;
-
-  const totalHoras = filteredDayGroups.reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = filteredDayGroups.reduce((s, d) => s + d.extraHours, 0);
+  const totalHoras = dayGroups.reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = dayGroups.reduce((s, d) => s + d.extraHours, 0);
 
   const openEdit = (day: DayGroup) => {
     setSelectedDay(day);
@@ -121,76 +119,37 @@ const HistoricoPage: React.FC = () => {
       saida: r.saida ? new Date(r.saida).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
     })));
     setEditObs(day.registros[0]?.observacao || '');
-    setAnexoUrl((day.registros[0] as any)?.anexo_url || null);
   };
 
   const updateField = (index: number, field: 'entrada' | 'saida', value: string) => {
     setEditFields(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
   };
 
-  const handleUploadAtestado = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user || !selectedDay) return;
-    setUploading(true);
-    const firstReg = selectedDay.registros[0];
-    const ext = file.name.split('.').pop();
-    const path = `${user.id}/${firstReg.id}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('atestados')
-      .upload(path, file, { upsert: true });
-
-    if (uploadError) {
-      toast({ title: 'Erro no upload', description: uploadError.message, variant: 'destructive' });
-      setUploading(false);
-      return;
-    }
-
-    // Store the path (not public URL) since bucket is private
-    for (const r of selectedDay.registros) {
-      await supabase.from('registros_ponto').update({ anexo_url: path } as any).eq('id', r.id);
-    }
-
-    setAnexoUrl(path);
-    toast({ title: 'Atestado anexado!', description: 'Arquivo salvo como prova.' });
-    fetchRegistros();
-    setUploading(false);
-  };
-
   const handleSave = async () => {
     if (!selectedDay || !user) return;
     setSaving(true);
-
     for (let i = 0; i < editFields.length; i++) {
       const field = editFields[i];
       const original = selectedDay.registros[i];
       if (!original) continue;
-
       const baseDate = original.data;
       const parseTime = (timeStr: string) => {
         if (!timeStr) return null;
         const [h, m] = timeStr.split(':').map(Number);
-        const d = new Date(`${baseDate}T00:00:00`);
-        d.setHours(h, m, 0, 0);
+        const d = new Date(`${baseDate}T00:00:00`); d.setHours(h, m, 0, 0);
         return d.toISOString();
       };
-
       const updateData: any = {
-        editado_manualmente: true,
-        editado_em: new Date().toISOString(),
-        editado_por: user.id,
+        editado_manualmente: true, editado_em: new Date().toISOString(), editado_por: user.id,
         observacao: editObs || null,
       };
-
       const newEntrada = parseTime(field.entrada);
       const newSaida = parseTime(field.saida);
       if (newEntrada) updateData.entrada = newEntrada;
       if (newSaida) updateData.saida = newSaida;
       else if (!field.saida) updateData.saida = null;
-
       await supabase.from('registros_ponto').update(updateData).eq('id', original.id);
     }
-
     toast({ title: 'Registros atualizados!' });
     fetchRegistros();
     setSelectedDay(null);
@@ -210,12 +169,24 @@ const HistoricoPage: React.FC = () => {
   };
 
   const getBadgeColor = (day: DayGroup) => {
+    if (day.atestadoPeriodo) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
     if (day.totalMin === 0) return 'bg-muted text-muted-foreground';
     const hours = day.totalMin / 60;
     if (hours > 10 || day.extraHours > 2) return 'bg-destructive/20 text-destructive';
     if (day.extraHours > 0) return 'bg-warning/20 text-warning';
     return 'bg-success/20 text-success';
   };
+
+  const isFieldDisabled = (periodIndex: number) => {
+    if (!selectedDay?.atestadoPeriodo) return false;
+    if (selectedDay.atestadoPeriodo === 'integral') return true;
+    if (selectedDay.atestadoPeriodo === 'manha' && periodIndex === 0) return true;
+    if (selectedDay.atestadoPeriodo === 'tarde' && periodIndex === 1) return true;
+    return false;
+  };
+
+  const atestadoLabel = (p: AtestadoPeriodo) =>
+    p === 'manha' ? 'Atestado manhã' : p === 'tarde' ? 'Atestado tarde' : 'Atestado integral';
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -238,75 +209,72 @@ const HistoricoPage: React.FC = () => {
         {/* Filters */}
         <div className="flex gap-2 flex-wrap">
           {([['week', 'Esta semana'], ['month', 'Este mês'], ['prev_month', 'Mês anterior'], ['custom', 'Personalizado']] as const).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filter === key ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'
-              }`}
-            >
+            <button key={key} onClick={() => setFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === key ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
               {label}
             </button>
           ))}
         </div>
 
-        {/* Custom date range */}
         {filter === 'custom' && (
           <div className="flex gap-2 items-center">
             <div className="flex-1">
               <label className="text-[10px] text-muted-foreground mb-1 block">De</label>
-              <Input
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-                className="rounded-xl h-9 text-xs"
-              />
+              <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="rounded-xl h-9 text-xs" />
             </div>
             <div className="flex-1">
               <label className="text-[10px] text-muted-foreground mb-1 block">Até</label>
-              <Input
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-                className="rounded-xl h-9 text-xs"
-              />
+              <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="rounded-xl h-9 text-xs" />
             </div>
           </div>
         )}
 
-        {/* List grouped by day */}
-        {filteredDayGroups.length === 0 ? (
+        {/* Day list */}
+        {dayGroups.length === 0 ? (
           <div className="text-center py-12">
             <Calendar size={40} className="mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Nenhum registro neste período</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredDayGroups.map((day) => {
+            {dayGroups.map((day) => {
               const date = new Date(day.data + 'T12:00:00');
               return (
-                <button
-                  key={day.data}
-                  onClick={() => openEdit(day)}
-                  className="w-full bg-card rounded-xl p-4 border border-border text-left hover:bg-secondary/50 transition-colors"
-                >
+                <button key={day.data} onClick={() => openEdit(day)}
+                  className={`w-full rounded-xl p-4 border text-left hover:bg-secondary/50 transition-colors ${
+                    day.atestadoPeriodo ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900' : 'bg-card border-border'
+                  }`}>
                   <div className="flex items-center gap-3">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${getBadgeColor(day)}`}>
                       {diaSemanaAbrev(date)}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium flex items-center gap-1">
+                        {day.atestadoPeriodo && '🏥 '}
                         {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                        {day.hasAnexo && <Paperclip size={12} className="text-accent" />}
                         {day.editado && <span className="text-[10px] text-warning">✏️</span>}
                       </p>
-                      {/* Show each pair */}
-                      {day.registros.map((r, i) => (
-                        <p key={r.id} className="text-xs text-muted-foreground">
-                          {i === 0 ? '🌅' : '🌇'} {formatTime(new Date(r.entrada))}
-                          {r.saida ? ` → ${formatTime(new Date(r.saida))}` : ' (aberto)'}
-                        </p>
-                      ))}
+                      {day.atestadoPeriodo && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 inline-block mt-0.5 mb-1">
+                          {atestadoLabel(day.atestadoPeriodo)}
+                        </span>
+                      )}
+                      {day.registros.map((r, i) => {
+                        const covered = day.atestadoPeriodo === 'integral' ||
+                          (day.atestadoPeriodo === 'manha' && i === 0) ||
+                          (day.atestadoPeriodo === 'tarde' && i === 1);
+                        return (
+                          <p key={r.id} className={`text-xs ${covered ? 'text-blue-500 italic' : 'text-muted-foreground'}`}>
+                            {i === 0 ? '🌅' : '🌇'}{' '}
+                            {covered ? 'Coberto por atestado' : (
+                              <>
+                                {formatTime(new Date(r.entrada))}
+                                {r.saida ? ` → ${formatTime(new Date(r.saida))}` : ' (aberto)'}
+                              </>
+                            )}
+                          </p>
+                        );
+                      })}
                     </div>
                     {day.extraHours > 0 && (
                       <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(1)}h</span>
@@ -326,51 +294,53 @@ const HistoricoPage: React.FC = () => {
             <SheetTitle>Editar registro do dia</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-4">
-            {editFields.map((field, i) => (
-              <div key={field.id}>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">
-                  {i === 0 ? '🌅 Período manhã' : '🌇 Período tarde'}
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Entrada</label>
-                    <Input type="time" value={field.entrada} onChange={(e) => updateField(i, 'entrada', e.target.value)} className="rounded-xl" />
+            {editFields.map((field, i) => {
+              const disabled = isFieldDisabled(i);
+              const periodLabel = i === 0 ? '🌅 Período manhã' : '🌇 Período tarde';
+
+              if (disabled) {
+                return (
+                  <div key={field.id} className="border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 rounded-xl p-4">
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      🏥 {periodLabel}
+                    </p>
+                    <div className="mt-2 bg-blue-100/50 dark:bg-blue-900/20 rounded-lg p-3">
+                      <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Coberto por atestado médico</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Saída</label>
-                    <Input type="time" value={field.saida} onChange={(e) => updateField(i, 'saida', e.target.value)} className="rounded-xl" />
+                );
+              }
+
+              return (
+                <div key={field.id}>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">{periodLabel}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Entrada</label>
+                      <Input type="time" value={field.entrada} onChange={(e) => updateField(i, 'entrada', e.target.value)} className="rounded-xl" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Saída</label>
+                      <Input type="time" value={field.saida} onChange={(e) => updateField(i, 'saida', e.target.value)} className="rounded-xl" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div>
               <label className="text-sm font-medium mb-1 block">Observação</label>
               <Input value={editObs} onChange={(e) => setEditObs(e.target.value)} placeholder="Opcional" className="rounded-xl" />
             </div>
 
-            {/* Anexar Atestado */}
-            <div className="border border-dashed border-border rounded-xl p-4">
-              <p className="text-sm font-medium mb-2 flex items-center gap-1">
-                <Paperclip size={14} />
-                Anexar atestado / documento
-              </p>
-              {anexoUrl && (
-                <a href={anexoUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-sm text-accent underline flex items-center gap-1 mb-2">
-                  <ExternalLink size={12} />
-                  Ver documento anexado
-                </a>
-              )}
-              <input ref={fileRef} type="file" accept="image/*,.pdf,.doc,.docx" onChange={handleUploadAtestado} className="hidden" />
-              <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} className="gap-2 rounded-lg">
-                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                {uploading ? 'Enviando...' : anexoUrl ? 'Trocar arquivo' : 'Escolher arquivo'}
-              </Button>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Foto do atestado, PDF ou documento. Serve como prova jurídica.
-              </p>
-            </div>
+            {/* Atestado */}
+            <AttachFile
+              registroIds={selectedDay?.registros.map(r => r.id) || []}
+              currentUrl={selectedDay?.registros[0]?.anexo_url || null}
+              currentPeriodo={selectedDay?.atestadoPeriodo || null}
+              onAttached={() => { fetchRegistros(); setSelectedDay(null); }}
+              onRemoved={() => { fetchRegistros(); setSelectedDay(null); }}
+            />
 
             <div className="flex gap-2">
               <Button onClick={handleSave} disabled={saving} className="flex-1 rounded-xl bg-primary text-primary-foreground">
