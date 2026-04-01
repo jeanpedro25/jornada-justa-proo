@@ -207,8 +207,16 @@ export type Database = {
           entrada: string
           id: string
           intervalo_minutos: number | null
+          manha_atestado_url: string | null
+          manha_entrada: string | null
+          manha_estado: string | null
+          manha_saida: string | null
           observacao: string | null
           saida: string | null
+          tarde_atestado_url: string | null
+          tarde_entrada: string | null
+          tarde_estado: string | null
+          tarde_saida: string | null
           user_id: string
         }
         Insert: {
@@ -223,8 +231,16 @@ export type Database = {
           entrada: string
           id?: string
           intervalo_minutos?: number | null
+          manha_atestado_url?: string | null
+          manha_entrada?: string | null
+          manha_estado?: string | null
+          manha_saida?: string | null
           observacao?: string | null
           saida?: string | null
+          tarde_atestado_url?: string | null
+          tarde_entrada?: string | null
+          tarde_estado?: string | null
+          tarde_saida?: string | null
           user_id: string
         }
         Update: {
@@ -239,8 +255,16 @@ export type Database = {
           entrada?: string
           id?: string
           intervalo_minutos?: number | null
+          manha_atestado_url?: string | null
+          manha_entrada?: string | null
+          manha_estado?: string | null
+          manha_saida?: string | null
           observacao?: string | null
           saida?: string | null
+          tarde_atestado_url?: string | null
+          tarde_entrada?: string | null
+          tarde_estado?: string | null
+          tarde_saida?: string | null
           user_id?: string
         }
         Relationships: [
