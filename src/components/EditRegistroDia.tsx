@@ -1,26 +1,29 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Camera, Upload, ExternalLink, Trash2, Loader2 } from 'lucide-react';
+import { Camera, Upload, ExternalLink, Trash2, Loader2, FileText } from 'lucide-react';
 
 type PeriodoEstado = 'pendente' | 'registrado' | 'atestado';
 
-interface Periodo {
+interface BlocoConfig {
+  id: string;       // 'manha' | 'tarde' | 'turno_a' | 'turno_b' | 'turno_c'
+  label: string;
+  icone: string;
+  horarioRef?: string;
+  dbEntrada: 'manha_entrada' | 'tarde_entrada';
+  dbSaida: 'manha_saida' | 'tarde_saida';
+  dbEstado: 'manha_estado' | 'tarde_estado';
+  dbAtestadoUrl: 'manha_atestado_url' | 'tarde_atestado_url';
+}
+
+interface BlocoState {
   estado: PeriodoEstado;
   entrada: string;
   saida: string;
-  atestadoUrl: string | null;
-}
-
-interface RegistroDia {
-  manha: Periodo;
-  tarde: Periodo;
-  intervaloMinutos: number;
-  observacao: string;
 }
 
 interface EditRegistroDiaProps {
@@ -65,88 +68,167 @@ const estadoBadge = (estado: PeriodoEstado) => {
 
 const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
+const formatTimeRef = (t: string | null) => {
+  if (!t) return '--:--';
+  return t.substring(0, 5);
+};
+
 const EditRegistroDia: React.FC<EditRegistroDiaProps> = ({ open, onClose, registro, onSaved }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [saving, setSaving] = useState(false);
-  const [uploadingPeriodo, setUploadingPeriodo] = useState<'manha' | 'tarde' | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const fileRefManha = useRef<HTMLInputElement>(null);
-  const cameraRefManha = useRef<HTMLInputElement>(null);
-  const fileRefTarde = useRef<HTMLInputElement>(null);
-  const cameraRefTarde = useRef<HTMLInputElement>(null);
+  // Atestado state (unified)
+  const [atestadoUrl, setAtestadoUrl] = useState<string | null>(null);
+  const [atestadoPeriodo, setAtestadoPeriodo] = useState<string | null>(null); // bloco id or 'integral'
 
-  const buildInitial = (): RegistroDia => {
-    if (!registro) return {
-      manha: { estado: 'pendente', entrada: '', saida: '', atestadoUrl: null },
-      tarde: { estado: 'pendente', entrada: '', saida: '', atestadoUrl: null },
-      intervaloMinutos: 60,
-      observacao: '',
-    };
+  // Bloco states: keyed by bloco index 0 or 1
+  const [blocoStates, setBlocoStates] = useState<BlocoState[]>([
+    { estado: 'pendente', entrada: '', saida: '' },
+    { estado: 'pendente', entrada: '', saida: '' },
+  ]);
+  const [intervaloMinutos, setIntervaloMinutos] = useState(60);
+  const [observacao, setObservacao] = useState('');
 
-    const mkPeriodo = (entrada: string | null, saida: string | null, estado: string | null, url: string | null): Periodo => {
-      const est = (estado || 'pendente') as PeriodoEstado;
-      if (est === 'atestado') return { estado: 'atestado', entrada: '', saida: '', atestadoUrl: url };
+  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  // Build dynamic blocks based on profile
+  const blocos: BlocoConfig[] = React.useMemo(() => {
+    const p = profile as any;
+    if (p?.tipo_jornada === 'turno') {
+      const result: BlocoConfig[] = [];
+      const turnos = [
+        { key: 'a', icone: '🌅', dbIdx: 0 },
+        { key: 'b', icone: '🌇', dbIdx: 1 },
+      ];
+      // Only support 2 turnos mapped to manha/tarde DB columns
+      for (const t of turnos) {
+        const inicio = p[`turno_${t.key}_inicio`];
+        const fim = p[`turno_${t.key}_fim`];
+        if (inicio && fim) {
+          result.push({
+            id: `turno_${t.key}`,
+            label: `Turno ${t.key.toUpperCase()}`,
+            icone: t.icone,
+            horarioRef: `${formatTimeRef(inicio)} – ${formatTimeRef(fim)}`,
+            dbEntrada: t.dbIdx === 0 ? 'manha_entrada' : 'tarde_entrada',
+            dbSaida: t.dbIdx === 0 ? 'manha_saida' : 'tarde_saida',
+            dbEstado: t.dbIdx === 0 ? 'manha_estado' : 'tarde_estado',
+            dbAtestadoUrl: t.dbIdx === 0 ? 'manha_atestado_url' : 'tarde_atestado_url',
+          });
+        }
+      }
+      // If turno C exists, we can't store it without new columns — skip for now
+      if (result.length === 0) {
+        // Fallback to default
+        return defaultBlocos();
+      }
+      return result;
+    }
+    return defaultBlocos();
+  }, [profile]);
+
+  function defaultBlocos(): BlocoConfig[] {
+    return [
+      { id: 'manha', label: 'Período manhã', icone: '🌅', dbEntrada: 'manha_entrada', dbSaida: 'manha_saida', dbEstado: 'manha_estado', dbAtestadoUrl: 'manha_atestado_url' },
+      { id: 'tarde', label: 'Período tarde', icone: '🌇', dbEntrada: 'tarde_entrada', dbSaida: 'tarde_saida', dbEstado: 'tarde_estado', dbAtestadoUrl: 'tarde_atestado_url' },
+    ];
+  }
+
+  // Init form from registro
+  useEffect(() => {
+    if (!registro) return;
+    const states: BlocoState[] = blocos.map((bloco) => {
+      const entrada = (registro as any)[bloco.dbEntrada] || '';
+      const saida = (registro as any)[bloco.dbSaida] || '';
+      const estado = ((registro as any)[bloco.dbEstado] || 'pendente') as PeriodoEstado;
+      if (estado === 'atestado') return { estado: 'atestado', entrada: '', saida: '' };
       const hasData = !!entrada || !!saida;
-      return {
-        estado: hasData ? 'registrado' : 'pendente',
-        entrada: entrada || '',
-        saida: saida || '',
-        atestadoUrl: null,
-      };
-    };
+      return { estado: hasData ? 'registrado' : 'pendente', entrada: entrada ? String(entrada).substring(0, 5) : '', saida: saida ? String(saida).substring(0, 5) : '' };
+    });
+    setBlocoStates(states);
+    setIntervaloMinutos(registro.intervalo_minutos ?? 60);
+    setObservacao(registro.observacao || '');
 
-    return {
-      manha: mkPeriodo(registro.manha_entrada, registro.manha_saida, registro.manha_estado, registro.manha_atestado_url),
-      tarde: mkPeriodo(registro.tarde_entrada, registro.tarde_saida, registro.tarde_estado, registro.tarde_atestado_url),
-      intervaloMinutos: registro.intervalo_minutos ?? 60,
-      observacao: registro.observacao || '',
-    };
-  };
+    // Reconstruct atestado
+    const aPeriodo = (registro as any).atestado_periodo;
+    if (aPeriodo) {
+      setAtestadoPeriodo(aPeriodo);
+      // Find the URL from the relevant bloco
+      const url = (registro as any).manha_atestado_url || (registro as any).tarde_atestado_url || (registro as any).anexo_url;
+      setAtestadoUrl(url || null);
+    } else {
+      // Check individual bloco atestado URLs
+      const manhaAtestado = (registro as any).manha_estado === 'atestado';
+      const tardeAtestado = (registro as any).tarde_estado === 'atestado';
+      if (manhaAtestado && tardeAtestado) {
+        setAtestadoPeriodo('integral');
+        setAtestadoUrl((registro as any).manha_atestado_url || (registro as any).tarde_atestado_url || null);
+      } else if (manhaAtestado) {
+        setAtestadoPeriodo(blocos[0]?.id || 'manha');
+        setAtestadoUrl((registro as any).manha_atestado_url || null);
+      } else if (tardeAtestado) {
+        setAtestadoPeriodo(blocos[1]?.id || 'tarde');
+        setAtestadoUrl((registro as any).tarde_atestado_url || null);
+      } else {
+        setAtestadoPeriodo(null);
+        setAtestadoUrl(null);
+      }
+    }
+  }, [registro?.id, blocos.length]);
 
-  const [form, setForm] = useState<RegistroDia>(buildInitial());
-
-  // Reset form when registro changes
-  React.useEffect(() => {
-    setForm(buildInitial());
-  }, [registro?.id]);
-
-  const updatePeriodo = (periodo: 'manha' | 'tarde', field: 'entrada' | 'saida', value: string) => {
-    setForm(prev => {
-      const p = { ...prev[periodo], [field]: value };
-      p.estado = (p.entrada || p.saida) ? 'registrado' : 'pendente';
-      return { ...prev, [periodo]: p };
+  const updateBloco = (idx: number, field: 'entrada' | 'saida', value: string) => {
+    setBlocoStates(prev => {
+      const next = [...prev];
+      const b = { ...next[idx], [field]: value };
+      b.estado = (b.entrada || b.saida) ? 'registrado' : 'pendente';
+      next[idx] = b;
+      return next;
     });
   };
 
-  const handleUpload = async (periodo: 'manha' | 'tarde', file: File) => {
+  // Apply atestado period to bloco states
+  useEffect(() => {
+    if (!atestadoPeriodo || !atestadoUrl) return;
+    setBlocoStates(prev => {
+      return prev.map((bs, idx) => {
+        const blocoId = blocos[idx]?.id;
+        if (atestadoPeriodo === 'integral' || atestadoPeriodo === blocoId) {
+          return { estado: 'atestado' as PeriodoEstado, entrada: '', saida: '' };
+        }
+        // If this bloco was atestado but no longer covered, reset to pendente
+        if (bs.estado === 'atestado') {
+          return { estado: 'pendente' as PeriodoEstado, entrada: '', saida: '' };
+        }
+        return bs;
+      });
+    });
+  }, [atestadoPeriodo, atestadoUrl]);
+
+  const handleUpload = async (file: File) => {
     if (!user || !registro) return;
-    setUploadingPeriodo(periodo);
-
+    setUploading(true);
     const ext = file.name.split('.').pop();
-    const path = `${user.id}/${registro.id}-${periodo}-${Date.now()}.${ext}`;
-
+    const path = `${user.id}/${registro.id}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from('atestados').upload(path, file, { cacheControl: '3600', upsert: true });
     if (error) {
       toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
-      setUploadingPeriodo(null);
+      setUploading(false);
       return;
     }
-
-    setForm(prev => ({
-      ...prev,
-      [periodo]: { estado: 'atestado' as PeriodoEstado, entrada: '', saida: '', atestadoUrl: path },
-    }));
-    setUploadingPeriodo(null);
+    setAtestadoUrl(path);
+    setAtestadoPeriodo('integral'); // default to full day
+    setUploading(false);
     toast({ title: '🏥 Atestado anexado!' });
   };
 
-  const handleRemoveAtestado = async (periodo: 'manha' | 'tarde') => {
-    const url = form[periodo].atestadoUrl;
-    if (url) await supabase.storage.from('atestados').remove([url]);
-    setForm(prev => ({
-      ...prev,
-      [periodo]: { estado: 'pendente' as PeriodoEstado, entrada: '', saida: '', atestadoUrl: null },
-    }));
+  const handleRemoveAtestado = async () => {
+    if (atestadoUrl) await supabase.storage.from('atestados').remove([atestadoUrl]);
+    setAtestadoUrl(null);
+    setAtestadoPeriodo(null);
+    // Reset all atestado blocos back to pendente
+    setBlocoStates(prev => prev.map(bs => bs.estado === 'atestado' ? { estado: 'pendente' as PeriodoEstado, entrada: '', saida: '' } : bs));
   };
 
   const handleSave = async () => {
@@ -154,34 +236,35 @@ const EditRegistroDia: React.FC<EditRegistroDiaProps> = ({ open, onClose, regist
     setSaving(true);
 
     const updateData: Record<string, any> = {
-      manha_entrada: form.manha.estado === 'registrado' && form.manha.entrada ? form.manha.entrada : null,
-      manha_saida: form.manha.estado === 'registrado' && form.manha.saida ? form.manha.saida : null,
-      manha_estado: form.manha.estado,
-      manha_atestado_url: form.manha.atestadoUrl,
-      tarde_entrada: form.tarde.estado === 'registrado' && form.tarde.entrada ? form.tarde.entrada : null,
-      tarde_saida: form.tarde.estado === 'registrado' && form.tarde.saida ? form.tarde.saida : null,
-      tarde_estado: form.tarde.estado,
-      tarde_atestado_url: form.tarde.atestadoUrl,
-      intervalo_minutos: form.intervaloMinutos,
-      observacao: form.observacao || null,
+      intervalo_minutos: intervaloMinutos,
+      observacao: observacao || null,
       editado_manualmente: true,
       editado_em: new Date().toISOString(),
       editado_por: user.id,
     };
 
-    // Also set legacy atestado_periodo for backward compat
-    if (form.manha.estado === 'atestado' && form.tarde.estado === 'atestado') {
+    // Write each bloco to its DB columns
+    blocos.forEach((bloco, idx) => {
+      const bs = blocoStates[idx];
+      if (!bs) return;
+      updateData[bloco.dbEstado] = bs.estado;
+      updateData[bloco.dbEntrada] = bs.estado === 'registrado' && bs.entrada ? bs.entrada : null;
+      updateData[bloco.dbSaida] = bs.estado === 'registrado' && bs.saida ? bs.saida : null;
+      updateData[bloco.dbAtestadoUrl] = bs.estado === 'atestado' ? atestadoUrl : null;
+    });
+
+    // Legacy atestado_periodo
+    const atestadoBlocos = blocoStates.filter(bs => bs.estado === 'atestado');
+    if (atestadoBlocos.length === blocos.length && atestadoBlocos.length > 0) {
       updateData.atestado_periodo = 'integral';
-    } else if (form.manha.estado === 'atestado') {
-      updateData.atestado_periodo = 'manha';
-    } else if (form.tarde.estado === 'atestado') {
-      updateData.atestado_periodo = 'tarde';
+    } else if (atestadoBlocos.length > 0) {
+      const idx = blocoStates.findIndex(bs => bs.estado === 'atestado');
+      updateData.atestado_periodo = blocos[idx]?.id || null;
     } else {
       updateData.atestado_periodo = null;
     }
 
     const { error } = await supabase.from('registros_ponto').update(updateData as any).eq('id', registro.id);
-
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
@@ -202,83 +285,71 @@ const EditRegistroDia: React.FC<EditRegistroDiaProps> = ({ open, onClose, regist
     setSaving(false);
   };
 
-  const hasAnyRegistrado = form.manha.estado === 'registrado' || form.tarde.estado === 'registrado';
+  const hasAnyRegistrado = blocoStates.some(bs => bs.estado === 'registrado');
 
   const dateObj = registro ? new Date(registro.data + 'T12:00:00') : new Date();
   const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  const dateLabel = `${dias[dateObj.getDay()]}, ${dateObj.getDate()} de ${['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][dateObj.getMonth()]}`;
+  const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const dateLabel = `${dias[dateObj.getDay()]}, ${dateObj.getDate()} de ${meses[dateObj.getMonth()]}`;
 
-  const renderPeriodo = (periodo: 'manha' | 'tarde') => {
-    const p = form[periodo];
-    const label = periodo === 'manha' ? '🌅 Período manhã' : '🌇 Período tarde';
-    const fileRef = periodo === 'manha' ? fileRefManha : fileRefTarde;
-    const cameraRef = periodo === 'manha' ? cameraRefManha : cameraRefTarde;
-    const isUploading = uploadingPeriodo === periodo;
+  const renderBloco = (bloco: BlocoConfig, idx: number) => {
+    const bs = blocoStates[idx];
+    if (!bs) return null;
 
-    if (p.estado === 'atestado') {
+    if (bs.estado === 'atestado') {
       return (
-        <div className="border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 rounded-xl p-4 space-y-2">
+        <div key={bloco.id} className="border border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30 rounded-xl p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">{label}</p>
+            <div>
+              <p className="text-sm font-medium">{bloco.icone} {bloco.label}</p>
+              {bloco.horarioRef && <p className="text-[10px] text-muted-foreground">ref: {bloco.horarioRef}</p>}
+            </div>
             {estadoBadge('atestado')}
           </div>
           <div className="bg-blue-100/60 dark:bg-blue-900/30 rounded-lg p-3">
             <p className="text-xs text-blue-700 dark:text-blue-300 font-medium">Coberto por atestado médico</p>
             <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 mt-1">Entrada e saída não necessários</p>
           </div>
-          <div className="flex gap-2">
+          {atestadoUrl && (
             <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={async () => {
-              if (p.atestadoUrl) {
-                const { data } = await supabase.storage.from('atestados').createSignedUrl(p.atestadoUrl, 3600);
-                if (data?.signedUrl) window.open(data.signedUrl, '_blank');
-              }
+              const { data } = await supabase.storage.from('atestados').createSignedUrl(atestadoUrl, 3600);
+              if (data?.signedUrl) window.open(data.signedUrl, '_blank');
             }}>
-              <ExternalLink size={12} /> Ver atestado
+              <ExternalLink size={12} /> Ver documento
             </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-xs text-destructive" onClick={() => handleRemoveAtestado(periodo)}>
-              <Trash2 size={12} /> Remover
-            </Button>
-          </div>
+          )}
         </div>
       );
     }
 
     return (
-      <div className={`border rounded-xl p-4 space-y-3 ${p.estado === 'registrado' ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'}`}>
+      <div key={bloco.id} className={`border rounded-xl p-4 space-y-3 ${bs.estado === 'registrado' ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'}`}>
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">{label}</p>
-          {estadoBadge(p.estado)}
+          <div>
+            <p className="text-sm font-medium">{bloco.icone} {bloco.label}</p>
+            {bloco.horarioRef && <p className="text-[10px] text-muted-foreground">ref: {bloco.horarioRef}</p>}
+          </div>
+          {estadoBadge(bs.estado)}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Entrada</label>
-            <Input type="time" value={p.entrada} onChange={e => updatePeriodo(periodo, 'entrada', e.target.value)} className="rounded-xl" />
+            <Input type="time" value={bs.entrada} onChange={e => updateBloco(idx, 'entrada', e.target.value)} className="rounded-xl" />
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Saída</label>
-            <Input type="time" value={p.saida} onChange={e => updatePeriodo(periodo, 'saida', e.target.value)} className="rounded-xl" />
+            <Input type="time" value={bs.saida} onChange={e => updateBloco(idx, 'saida', e.target.value)} className="rounded-xl" />
           </div>
-        </div>
-
-        {/* Atestado upload */}
-        <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(periodo, f); }} className="hidden" />
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(periodo, f); }} className="hidden" />
-
-        <div className="flex gap-2">
-          {isMobile && (
-            <Button variant="ghost" size="sm" disabled={isUploading} onClick={() => cameraRef.current?.click()} className="gap-1 text-xs">
-              {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-              📷 Foto atestado
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" disabled={isUploading} onClick={() => fileRef.current?.click()} className="gap-1 text-xs">
-            {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-            📎 Anexar atestado
-          </Button>
         </div>
       </div>
     );
   };
+
+  // Atestado period options: each bloco + integral
+  const atestadoOptions = [
+    ...blocos.map(b => ({ value: b.id, label: b.label, detail: b.horarioRef })),
+    { value: 'integral', label: 'Dia inteiro', detail: undefined },
+  ];
 
   return (
     <Sheet open={open} onOpenChange={o => !o && onClose()}>
@@ -289,33 +360,91 @@ const EditRegistroDia: React.FC<EditRegistroDiaProps> = ({ open, onClose, regist
         </SheetHeader>
 
         <div className="space-y-4 mt-4">
-          {renderPeriodo('manha')}
+          {/* Dynamic blocks */}
+          {blocos.map((bloco, idx) => renderBloco(bloco, idx))}
 
           {/* Intervalo - only if at least one period is registered */}
-          {hasAnyRegistrado && (
-            <div className="flex items-center gap-2 px-2">
-              <div className="flex-1 border-t border-border" />
-              <span className="text-xs text-muted-foreground">🍽 Intervalo</span>
-              <div className="flex-1 border-t border-border" />
-            </div>
-          )}
-          {hasAnyRegistrado && (
-            <div className="flex gap-1.5 flex-wrap px-1">
-              {INTERVALO_OPTIONS.map(opt => (
-                <button key={opt.value} onClick={() => setForm(prev => ({ ...prev, intervaloMinutos: opt.value }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${form.intervaloMinutos === opt.value ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          {hasAnyRegistrado && blocos.length > 1 && (
+            <>
+              <div className="flex items-center gap-2 px-2">
+                <div className="flex-1 border-t border-border" />
+                <span className="text-xs text-muted-foreground">🍽 Intervalo</span>
+                <div className="flex-1 border-t border-border" />
+              </div>
+              <div className="flex gap-1.5 flex-wrap px-1">
+                {INTERVALO_OPTIONS.map(opt => (
+                  <button key={opt.value} onClick={() => setIntervaloMinutos(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${intervaloMinutos === opt.value ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
-          {renderPeriodo('tarde')}
+          {/* Unified Atestado Section */}
+          <div className="border-t border-border pt-4">
+            <p className="text-sm font-medium mb-2">📋 Atestado médico / documento</p>
+
+            <input ref={fileRef} type="file" accept="image/*,.pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} className="hidden" />
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} className="hidden" />
+
+            {!atestadoUrl ? (
+              <div className="flex gap-2">
+                {isMobile && (
+                  <Button variant="outline" size="sm" disabled={uploading} onClick={() => cameraRef.current?.click()} className="gap-1 text-xs">
+                    {uploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                    📷 Tirar foto
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()} className="gap-1 text-xs">
+                  {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                  📎 Anexar arquivo
+                </Button>
+              </div>
+            ) : (
+              <div className="border border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-blue-600" />
+                  <span className="text-xs text-foreground flex-1">Atestado anexado</span>
+                  <Button variant="ghost" size="sm" className="gap-1 text-xs text-destructive h-7" onClick={handleRemoveAtestado}>
+                    <Trash2 size={12} /> Remover
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={async () => {
+                    const { data } = await supabase.storage.from('atestados').createSignedUrl(atestadoUrl, 3600);
+                    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                  }}>
+                    <ExternalLink size={12} /> Ver documento
+                  </Button>
+                </div>
+
+                {/* Period selector */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Qual período o atestado cobre?</p>
+                  <div className="space-y-1.5">
+                    {atestadoOptions.map(opt => (
+                      <button key={opt.value} onClick={() => setAtestadoPeriodo(opt.value)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 ${atestadoPeriodo === opt.value ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 ring-1 ring-blue-300' : 'bg-secondary text-secondary-foreground'}`}>
+                        <span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${atestadoPeriodo === opt.value ? 'border-blue-600' : 'border-muted-foreground/40'}`}>
+                          {atestadoPeriodo === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                        </span>
+                        <span>{opt.label}</span>
+                        {opt.detail && <span className="text-muted-foreground ml-auto">({opt.detail})</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Observação */}
           <div>
             <label className="text-sm font-medium mb-1 block">Observação</label>
-            <Input value={form.observacao} onChange={e => setForm(prev => ({ ...prev, observacao: e.target.value }))} placeholder="Opcional" className="rounded-xl" />
+            <Input value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Opcional" className="rounded-xl" />
           </div>
 
           {/* Actions */}
