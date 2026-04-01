@@ -128,10 +128,10 @@ serve(async (req) => {
       <div class="label">Horas extras</div>
       <div class="value accent">${totalExtra.toFixed(1)}h</div>
     </div>
-    <div class="summary-item">
-      <div class="label">O patrão te deve</div>
-      <div class="value warning">R$ ${valorTotal.toFixed(2).replace('.', ',')}</div>
-    </div>
+     <div class="summary-item">
+       <div class="label">Valor estimado de extras</div>
+       <div class="value warning">R$ ${valorTotal.toFixed(2).replace('.', ',')}</div>
+     </div>
     <div class="summary-item">
       <div class="label">Dias registrados</div>
       <div class="value">${rows.length}</div>
