@@ -201,7 +201,7 @@ const AppPage: React.FC = () => {
               </div>
               <p className="text-2xl font-bold mb-1">{totalWorkedHours.toFixed(1)}h trabalhadas</p>
               <p className="text-sm text-muted-foreground mb-1">
-                {formatTime(new Date(registros[0].entrada))} — {formatTime(new Date(registros[registros.length - 1].saida!))}
+                {formatarHora(registros[0].entrada)} — {formatarHora(registros[registros.length - 1].saida)}
               </p>
               {pauseMin > 0 && (
                 <p className="text-xs text-muted-foreground mb-2">☕ Intervalo: {pauseMin}min</p>
