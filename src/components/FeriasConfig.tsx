@@ -115,7 +115,10 @@ const FeriasConfig: React.FC = () => {
   const diasTirados = ferias
     .filter(f => f.status === 'concluida')
     .reduce((acc, f) => acc + calcDias(f.data_inicio, f.data_fim), 0);
-  const diasRestantes = Math.max(0, 30 - diasTirados);
+  const diasAgendados = ferias
+    .filter(f => f.status === 'agendada' || f.status === 'ativa')
+    .reduce((acc, f) => acc + calcDias(f.data_inicio, f.data_fim), 0);
+  const diasRestantes = Math.max(0, 30 - diasTirados - diasAgendados);
 
   let vencida = false;
   let diasAteVencer = 0;
