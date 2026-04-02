@@ -224,6 +224,34 @@ export function proximoTipoAvancado(marcacoes: Marcacao[]): {
   return { tipo: 'entrada', label: 'Bater Entrada', icone: '▶', cor: 'success' };
 }
 
+// ─── VALIDAÇÃO DE SEQUÊNCIA ─────────────────────
+
+export function validarProximaMarcacao(
+  marcacoes: Marcacao[],
+  novoTipo: TipoMarcacao,
+): { valido: boolean; erro: string } {
+  const ultima = marcacoes[marcacoes.length - 1]?.tipo;
+
+  const regras: Record<string, (string | undefined)[]> = {
+    'entrada': [undefined, 'saida_final'],
+    'saida_intervalo': ['entrada', 'volta_intervalo'],
+    'volta_intervalo': ['saida_intervalo'],
+    'saida_final': ['entrada', 'volta_intervalo'],
+  };
+
+  const permitidos = regras[novoTipo] || [];
+  if (!permitidos.includes(ultima)) {
+    const mensagens: Record<string, string> = {
+      'entrada': 'Você já registrou entrada. Registre saída primeiro.',
+      'saida_intervalo': 'Registre entrada antes de sair para intervalo.',
+      'volta_intervalo': 'Registre saída de intervalo antes de voltar.',
+      'saida_final': 'Registre entrada antes de registrar saída.',
+    };
+    return { valido: false, erro: mensagens[novoTipo] || 'Sequência inválida.' };
+  }
+  return { valido: true, erro: '' };
+}
+
 // ─── REGISTRAR MARCAÇÃO ─────────────────────────
 
 export async function registrarMarcacao(userId: string, tipo: TipoMarcacao, origem: 'botao' | 'manual' | 'correcao' = 'botao') {

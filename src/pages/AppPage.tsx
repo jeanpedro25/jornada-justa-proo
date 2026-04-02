@@ -6,6 +6,7 @@ import {
   buscarMarcacoesDia, calcularJornada, proximoTipoAvancado, registrarMarcacao,
   getEstadoJornada, calcularHoraExtra, formatarDuracaoJornada, formatarHoraLocal,
   getCargaDiaria, isDiaTrabalhoEscala, hojeLocal, getMarcacaoVisual,
+  validarProximaMarcacao,
   type Marcacao, type EstadoJornada,
 } from '@/lib/jornada';
 import { gerarAlertas } from '@/lib/alertas';
@@ -124,6 +125,12 @@ const AppPage: React.FC = () => {
 
   const handleMarcacao = async (tipo: typeof proximo.tipo) => {
     if (!user) return;
+    // Validate sequence
+    const validacao = validarProximaMarcacao(marcacoes, tipo);
+    if (!validacao.valido) {
+      toast({ title: 'Marcação inválida', description: validacao.erro, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       await registrarMarcacao(user.id, tipo);

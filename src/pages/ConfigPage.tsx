@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide-react';
 import BancoHorasConfig from '@/components/BancoHorasConfig';
 import JornadaConfig from '@/components/JornadaConfig';
+import FeriasConfig from '@/components/FeriasConfig';
 import AvisoLegal from '@/components/AvisoLegal';
 
 const ConfigPage: React.FC = () => {
@@ -217,6 +218,9 @@ const ConfigPage: React.FC = () => {
           conversao={regraConv} setConversao={setRegraConv}
           limite={limiteBH} setLimite={setLimiteBH}
         />
+
+        {/* Férias */}
+        <FeriasConfig />
 
         {/* Save */}
         <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
