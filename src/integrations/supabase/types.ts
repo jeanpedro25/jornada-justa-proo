@@ -95,6 +95,36 @@ export type Database = {
         }
         Relationships: []
       }
+      compensacoes_banco_horas: {
+        Row: {
+          created_at: string | null
+          data: string
+          id: string
+          minutos: number
+          observacao: string | null
+          tipo: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: string
+          id?: string
+          minutos: number
+          observacao?: string | null
+          tipo?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          id?: string
+          minutos?: number
+          observacao?: string | null
+          tipo?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ferias: {
         Row: {
           created_at: string | null
@@ -168,6 +198,8 @@ export type Database = {
         Row: {
           aceite_termos: boolean
           alternancia_turno: string
+          banco_horas_saldo_inicial: number | null
+          banco_horas_saldo_inicial_data: string | null
           carga_horaria_diaria: number | null
           created_at: string | null
           data_admissao: string | null
@@ -202,6 +234,8 @@ export type Database = {
         Insert: {
           aceite_termos?: boolean
           alternancia_turno?: string
+          banco_horas_saldo_inicial?: number | null
+          banco_horas_saldo_inicial_data?: string | null
           carga_horaria_diaria?: number | null
           created_at?: string | null
           data_admissao?: string | null
@@ -236,6 +270,8 @@ export type Database = {
         Update: {
           aceite_termos?: boolean
           alternancia_turno?: string
+          banco_horas_saldo_inicial?: number | null
+          banco_horas_saldo_inicial_data?: string | null
           carga_horaria_diaria?: number | null
           created_at?: string | null
           data_admissao?: string | null
