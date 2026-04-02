@@ -440,6 +440,7 @@ const RelatorioPage: React.FC = () => {
   const valorTotal = totalExtra * valorHE;
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = p?.banco_horas_saldo_inicial ?? 0;
+  const saldoFinal = saldoInicial + bhSummary.saldo - totalCompensado;
 
   const listaIrregularidades: Irregularidade[] = useMemo(() => {
     const lista: Irregularidade[] = [];
