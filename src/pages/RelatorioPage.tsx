@@ -320,7 +320,7 @@ function gerarExtratoPDF(
   const resumoFinal = [
     { label: 'Total de dias trabalhados', valor: `${days.length}` },
     { label: 'Media de horas por dia', valor: fmtHM(mediaPorDia) },
-    { label: 'Saldo banco de horas', valor: formatMinutosHoras(bhSummary.saldo + saldoInicial) },
+    { label: 'Saldo banco de horas', valor: formatMinutosHoras(saldoFinalPDF) },
   ];
 
   doc.setFontSize(9);
