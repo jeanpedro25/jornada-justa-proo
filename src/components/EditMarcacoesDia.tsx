@@ -12,6 +12,7 @@ import {
   formatarDuracaoJornada, getMarcacaoVisual, inserirMarcacaoManual, getCargaDiaria,
   type Marcacao, type TipoMarcacao,
 } from '@/lib/jornada';
+import { garantirRegistroDia, sincronizarRegistroDia } from '@/lib/registro-dia';
 
 interface EditMarcacoesDiaProps {
   open: boolean;
@@ -41,7 +42,6 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
   const [editHorario, setEditHorario] = useState('');
   const [observacao, setObservacao] = useState('');
 
-  // Atestado
   const [atestadoUrl, setAtestadoUrl] = useState<string | null>(null);
   const [atestadoPeriodo, setAtestadoPeriodo] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -53,6 +53,11 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     p?.escala_tipo || null,
     p?.carga_horaria_diaria ?? 8,
   );
+
+  const syncDay = async () => {
+    if (!user || !data) return;
+    await sincronizarRegistroDia(user.id, data, p, user.id);
+  };
 
   const fetchMarcacoes = async () => {
     if (!user || !data) return;
@@ -104,7 +109,6 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
   const jornada = calcularJornada(marcacoes);
   const horaExtra = calcularHoraExtra(jornada.totalTrabalhado, carga);
 
-  // Warnings
   const avisos = useMemo(() => {
     const list: { tipo: 'warning' | 'info'; msg: string }[] = [];
     if (jornada.totalTrabalhado > 600 && jornada.totalIntervalo < 60) {
@@ -113,7 +117,6 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     if (jornada.totalTrabalhado > 600) {
       list.push({ tipo: 'warning', msg: 'Jornada acima de 10h registrada' });
     }
-    // Check sequence
     for (let i = 1; i < marcacoes.length; i++) {
       if (new Date(marcacoes[i].horario) < new Date(marcacoes[i - 1].horario)) {
         list.push({ tipo: 'warning', msg: 'Horários fora de ordem — verifique a sequência' });
@@ -137,6 +140,7 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     try {
       const horarioTs = new Date(`${data}T${novoHorario}:00`).toISOString();
       await inserirMarcacaoManual(user.id, data, novoTipo, horarioTs);
+      await syncDay();
       toast({ title: '✅ Marcação adicionada!' });
       await fetchMarcacoes();
       setAddingNew(false);
@@ -149,7 +153,7 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
   };
 
   const handleEditMarcacao = async (id: string) => {
-    if (!data || !editHorario) return;
+    if (!user || !data || !editHorario) return;
     setLoading(true);
     const horarioTs = new Date(`${data}T${editHorario}:00`).toISOString();
     const { error } = await supabase
@@ -159,6 +163,7 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
+      await syncDay();
       toast({ title: '✅ Horário atualizado!' });
       setEditingId(null);
       await fetchMarcacoes();
@@ -168,9 +173,16 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
   };
 
   const handleDeleteMarcacao = async (id: string) => {
+    if (!user || !data) return;
     if (!confirm('Remover esta marcação?')) return;
     setLoading(true);
-    await supabase.from('marcacoes_ponto').update({ deleted_at: new Date().toISOString() } as any).eq('id', id);
+    const { error } = await supabase.from('marcacoes_ponto').update({ deleted_at: new Date().toISOString() } as any).eq('id', id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      setLoading(false);
+      return;
+    }
+    await syncDay();
     toast({ title: 'Marcação removida' });
     await fetchMarcacoes();
     onSaved();
@@ -182,7 +194,13 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     if (!confirm('Excluir TODAS as marcações deste dia? Essa ação não pode ser desfeita.')) return;
     setLoading(true);
     const now = new Date().toISOString();
-    await supabase.from('marcacoes_ponto').update({ deleted_at: now } as any).eq('user_id', user.id).eq('data', data).is('deleted_at', null);
+    const { error } = await supabase.from('marcacoes_ponto').update({ deleted_at: now } as any).eq('user_id', user.id).eq('data', data).is('deleted_at', null);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      setLoading(false);
+      return;
+    }
+    await syncDay();
     toast({ title: 'Dia excluído' });
     onSaved();
     onClose();
@@ -191,17 +209,14 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
 
   const handleSaveObservacao = async () => {
     if (!user || !data) return;
-    const { data: existing } = await supabase
-      .from('registros_ponto')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('data', data)
-      .is('deleted_at', null)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      await supabase.from('registros_ponto').update({ observacao: observacao.trim() || null } as any).eq('id', existing[0].id);
-      toast({ title: 'Observação salva' });
-    }
+    await garantirRegistroDia(user.id, data, {
+      observacao: observacao.trim() || null,
+      editado_manualmente: true,
+      editado_em: new Date().toISOString(),
+      editado_por: user.id,
+    });
+    await syncDay();
+    toast({ title: 'Observação salva' });
   };
 
   const handleUpload = async (file: File) => {
@@ -215,76 +230,50 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
       setUploading(false);
       return;
     }
+
+    await garantirRegistroDia(user.id, data, {
+      anexo_url: path,
+      editado_manualmente: true,
+      editado_em: new Date().toISOString(),
+      editado_por: user.id,
+    });
+    await syncDay();
     setAtestadoUrl(path);
-    const { data: existing } = await supabase
-      .from('registros_ponto')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('data', data)
-      .is('deleted_at', null)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      await supabase.from('registros_ponto').update({ anexo_url: path } as any).eq('id', existing[0].id);
-    } else {
-      // Create a registros_ponto record to hold the atestado
-      await supabase.from('registros_ponto').insert({
-        user_id: user.id,
-        data: data,
-        entrada: new Date(`${data}T00:00:00`).toISOString(),
-        anexo_url: path,
-        editado_manualmente: true,
-      } as any);
-    }
     setUploading(false);
     toast({ title: '🏥 Atestado anexado!' });
   };
 
   const handleSetAtestadoPeriodo = async (periodo: string) => {
     if (!user || !data) return;
+    await garantirRegistroDia(user.id, data, {
+      atestado_periodo: periodo,
+      editado_manualmente: true,
+      editado_em: new Date().toISOString(),
+      editado_por: user.id,
+    });
+    await syncDay();
     setAtestadoPeriodo(periodo);
-    const { data: existing } = await supabase
-      .from('registros_ponto')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('data', data)
-      .is('deleted_at', null)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      await supabase.from('registros_ponto').update({ atestado_periodo: periodo } as any).eq('id', existing[0].id);
-    } else {
-      await supabase.from('registros_ponto').insert({
-        user_id: user.id,
-        data: data,
-        entrada: new Date(`${data}T00:00:00`).toISOString(),
-        atestado_periodo: periodo,
-        editado_manualmente: true,
-      } as any);
-    }
   };
 
   const handleRemoveAtestado = async () => {
+    if (!user || !data) return;
     if (atestadoUrl) {
       await supabase.storage.from('atestados').remove([atestadoUrl]);
     }
-    if (user && data) {
-      const { data: existing } = await supabase
-        .from('registros_ponto')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('data', data)
-        .is('deleted_at', null)
-        .limit(1);
-      if (existing && existing.length > 0) {
-        await supabase.from('registros_ponto').update({ anexo_url: null, atestado_periodo: null } as any).eq('id', existing[0].id);
-      }
-    }
+    await garantirRegistroDia(user.id, data, {
+      anexo_url: null,
+      atestado_periodo: null,
+      editado_manualmente: true,
+      editado_em: new Date().toISOString(),
+      editado_por: user.id,
+    });
+    await syncDay();
     setAtestadoUrl(null);
     setAtestadoPeriodo(null);
   };
 
   const startEdit = (m: Marcacao) => {
     setEditingId(m.id);
-    // Extract HH:MM from the ISO timestamp
     const d = new Date(m.horario);
     setEditHorario(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
   };
