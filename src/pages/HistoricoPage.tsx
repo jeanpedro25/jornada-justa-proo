@@ -263,7 +263,15 @@ const HistoricoPage: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    {day.ferias && <Palmtree size={14} className="text-accent" />}
+                    {day.ferias && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        day.feriasInfo?.status === 'ativa' ? 'bg-accent/20 text-accent' :
+                        day.feriasInfo?.status === 'agendada' ? 'bg-muted text-muted-foreground' :
+                        'bg-success/20 text-success'
+                      }`}>
+                        {day.feriasInfo?.status === 'ativa' ? 'Ativa' : day.feriasInfo?.status === 'agendada' ? 'Agendada' : 'Concluída'}
+                      </span>
+                    )}
                     {!day.ferias && day.extraHours > 0 && (
                       <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(1)}h</span>
                     )}
