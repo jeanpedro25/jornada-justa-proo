@@ -299,7 +299,7 @@ const ConfigPage: React.FC = () => {
               <span className="font-semibold text-sm">Meus dados</span>
             </div>
             <Button variant="outline" size="sm" onClick={handleExport} className="rounded-lg text-xs">
-              Exportar JSON
+              Exportar Excel
             </Button>
           </div>
         </div>
