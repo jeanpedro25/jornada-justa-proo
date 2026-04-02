@@ -137,6 +137,7 @@ const HistoricoPage: React.FC = () => {
         primeiraEntrada: jornada.primeiraEntrada,
         ultimaSaida: jornada.ultimaSaida,
         ferias: feriasDias.has(data),
+        feriasInfo: feriasDias.get(data) || null,
       });
     });
 
