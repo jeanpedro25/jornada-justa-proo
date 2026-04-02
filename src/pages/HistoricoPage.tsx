@@ -273,7 +273,7 @@ const HistoricoPage: React.FC = () => {
                       </span>
                     )}
                     {!day.ferias && day.extraHours > 0 && (
-                      <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(2)}h</span>
+                      <span className="text-xs font-bold text-warning">+{formatarDuracaoJornada(Math.round(day.extraHours * 60))}</span>
                     )}
                   </div>
                 </button>
