@@ -19,8 +19,17 @@ import ProGate from '@/components/ProGate';
 import PaywallModal from '@/components/PaywallModal';
 import { usePaywall } from '@/hooks/usePaywall';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { CheckCircle2, Clock } from 'lucide-react';
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 6) return 'Boa madrugada';
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
@@ -34,6 +43,7 @@ const AppPage: React.FC = () => {
 
   const today = hojeLocal();
   const p = profile as any;
+  const userName = p?.nome?.split(' ')[0] || '';
 
   const fetchMarcacoes = useCallback(async () => {
     if (!user) return;
@@ -89,6 +99,9 @@ const AppPage: React.FC = () => {
   const horaExtra = estado === 'encerrada' ? calcularHoraExtra(jornada.totalTrabalhado, cargaDiaria) : 0;
   const valorHE = profile ? calcValorHoraExtra(profile.salario_base ?? 0, profile.hora_extra_percentual ?? 50) : 0;
   const valorReceber = horaExtra * valorHE;
+
+  // Progress percentage
+  const progressPercent = Math.min(100, Math.round((jornada.totalTrabalhado / (cargaDiaria * 60)) * 100));
 
   // Live timer
   useEffect(() => {
@@ -166,16 +179,23 @@ const AppPage: React.FC = () => {
     <div className="min-h-screen bg-background pb-20">
       <AppHeader />
       <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
+        {/* Greeting */}
+        {userName && (
+          <p className="text-sm text-muted-foreground animate-fade-in">
+            {getGreeting()}, <span className="font-semibold text-foreground">{userName}</span> 👋
+          </p>
+        )}
+
         {/* Escala rest day notice */}
         {isDiaFolga && (
-          <div className="bg-accent/10 rounded-xl p-4 text-center border border-accent/20">
+          <div className="bg-accent/10 rounded-xl p-4 text-center border border-accent/20 animate-slide-up">
             <p className="text-sm font-semibold text-accent">📅 Hoje é dia de folga na sua escala</p>
             <p className="text-xs text-muted-foreground mt-1">Você ainda pode registrar ponto se precisar.</p>
           </div>
         )}
 
         {/* Main Action Card */}
-        <div className="bg-secondary rounded-2xl p-6 text-center shadow-sm">
+        <div className="bg-card rounded-2xl p-6 text-center shadow-sm border border-border animate-slide-up">
           {estado === 'encerrada' ? (
             <>
               <div className="flex items-center justify-center gap-2 mb-2">
@@ -189,6 +209,13 @@ const AppPage: React.FC = () => {
               {jornada.totalIntervalo > 0 && (
                 <p className="text-xs text-muted-foreground mb-2">☕ Intervalo: {formatarDuracaoJornada(jornada.totalIntervalo)}</p>
               )}
+
+              {/* Progress bar */}
+              <div className="mb-3">
+                <Progress value={progressPercent} className="h-2" />
+                <p className="text-[10px] text-muted-foreground mt-1">{progressPercent}% da carga diária ({cargaDiaria}h)</p>
+              </div>
+
               <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-full ${
                 horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
               }`}>
@@ -225,7 +252,7 @@ const AppPage: React.FC = () => {
               <Button
                 onClick={() => handleMarcacao('volta_intervalo')}
                 disabled={loading}
-                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle('accent')}`}
+                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle('accent')} active:scale-[0.98] transition-transform`}
               >
                 ↩ {loading ? 'Registrando...' : 'Voltei do Intervalo'}
               </Button>
@@ -236,14 +263,23 @@ const AppPage: React.FC = () => {
                 <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
                 <span className="font-semibold">Trabalhando agora</span>
               </div>
-              <p className="text-3xl font-bold font-mono mb-1">{timerStr}</p>
+              <p className="text-4xl font-black font-mono mb-2 tabular-nums tracking-tight">{timerStr}</p>
+              
+              {/* Live progress bar */}
+              <div className="mb-3">
+                <Progress value={progressPercent} className="h-2" />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {progressPercent >= 100 ? '✅ Carga completa!' : `${progressPercent}% da carga diária (${cargaDiaria}h)`}
+                </p>
+              </div>
+
               <p className="text-xs text-muted-foreground mb-4">
                 Entrada: {formatarHoraLocal(jornada.primeiraEntrada)} · Carga: {cargaDiaria}h
               </p>
               <Button
                 onClick={() => handleMarcacao(proximo.tipo)}
                 disabled={loading}
-                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle(proximo.cor)}`}
+                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle(proximo.cor)} active:scale-[0.98] transition-transform`}
               >
                 {proximo.icone} {loading ? 'Registrando...' : proximo.label}
               </Button>
@@ -252,7 +288,7 @@ const AppPage: React.FC = () => {
                   onClick={() => handleMarcacao(proximo.alternativo!.tipo)}
                   disabled={loading}
                   variant="outline"
-                  className="mt-2 rounded-xl gap-2 text-xs w-full"
+                  className="mt-2 rounded-xl gap-2 text-xs w-full active:scale-[0.98] transition-transform"
                 >
                   {proximo.alternativo.icone} {proximo.alternativo.label}
                 </Button>
@@ -270,7 +306,7 @@ const AppPage: React.FC = () => {
               <Button
                 onClick={() => handleMarcacao('entrada')}
                 disabled={loading}
-                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle('success')}`}
+                className={`rounded-xl h-14 text-base font-semibold w-full gap-2 ${getButtonStyle('success')} active:scale-[0.98] transition-transform`}
               >
                 ▶ {loading ? 'Registrando...' : 'Bater Entrada'}
               </Button>
@@ -283,16 +319,16 @@ const AppPage: React.FC = () => {
 
         {/* Registros de hoje */}
         {marcacoes.length > 0 && (
-          <div className="bg-card rounded-xl p-4 border border-border">
+          <div className="bg-card rounded-xl p-4 border border-border animate-fade-in">
             <p className="text-xs text-muted-foreground font-semibold mb-3">REGISTROS DE HOJE</p>
             <div className="space-y-2">
-              {marcacoes.map((m) => {
+              {marcacoes.map((m, i) => {
                 const visual = getMarcacaoVisual(m.tipo);
                 return (
-                  <div key={m.id} className="flex items-center gap-3 text-sm">
+                  <div key={m.id} className="flex items-center gap-3 text-sm animate-slide-up" style={{ animationDelay: `${i * 50}ms` }}>
                     <span>{visual.icone}</span>
                     <span className="text-muted-foreground text-xs w-28">{visual.label}</span>
-                    <span className="font-semibold">{formatarHoraLocal(m.horario)}</span>
+                    <span className="font-semibold tabular-nums">{formatarHoraLocal(m.horario)}</span>
                   </div>
                 );
               })}
