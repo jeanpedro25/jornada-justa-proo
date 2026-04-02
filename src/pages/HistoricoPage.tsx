@@ -6,7 +6,7 @@ import BottomNav from '@/components/BottomNav';
 import { mesAnoAtual, diaSemanaAbrev } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar } from 'lucide-react';
+import { Calendar, Palmtree } from 'lucide-react';
 import ManualEntry from '@/components/ManualEntry';
 import EditMarcacoesDia from '@/components/EditMarcacoesDia';
 import {
@@ -24,11 +24,13 @@ interface DaySummary {
   intervaloMin: number;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
+  ferias?: boolean;
 }
 
 const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
+  const [feriasDias, setFeriasDias] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterPeriod>('month');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -59,15 +61,35 @@ const HistoricoPage: React.FC = () => {
   const fetchMarcacoes = useCallback(async () => {
     if (!user) return;
     const { start, end } = getDateRange(filter);
-    const { data } = await supabase
-      .from('marcacoes_ponto')
-      .select('*')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .gte('data', start)
-      .lte('data', end)
-      .order('horario', { ascending: true });
-    setAllMarcacoes((data as Marcacao[]) || []);
+    const [marcRes, feriasRes] = await Promise.all([
+      supabase
+        .from('marcacoes_ponto')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .gte('data', start)
+        .lte('data', end)
+        .order('horario', { ascending: true }),
+      supabase
+        .from('ferias')
+        .select('data_inicio, data_fim, status')
+        .eq('user_id', user.id)
+        .in('status', ['ativa', 'agendada', 'concluida']),
+    ]);
+    setAllMarcacoes((marcRes.data as Marcacao[]) || []);
+
+    // Build set of vacation days within range
+    const dias = new Set<string>();
+    (feriasRes.data || []).forEach((f: any) => {
+      let d = new Date(f.data_inicio + 'T12:00:00');
+      const fim = new Date(f.data_fim + 'T12:00:00');
+      while (d <= fim) {
+        const ds = d.toISOString().split('T')[0];
+        if (ds >= start && ds <= end) dias.add(ds);
+        d.setDate(d.getDate() + 1);
+      }
+    });
+    setFeriasDias(dias);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
@@ -78,7 +100,6 @@ const HistoricoPage: React.FC = () => {
   useEffect(() => { fetchMarcacoes(); }, [fetchMarcacoes]);
 
   const daySummaries: DaySummary[] = useMemo(() => {
-    // Group by data
     const map = new Map<string, Marcacao[]>();
     allMarcacoes.forEach(m => {
       if (!map.has(m.data)) map.set(m.data, []);
@@ -97,16 +118,36 @@ const HistoricoPage: React.FC = () => {
         intervaloMin: jornada.totalIntervalo,
         primeiraEntrada: jornada.primeiraEntrada,
         ultimaSaida: jornada.ultimaSaida,
+        ferias: feriasDias.has(data),
       });
     });
 
+    // Add vacation-only days (no marcações)
+    feriasDias.forEach(data => {
+      if (!map.has(data)) {
+        summaries.push({
+          data,
+          marcacoes: [],
+          totalMin: 0,
+          extraHours: 0,
+          intervaloMin: 0,
+          primeiraEntrada: null,
+          ultimaSaida: null,
+          ferias: true,
+        });
+      }
+    });
+
     return summaries.sort((a, b) => b.data.localeCompare(a.data));
-  }, [allMarcacoes, carga]);
+  }, [allMarcacoes, carga, feriasDias]);
 
   const totalHoras = daySummaries.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = daySummaries.reduce((s, d) => s + d.extraHours, 0);
 
   const getDayStyle = (day: DaySummary) => {
+    if (day.ferias) {
+      return { bg: 'bg-card border-border', badge: 'bg-accent/20 text-accent' };
+    }
     if (day.totalMin / 60 > 10) {
       return { bg: 'bg-card border-border', badge: 'bg-destructive/20 text-destructive' };
     }
@@ -173,23 +214,28 @@ const HistoricoPage: React.FC = () => {
               const style = getDayStyle(day);
 
               return (
-                <button key={day.data} onClick={() => setSelectedDay(day.data)}
-                  className={`w-full rounded-xl p-4 border text-left hover:bg-secondary/50 transition-colors ${style.bg}`}>
+                <button key={day.data} onClick={() => !day.ferias && setSelectedDay(day.data)}
+                  className={`w-full rounded-xl p-4 border text-left transition-colors ${day.ferias ? 'cursor-default' : 'hover:bg-secondary/50'} ${style.bg}`}>
                   <div className="flex items-center gap-3">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${style.badge}`}>
-                      {diaSemanaAbrev(date)}
+                      {day.ferias ? '🏖' : diaSemanaAbrev(date)}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
                         {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
-                        {' · '}{formatarDuracaoJornada(day.totalMin)}
-                        {day.intervaloMin > 0 && ` · intervalo ${formatarDuracaoJornada(day.intervaloMin)}`}
-                      </p>
+                      {day.ferias && day.marcacoes.length === 0 ? (
+                        <p className="text-xs text-accent">Férias</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
+                          {' · '}{formatarDuracaoJornada(day.totalMin)}
+                          {day.intervaloMin > 0 && ` · intervalo ${formatarDuracaoJornada(day.intervaloMin)}`}
+                        </p>
+                      )}
                     </div>
-                    {day.extraHours > 0 && (
+                    {day.ferias && <Palmtree size={14} className="text-accent" />}
+                    {!day.ferias && day.extraHours > 0 && (
                       <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(1)}h</span>
                     )}
                   </div>

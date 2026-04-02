@@ -23,6 +23,18 @@ function calcDias(inicio: string, fim: string): number {
   return Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
 }
 
+function autoStatus(f: Ferias): Ferias {
+  const hoje = new Date();
+  hoje.setHours(12, 0, 0, 0);
+  const inicio = new Date(f.data_inicio + 'T12:00:00');
+  const fim = new Date(f.data_fim + 'T12:00:00');
+  let status = f.status;
+  if (hoje > fim) status = 'concluida';
+  else if (hoje >= inicio && hoje <= fim) status = 'ativa';
+  else if (hoje < inicio) status = 'agendada';
+  return { ...f, status };
+}
+
 function formatDate(d: string): string {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
 }
@@ -50,7 +62,7 @@ const FeriasConfig: React.FC = () => {
       .select('*')
       .eq('user_id', user.id)
       .order('data_inicio', { ascending: false });
-    setFerias((data as any as Ferias[]) || []);
+    setFerias(((data as any as Ferias[]) || []).map(autoStatus));
   };
 
   useEffect(() => { fetchFerias(); }, [user]);
@@ -103,7 +115,10 @@ const FeriasConfig: React.FC = () => {
   const diasTirados = ferias
     .filter(f => f.status === 'concluida')
     .reduce((acc, f) => acc + calcDias(f.data_inicio, f.data_fim), 0);
-  const diasRestantes = Math.max(0, 30 - diasTirados);
+  const diasAgendados = ferias
+    .filter(f => f.status === 'agendada' || f.status === 'ativa')
+    .reduce((acc, f) => acc + calcDias(f.data_inicio, f.data_fim), 0);
+  const diasRestantes = Math.max(0, 30 - diasTirados - diasAgendados);
 
   let vencida = false;
   let diasAteVencer = 0;
