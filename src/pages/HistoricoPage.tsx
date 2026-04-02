@@ -190,7 +190,7 @@ const HistoricoPage: React.FC = () => {
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground mb-1">horas extras</p>
             <p className={`text-lg font-bold ${totalExtra > 0 ? 'text-warning' : ''}`}>
-              {totalExtra > 0 ? `${totalExtra.toFixed(1)}h` : '—'}
+              {totalExtra > 0 ? `${totalExtra.toFixed(2)}h` : '—'}
             </p>
           </div>
         </div>
