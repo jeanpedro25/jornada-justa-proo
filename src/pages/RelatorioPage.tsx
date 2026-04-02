@@ -107,6 +107,7 @@ function gerarExtratoPDF(
   carga: number,
   salario: number,
   percentual: number,
+  totalCompensado: number,
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const largura = doc.internal.pageSize.getWidth();
@@ -151,6 +152,7 @@ function gerarExtratoPDF(
   const totalMinExtra = days.reduce((s, d) => s + d.extraMin, 0);
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
+  const saldoFinalPDF = saldoInicial + bhSummary.saldo - totalCompensado;
 
   const valorHN = salario / 220;
   const valorHE = valorHN * (1 + percentual / 100);
@@ -162,8 +164,8 @@ function gerarExtratoPDF(
   const cards = [
     { label: 'Total Trabalhado', valor: fmtHM(totalMinTrab), cor: [39, 174, 96] as const },
     { label: 'Horas Extras', valor: totalMinExtra > 0 ? `+${fmtHM(totalMinExtra)}` : '0h', cor: [78, 205, 196] as const },
-    { label: 'Banco de Horas', valor: formatMinutosHoras(bhSummary.saldo + saldoInicial), cor: (bhSummary.saldo + saldoInicial) >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
-    { label: 'Horas Compensadas', valor: fmtHM(bhSummary.aCompensar), cor: [52, 152, 219] as const },
+    { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
+    { label: 'Horas Compensadas', valor: fmtHM(bhSummary.aCompensar + totalCompensado), cor: [52, 152, 219] as const },
     { label: 'Horas Vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h', cor: [243, 156, 18] as const },
     { label: 'Estimativa (R$)', valor: valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
   ];
@@ -209,8 +211,8 @@ function gerarExtratoPDF(
     const bhItems = [
       { label: 'Saldo inicial', valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
       { label: 'Saldo do período', valor: formatMinutosHoras(bhSummary.saldo) },
-      { label: 'Saldo total', valor: formatMinutosHoras(bhSummary.saldo + saldoInicial) },
-      { label: 'Total compensado', valor: fmtHM(bhSummary.aCompensar) },
+      { label: 'Saldo total', valor: formatMinutosHoras(saldoFinalPDF) },
+      { label: 'Total compensado', valor: fmtHM(bhSummary.aCompensar + totalCompensado) },
       { label: 'Horas vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h' },
       { label: 'Expirando em 10 dias', valor: bhSummary.expirandoEm10Dias > 0 ? fmtHM(bhSummary.expirandoEm10Dias) : '0h' },
     ];
@@ -318,7 +320,7 @@ function gerarExtratoPDF(
   const resumoFinal = [
     { label: 'Total de dias trabalhados', valor: `${days.length}` },
     { label: 'Media de horas por dia', valor: fmtHM(mediaPorDia) },
-    { label: 'Saldo banco de horas', valor: formatMinutosHoras(bhSummary.saldo + saldoInicial) },
+    { label: 'Saldo banco de horas', valor: formatMinutosHoras(saldoFinalPDF) },
   ];
 
   doc.setFontSize(9);
@@ -385,6 +387,7 @@ const RelatorioPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
   const [bancoEntries, setBancoEntries] = useState<BancoHorasEntry[]>([]);
+  const [totalCompensado, setTotalCompensado] = useState(0);
   const [generating, setGenerating] = useState(false);
   const { canExportPdf } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
@@ -416,6 +419,16 @@ const RelatorioPage: React.FC = () => {
       .then(({ data }) => setAllMarcacoes((data as Marcacao[]) || []));
 
     fetchBancoHorasEntries(user.id).then(setBancoEntries);
+
+    // Fetch compensações from compensacoes_banco_horas table
+    supabase
+      .from('compensacoes_banco_horas')
+      .select('minutos')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        const total = (data as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
+        setTotalCompensado(total);
+      });
   }, [user]);
 
   const days = useMemo(
@@ -429,6 +442,7 @@ const RelatorioPage: React.FC = () => {
   const valorTotal = totalExtra * valorHE;
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = p?.banco_horas_saldo_inicial ?? 0;
+  const saldoFinal = saldoInicial + bhSummary.saldo - totalCompensado;
 
   const listaIrregularidades: Irregularidade[] = useMemo(() => {
     const lista: Irregularidade[] = [];
@@ -457,7 +471,7 @@ const RelatorioPage: React.FC = () => {
     try {
       const now = new Date();
       const periodoLabel = `${meses[now.getMonth()]} ${now.getFullYear()}`;
-      gerarExtratoPDF(days, profile, periodoLabel, bancoEntries, carga, salario, percentual);
+      gerarExtratoPDF(days, profile, periodoLabel, bancoEntries, carga, salario, percentual, totalCompensado);
       toast({ title: 'PDF gerado!', description: 'Extrato salvo no seu dispositivo.' });
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar PDF', variant: 'destructive' });
@@ -490,11 +504,11 @@ const RelatorioPage: React.FC = () => {
             </div>
             <div>
               <p className="opacity-60 text-xs">Banco horas</p>
-              <p className="font-bold">{formatMinutosHoras(bhSummary.saldo + saldoInicial)}</p>
+              <p className="font-bold">{formatMinutosHoras(saldoFinal)}</p>
             </div>
             <div>
               <p className="opacity-60 text-xs">Compensado</p>
-              <p className="font-bold">{formatMinutosHoras(bhSummary.aCompensar)}</p>
+              <p className="font-bold">{formatMinutosHoras(bhSummary.aCompensar + totalCompensado)}</p>
             </div>
             <div>
               <p className="opacity-60 text-xs">Dias</p>
