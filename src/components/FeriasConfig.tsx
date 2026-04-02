@@ -23,6 +23,18 @@ function calcDias(inicio: string, fim: string): number {
   return Math.round((d2.getTime() - d1.getTime()) / 86400000) + 1;
 }
 
+function autoStatus(f: Ferias): Ferias {
+  const hoje = new Date();
+  hoje.setHours(12, 0, 0, 0);
+  const inicio = new Date(f.data_inicio + 'T12:00:00');
+  const fim = new Date(f.data_fim + 'T12:00:00');
+  let status = f.status;
+  if (hoje > fim) status = 'concluida';
+  else if (hoje >= inicio && hoje <= fim) status = 'ativa';
+  else if (hoje < inicio) status = 'agendada';
+  return { ...f, status };
+}
+
 function formatDate(d: string): string {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
 }
