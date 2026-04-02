@@ -194,8 +194,8 @@ const AppPage: React.FC = () => {
               }`}>
                 {horaExtra > 0 ? (
                   canSeeMoney
-? `+${horaExtra.toFixed(2)}h extra · Estimativa: ${formatCurrency(valorReceber)}`
-                    : `+${horaExtra.toFixed(2)}h extra`
+                    ? `+${formatarDuracaoJornada(Math.round(horaExtra * 60))} extra · Estimativa: ${formatCurrency(valorReceber)}`
+                    : `+${formatarDuracaoJornada(Math.round(horaExtra * 60))} extra`
                 ) : 'Jornada normal ✓'}
               </span>
               {horaExtra > 0 && !canSeeMoney && (
