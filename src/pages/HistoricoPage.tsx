@@ -61,15 +61,35 @@ const HistoricoPage: React.FC = () => {
   const fetchMarcacoes = useCallback(async () => {
     if (!user) return;
     const { start, end } = getDateRange(filter);
-    const { data } = await supabase
-      .from('marcacoes_ponto')
-      .select('*')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .gte('data', start)
-      .lte('data', end)
-      .order('horario', { ascending: true });
-    setAllMarcacoes((data as Marcacao[]) || []);
+    const [marcRes, feriasRes] = await Promise.all([
+      supabase
+        .from('marcacoes_ponto')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .gte('data', start)
+        .lte('data', end)
+        .order('horario', { ascending: true }),
+      supabase
+        .from('ferias')
+        .select('data_inicio, data_fim, status')
+        .eq('user_id', user.id)
+        .in('status', ['ativa', 'agendada', 'concluida']),
+    ]);
+    setAllMarcacoes((marcRes.data as Marcacao[]) || []);
+
+    // Build set of vacation days within range
+    const dias = new Set<string>();
+    (feriasRes.data || []).forEach((f: any) => {
+      let d = new Date(f.data_inicio + 'T12:00:00');
+      const fim = new Date(f.data_fim + 'T12:00:00');
+      while (d <= fim) {
+        const ds = d.toISOString().split('T')[0];
+        if (ds >= start && ds <= end) dias.add(ds);
+        d.setDate(d.getDate() + 1);
+      }
+    });
+    setFeriasDias(dias);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
