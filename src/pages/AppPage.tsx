@@ -6,6 +6,7 @@ import {
   buscarMarcacoesDia, calcularJornada, proximoTipoAvancado, registrarMarcacao,
   getEstadoJornada, calcularHoraExtra, formatarDuracaoJornada, formatarHoraLocal,
   getCargaDiaria, isDiaTrabalhoEscala, hojeLocal, getMarcacaoVisual,
+  validarProximaMarcacao,
   type Marcacao, type EstadoJornada,
 } from '@/lib/jornada';
 import { gerarAlertas } from '@/lib/alertas';
