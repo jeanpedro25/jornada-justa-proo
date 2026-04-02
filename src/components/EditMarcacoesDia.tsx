@@ -225,6 +225,15 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
       .limit(1);
     if (existing && existing.length > 0) {
       await supabase.from('registros_ponto').update({ anexo_url: path } as any).eq('id', existing[0].id);
+    } else {
+      // Create a registros_ponto record to hold the atestado
+      await supabase.from('registros_ponto').insert({
+        user_id: user.id,
+        data: data,
+        entrada: new Date(`${data}T00:00:00`).toISOString(),
+        anexo_url: path,
+        editado_manualmente: true,
+      } as any);
     }
     setUploading(false);
     toast({ title: '🏥 Atestado anexado!' });
