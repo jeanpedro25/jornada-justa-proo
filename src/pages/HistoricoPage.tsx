@@ -161,8 +161,8 @@ const HistoricoPage: React.FC = () => {
     return summaries.sort((a, b) => b.data.localeCompare(a.data));
   }, [allMarcacoes, carga, feriasDias]);
 
-  const totalHoras = daySummaries.reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = daySummaries.reduce((s, d) => s + d.extraHours, 0);
+  const totalHoras = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.extraHours, 0);
 
   const getDayStyle = (day: DaySummary) => {
     if (day.ferias) {
