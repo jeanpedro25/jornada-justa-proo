@@ -125,6 +125,12 @@ const AppPage: React.FC = () => {
 
   const handleMarcacao = async (tipo: typeof proximo.tipo) => {
     if (!user) return;
+    // Validate sequence
+    const validacao = validarProximaMarcacao(marcacoes, tipo);
+    if (!validacao.valido) {
+      toast({ title: 'Marcação inválida', description: validacao.erro, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       await registrarMarcacao(user.id, tipo);
