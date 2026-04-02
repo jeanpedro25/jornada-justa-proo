@@ -142,7 +142,7 @@ const HistoricoPage: React.FC = () => {
     });
 
     // Add vacation-only days (no marcações)
-    feriasDias.forEach(data => {
+    feriasDias.forEach((info, data) => {
       if (!map.has(data)) {
         summaries.push({
           data,
@@ -153,6 +153,7 @@ const HistoricoPage: React.FC = () => {
           primeiraEntrada: null,
           ultimaSaida: null,
           ferias: true,
+          feriasInfo: info,
         });
       }
     });
