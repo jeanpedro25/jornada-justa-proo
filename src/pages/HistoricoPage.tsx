@@ -6,7 +6,7 @@ import BottomNav from '@/components/BottomNav';
 import { mesAnoAtual, diaSemanaAbrev } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar } from 'lucide-react';
+import { Calendar, Palmtree } from 'lucide-react';
 import ManualEntry from '@/components/ManualEntry';
 import EditMarcacoesDia from '@/components/EditMarcacoesDia';
 import {
@@ -24,6 +24,7 @@ interface DaySummary {
   intervaloMin: number;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
+  ferias?: boolean;
 }
 
 const HistoricoPage: React.FC = () => {
