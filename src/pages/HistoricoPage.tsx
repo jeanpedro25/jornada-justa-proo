@@ -214,23 +214,28 @@ const HistoricoPage: React.FC = () => {
               const style = getDayStyle(day);
 
               return (
-                <button key={day.data} onClick={() => setSelectedDay(day.data)}
-                  className={`w-full rounded-xl p-4 border text-left hover:bg-secondary/50 transition-colors ${style.bg}`}>
+                <button key={day.data} onClick={() => !day.ferias && setSelectedDay(day.data)}
+                  className={`w-full rounded-xl p-4 border text-left transition-colors ${day.ferias ? 'cursor-default' : 'hover:bg-secondary/50'} ${style.bg}`}>
                   <div className="flex items-center gap-3">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${style.badge}`}>
-                      {diaSemanaAbrev(date)}
+                      {day.ferias ? '🏖' : diaSemanaAbrev(date)}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
                         {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
-                        {' · '}{formatarDuracaoJornada(day.totalMin)}
-                        {day.intervaloMin > 0 && ` · intervalo ${formatarDuracaoJornada(day.intervaloMin)}`}
-                      </p>
+                      {day.ferias && day.marcacoes.length === 0 ? (
+                        <p className="text-xs text-accent">Férias</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
+                          {' · '}{formatarDuracaoJornada(day.totalMin)}
+                          {day.intervaloMin > 0 && ` · intervalo ${formatarDuracaoJornada(day.intervaloMin)}`}
+                        </p>
+                      )}
                     </div>
-                    {day.extraHours > 0 && (
+                    {day.ferias && <Palmtree size={14} className="text-accent" />}
+                    {!day.ferias && day.extraHours > 0 && (
                       <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(1)}h</span>
                     )}
                   </div>
