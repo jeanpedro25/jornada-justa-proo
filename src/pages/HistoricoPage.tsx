@@ -185,7 +185,7 @@ const HistoricoPage: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground mb-1">total trabalhado</p>
-            <p className="text-lg font-bold">{totalHoras.toFixed(2)}h</p>
+            <p className="text-lg font-bold">{formatarDuracaoJornada(Math.round(totalHoras * 60))}</p>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground mb-1">horas extras</p>
