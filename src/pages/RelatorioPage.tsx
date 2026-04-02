@@ -471,7 +471,7 @@ const RelatorioPage: React.FC = () => {
     try {
       const now = new Date();
       const periodoLabel = `${meses[now.getMonth()]} ${now.getFullYear()}`;
-      gerarExtratoPDF(days, profile, periodoLabel, bancoEntries, carga, salario, percentual);
+      gerarExtratoPDF(days, profile, periodoLabel, bancoEntries, carga, salario, percentual, totalCompensado);
       toast({ title: 'PDF gerado!', description: 'Extrato salvo no seu dispositivo.' });
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar PDF', variant: 'destructive' });
