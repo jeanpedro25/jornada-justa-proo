@@ -219,6 +219,9 @@ const ConfigPage: React.FC = () => {
           limite={limiteBH} setLimite={setLimiteBH}
         />
 
+        {/* Férias */}
+        <FeriasConfig />
+
         {/* Save */}
         <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
           {saving ? 'Salvando...' : 'Salvar configurações'}
