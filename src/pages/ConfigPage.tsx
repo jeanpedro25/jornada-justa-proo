@@ -120,19 +120,70 @@ const ConfigPage: React.FC = () => {
 
   const handleExport = async () => {
     if (!user) return;
-    const { data: registros } = await supabase
-      .from('registros_ponto')
-      .select('*')
-      .eq('user_id', user.id)
-      .is('deleted_at', null);
-    const blob = new Blob([JSON.stringify({ profile, registros }, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'hora-justa-dados.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: 'Dados exportados!' });
+    try {
+      const XLSX = await import('xlsx');
+      const [marcRes, regRes, feriasRes, compRes] = await Promise.all([
+        supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id).is('deleted_at', null).order('horario', { ascending: true }),
+        supabase.from('registros_ponto').select('*').eq('user_id', user.id).is('deleted_at', null),
+        supabase.from('ferias').select('*').eq('user_id', user.id),
+        supabase.from('compensacoes_banco_horas').select('*').eq('user_id', user.id),
+      ]);
+
+      const wb = XLSX.utils.book_new();
+
+      // Marcações
+      const marcData = (marcRes.data || []).map((m: any) => ({
+        Data: m.data,
+        Tipo: m.tipo,
+        Horário: new Date(m.horario).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        Origem: m.origem,
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(marcData), 'Marcações');
+
+      // Registros
+      const regData = (regRes.data || []).map((r: any) => ({
+        Data: r.data,
+        Entrada: r.entrada ? new Date(r.entrada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
+        Saída: r.saida ? new Date(r.saida).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
+        'Intervalo (min)': r.intervalo_minutos,
+        Observação: r.observacao || '',
+        Atestado: r.atestado_periodo || '',
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(regData), 'Registros');
+
+      // Férias
+      const feriasData = (feriasRes.data || []).map((f: any) => ({
+        Início: f.data_inicio,
+        Fim: f.data_fim,
+        Tipo: f.tipo,
+        Status: f.status,
+        Observação: f.observacao || '',
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(feriasData), 'Férias');
+
+      // Compensações
+      const compData = (compRes.data || []).map((c: any) => ({
+        Data: c.data,
+        'Minutos': c.minutos,
+        Tipo: c.tipo,
+        Observação: c.observacao || '',
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(compData), 'Compensações');
+
+      // Perfil
+      const perfilData = [{
+        Nome: (profile as any)?.nome || '',
+        Empresa: (profile as any)?.empresa || '',
+        'Carga Horária': (profile as any)?.carga_horaria_diaria || 8,
+        'Salário Base': (profile as any)?.salario_base || 0,
+      }];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(perfilData), 'Perfil');
+
+      XLSX.writeFile(wb, 'hora-justa-dados.xlsx');
+      toast({ title: '📊 Dados exportados em Excel!' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao exportar', description: err.message, variant: 'destructive' });
+    }
   };
 
   const handleSignOut = async () => {
@@ -248,7 +299,7 @@ const ConfigPage: React.FC = () => {
               <span className="font-semibold text-sm">Meus dados</span>
             </div>
             <Button variant="outline" size="sm" onClick={handleExport} className="rounded-lg text-xs">
-              Exportar JSON
+              Exportar Excel
             </Button>
           </div>
         </div>
