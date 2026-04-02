@@ -385,6 +385,7 @@ const RelatorioPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
   const [bancoEntries, setBancoEntries] = useState<BancoHorasEntry[]>([]);
+  const [totalCompensado, setTotalCompensado] = useState(0);
   const [generating, setGenerating] = useState(false);
   const { canExportPdf } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
@@ -416,6 +417,16 @@ const RelatorioPage: React.FC = () => {
       .then(({ data }) => setAllMarcacoes((data as Marcacao[]) || []));
 
     fetchBancoHorasEntries(user.id).then(setBancoEntries);
+
+    // Fetch compensações from compensacoes_banco_horas table
+    supabase
+      .from('compensacoes_banco_horas')
+      .select('minutos')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        const total = (data as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
+        setTotalCompensado(total);
+      });
   }, [user]);
 
   const days = useMemo(
