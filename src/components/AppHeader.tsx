@@ -36,7 +36,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
             <span className="text-lg font-bold">{title || 'Hora Justa'}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <ThemeToggle />
             <span className="bg-accent text-accent-foreground text-xs font-bold px-2.5 py-1 rounded-full">
               {dias[now.getDay()]}
             </span>
