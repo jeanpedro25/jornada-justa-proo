@@ -152,6 +152,7 @@ function gerarExtratoPDF(
   const totalMinExtra = days.reduce((s, d) => s + d.extraMin, 0);
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
+  const saldoFinalPDF = saldoInicial + bhSummary.saldo - totalCompensado;
 
   const valorHN = salario / 220;
   const valorHE = valorHN * (1 + percentual / 100);
