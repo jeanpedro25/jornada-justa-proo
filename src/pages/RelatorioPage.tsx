@@ -508,7 +508,7 @@ const RelatorioPage: React.FC = () => {
             </div>
             <div>
               <p className="opacity-60 text-xs">Compensado</p>
-              <p className="font-bold">{formatMinutosHoras(bhSummary.aCompensar)}</p>
+              <p className="font-bold">{formatMinutosHoras(bhSummary.aCompensar + totalCompensado)}</p>
             </div>
             <div>
               <p className="opacity-60 text-xs">Dias</p>
