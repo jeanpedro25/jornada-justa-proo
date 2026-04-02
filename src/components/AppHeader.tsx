@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { formatDatePtBR } from '@/lib/formatters';
 import HoraJustaLogo from '@/components/HoraJustaLogo';
-import ThemeToggle from '@/components/ThemeToggle';
+
 
 interface AppHeaderProps {
   title?: string;
