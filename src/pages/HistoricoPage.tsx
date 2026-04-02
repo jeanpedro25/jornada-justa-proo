@@ -145,6 +145,9 @@ const HistoricoPage: React.FC = () => {
   const totalExtra = daySummaries.reduce((s, d) => s + d.extraHours, 0);
 
   const getDayStyle = (day: DaySummary) => {
+    if (day.ferias) {
+      return { bg: 'bg-card border-border', badge: 'bg-accent/20 text-accent' };
+    }
     if (day.totalMin / 60 > 10) {
       return { bg: 'bg-card border-border', badge: 'bg-destructive/20 text-destructive' };
     }
