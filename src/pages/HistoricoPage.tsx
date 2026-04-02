@@ -245,7 +245,16 @@ const HistoricoPage: React.FC = () => {
                         {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                       </p>
                       {day.ferias && day.marcacoes.length === 0 ? (
-                        <p className="text-xs text-accent">Férias</p>
+                        <div>
+                          <p className="text-xs text-accent font-medium">
+                            {day.feriasInfo?.status === 'agendada' ? '📅 Férias agendadas' : '🏖 Férias'}
+                          </p>
+                          {day.feriasInfo && (
+                            <p className="text-[10px] text-muted-foreground">
+                              Período: {new Date(day.feriasInfo.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} – {new Date(day.feriasInfo.data_fim + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            </p>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">
                           {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
