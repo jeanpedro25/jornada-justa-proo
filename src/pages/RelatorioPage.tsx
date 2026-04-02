@@ -164,8 +164,8 @@ function gerarExtratoPDF(
   const cards = [
     { label: 'Total Trabalhado', valor: fmtHM(totalMinTrab), cor: [39, 174, 96] as const },
     { label: 'Horas Extras', valor: totalMinExtra > 0 ? `+${fmtHM(totalMinExtra)}` : '0h', cor: [78, 205, 196] as const },
-    { label: 'Banco de Horas', valor: formatMinutosHoras(bhSummary.saldo + saldoInicial), cor: (bhSummary.saldo + saldoInicial) >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
-    { label: 'Horas Compensadas', valor: fmtHM(bhSummary.aCompensar), cor: [52, 152, 219] as const },
+    { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
+    { label: 'Horas Compensadas', valor: fmtHM(bhSummary.aCompensar + totalCompensado), cor: [52, 152, 219] as const },
     { label: 'Horas Vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h', cor: [243, 156, 18] as const },
     { label: 'Estimativa (R$)', valor: valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
   ];
