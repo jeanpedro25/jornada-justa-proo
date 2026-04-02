@@ -234,8 +234,8 @@ const HistoricoPage: React.FC = () => {
               const style = getDayStyle(day);
 
               return (
-                <button key={day.data} onClick={() => !day.ferias && setSelectedDay(day.data)}
-                  className={`w-full rounded-xl p-4 border text-left transition-colors ${day.ferias ? 'cursor-default' : 'hover:bg-secondary/50'} ${style.bg}`}>
+                <button key={day.data} onClick={() => setSelectedDay(day.data)}
+                  className={`w-full rounded-xl p-4 border text-left transition-colors hover:bg-secondary/50 ${style.bg}`}>
                   <div className="flex items-center gap-3">
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${style.badge}`}>
                       {day.ferias ? '🏖' : diaSemanaAbrev(date)}
