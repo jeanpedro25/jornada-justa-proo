@@ -24,7 +24,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
   });
 
   return (
-    <header className="bg-primary text-primary-foreground px-4 pt-5 pb-8 relative overflow-hidden">
+    <header className="bg-primary text-primary-foreground px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-8 relative overflow-hidden">
       {/* Subtle gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 pointer-events-none" />
       
