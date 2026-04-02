@@ -134,11 +134,23 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
   const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const dateLabel = `${dias[dateObj.getDay()]}, ${dateObj.getDate()} de ${meses[dateObj.getMonth()]}`;
 
+  const safeParseTime = (timeStr: string): string | null => {
+    if (!timeStr || !timeStr.match(/^\d{2}:\d{2}/)) return null;
+    const t = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+    const d = new Date(`${data}T${t}`);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  };
+
   const handleAddMarcacao = async () => {
     if (!user || !data || !novoHorario) return;
+    const horarioTs = safeParseTime(novoHorario);
+    if (!horarioTs) {
+      toast({ title: 'Horário inválido', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
-      const horarioTs = new Date(`${data}T${novoHorario}:00`).toISOString();
       await inserirMarcacaoManual(user.id, data, novoTipo, horarioTs);
       await syncDay();
       toast({ title: '✅ Marcação adicionada!' });
@@ -154,8 +166,12 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
 
   const handleEditMarcacao = async (id: string) => {
     if (!user || !data || !editHorario) return;
+    const horarioTs = safeParseTime(editHorario);
+    if (!horarioTs) {
+      toast({ title: 'Horário inválido', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
-    const horarioTs = new Date(`${data}T${editHorario}:00`).toISOString();
     const { error } = await supabase
       .from('marcacoes_ponto')
       .update({ horario: horarioTs, origem: 'correcao' } as any)
