@@ -506,7 +506,7 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
                 {horaExtra > 0 && (
                   <p className="text-sm">
                     <span className="text-muted-foreground">Hora extra:</span>{' '}
-                    <span className="font-semibold text-warning">+{horaExtra.toFixed(1)}h</span>
+                    <span className="font-semibold text-warning">+{horaExtra.toFixed(2)}h</span>
                   </p>
                 )}
               </div>

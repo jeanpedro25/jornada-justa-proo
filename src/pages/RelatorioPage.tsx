@@ -492,11 +492,11 @@ const RelatorioPage: React.FC = () => {
           <div className="grid grid-cols-3 gap-3 text-sm">
             <div>
               <p className="opacity-60 text-xs">Trabalhado</p>
-              <p className="font-bold">{totalHoras.toFixed(1)}h</p>
+              <p className="font-bold">{totalHoras.toFixed(2)}h</p>
             </div>
             <div>
               <p className="opacity-60 text-xs">Horas extras</p>
-              <p className="font-bold text-accent">{totalExtra.toFixed(1)}h</p>
+              <p className="font-bold text-accent">{totalExtra.toFixed(2)}h</p>
             </div>
             <div>
               <p className="opacity-60 text-xs">Estimativa</p>

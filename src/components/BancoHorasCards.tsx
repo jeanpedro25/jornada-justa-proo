@@ -24,7 +24,7 @@ function calcEquivDias(min: number, cargaH: number): string {
   const dias = Math.abs(min) / (cargaH * 60);
   if (dias === Math.floor(dias)) return `${Math.floor(dias)} dia${dias !== 1 ? 's' : ''}`;
   const d = Math.floor(dias);
-  const h = ((dias - d) * cargaH).toFixed(1);
+  const h = ((dias - d) * cargaH).toFixed(2);
   if (d === 0) return `${h}h`;
   return `${d} dia${d !== 1 ? 's' : ''} e ${h}h`;
 }

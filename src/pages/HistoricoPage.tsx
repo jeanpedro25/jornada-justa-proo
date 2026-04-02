@@ -185,12 +185,12 @@ const HistoricoPage: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground mb-1">total trabalhado</p>
-            <p className="text-lg font-bold">{totalHoras.toFixed(1)}h</p>
+            <p className="text-lg font-bold">{totalHoras.toFixed(2)}h</p>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground mb-1">horas extras</p>
             <p className={`text-lg font-bold ${totalExtra > 0 ? 'text-warning' : ''}`}>
-              {totalExtra > 0 ? `${totalExtra.toFixed(1)}h` : '—'}
+              {totalExtra > 0 ? `${totalExtra.toFixed(2)}h` : '—'}
             </p>
           </div>
         </div>
@@ -273,7 +273,7 @@ const HistoricoPage: React.FC = () => {
                       </span>
                     )}
                     {!day.ferias && day.extraHours > 0 && (
-                      <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(1)}h</span>
+                      <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(2)}h</span>
                     )}
                   </div>
                 </button>
