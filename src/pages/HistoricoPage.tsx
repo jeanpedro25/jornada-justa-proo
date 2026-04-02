@@ -16,6 +16,13 @@ import {
 
 type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
 
+interface FeriasInfo {
+  data_inicio: string;
+  data_fim: string;
+  status: string;
+  tipo: string | null;
+}
+
 interface DaySummary {
   data: string;
   marcacoes: Marcacao[];
@@ -25,6 +32,7 @@ interface DaySummary {
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
   ferias?: boolean;
+  feriasInfo?: FeriasInfo | null;
 }
 
 const HistoricoPage: React.FC = () => {
