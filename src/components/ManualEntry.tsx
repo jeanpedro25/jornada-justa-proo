@@ -82,20 +82,56 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
       return;
     }
 
-    setLoading(true);
     const dateStr = format(date, 'yyyy-MM-dd');
+
+    // Validate all time values before proceeding
+    const parseTime = (timeStr: string): string | null => {
+      if (!timeStr || !timeStr.match(/^\d{2}:\d{2}/)) return null;
+      const t = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+      const d = new Date(`${dateStr}T${t}`);
+      if (isNaN(d.getTime())) return null;
+      return d.toISOString();
+    };
+
+    const entradaISO = parseTime(entrada1);
+    if (!entradaISO) {
+      toast({ title: 'Horário de entrada inválido', variant: 'destructive' });
+      return;
+    }
+
+    if (usaIntervalo) {
+      if (!saida1 || !entrada2 || !saida2) {
+        toast({ title: 'Preencha todos os horários', description: 'Para jornada com intervalo, todos os 4 horários são obrigatórios.', variant: 'destructive' });
+        return;
+      }
+      if (!parseTime(saida1) || !parseTime(entrada2) || !parseTime(saida2)) {
+        toast({ title: 'Horário inválido', description: 'Verifique os horários informados.', variant: 'destructive' });
+        return;
+      }
+    } else {
+      if (!saida1) {
+        toast({ title: 'Preencha o horário de saída', variant: 'destructive' });
+        return;
+      }
+      if (!parseTime(saida1)) {
+        toast({ title: 'Horário de saída inválido', variant: 'destructive' });
+        return;
+      }
+    }
+
+    setLoading(true);
 
     try {
       const marcacoes: { tipo: TipoMarcacao; horario: string }[] = [];
 
       if (usaIntervalo && entrada2) {
-        marcacoes.push({ tipo: 'entrada', horario: new Date(`${dateStr}T${entrada1}:00`).toISOString() });
-        if (saida1) marcacoes.push({ tipo: 'saida_intervalo', horario: new Date(`${dateStr}T${saida1}:00`).toISOString() });
-        marcacoes.push({ tipo: 'volta_intervalo', horario: new Date(`${dateStr}T${entrada2}:00`).toISOString() });
-        if (saida2) marcacoes.push({ tipo: 'saida_final', horario: new Date(`${dateStr}T${saida2}:00`).toISOString() });
+        marcacoes.push({ tipo: 'entrada', horario: entradaISO });
+        marcacoes.push({ tipo: 'saida_intervalo', horario: parseTime(saida1)! });
+        marcacoes.push({ tipo: 'volta_intervalo', horario: parseTime(entrada2)! });
+        marcacoes.push({ tipo: 'saida_final', horario: parseTime(saida2)! });
       } else {
-        marcacoes.push({ tipo: 'entrada', horario: new Date(`${dateStr}T${entrada1}:00`).toISOString() });
-        if (saida1) marcacoes.push({ tipo: 'saida_final', horario: new Date(`${dateStr}T${saida1}:00`).toISOString() });
+        marcacoes.push({ tipo: 'entrada', horario: entradaISO });
+        marcacoes.push({ tipo: 'saida_final', horario: parseTime(saida1)! });
       }
 
       await substituirMarcacoesDiaManual(user.id, dateStr, marcacoes, p);
