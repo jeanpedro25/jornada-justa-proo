@@ -251,6 +251,14 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
       .limit(1);
     if (existing && existing.length > 0) {
       await supabase.from('registros_ponto').update({ atestado_periodo: periodo } as any).eq('id', existing[0].id);
+    } else {
+      await supabase.from('registros_ponto').insert({
+        user_id: user.id,
+        data: data,
+        entrada: new Date(`${data}T00:00:00`).toISOString(),
+        atestado_periodo: periodo,
+        editado_manualmente: true,
+      } as any);
     }
   };
 
