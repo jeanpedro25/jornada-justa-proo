@@ -211,8 +211,8 @@ function gerarExtratoPDF(
     const bhItems = [
       { label: 'Saldo inicial', valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
       { label: 'Saldo do período', valor: formatMinutosHoras(bhSummary.saldo) },
-      { label: 'Saldo total', valor: formatMinutosHoras(bhSummary.saldo + saldoInicial) },
-      { label: 'Total compensado', valor: fmtHM(bhSummary.aCompensar) },
+      { label: 'Saldo total', valor: formatMinutosHoras(saldoFinalPDF) },
+      { label: 'Total compensado', valor: fmtHM(bhSummary.aCompensar + totalCompensado) },
       { label: 'Horas vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h' },
       { label: 'Expirando em 10 dias', valor: bhSummary.expirandoEm10Dias > 0 ? fmtHM(bhSummary.expirandoEm10Dias) : '0h' },
     ];
