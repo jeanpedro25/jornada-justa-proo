@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, calcValorHoraExtra } from '@/lib/formatters';
-import { formatarHora, horaLocalAgora } from '@/lib/dataHora';
+import { horaLocalAgora } from '@/lib/dataHora';
 import {
   buscarMarcacoesDia, calcularJornada, proximoTipoAvancado, registrarMarcacao,
   getEstadoJornada, calcularHoraExtra, formatarDuracaoJornada, formatarHoraLocal,
   getCargaDiaria, isDiaTrabalhoEscala, hojeLocal, getMarcacaoVisual,
   validarProximaMarcacao,
-  type Marcacao, type EstadoJornada,
+  type Marcacao,
 } from '@/lib/jornada';
-import { gerarAlertas } from '@/lib/alertas';
 import { supabase } from '@/integrations/supabase/client';
-import { calcularEntradaBancoHoras, insertBancoHorasEntry, type BancoHorasConfig } from '@/lib/banco-horas';
+import { sincronizarRegistroDia } from '@/lib/registro-dia';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import BancoHorasCards from '@/components/BancoHorasCards';
@@ -101,7 +100,6 @@ const AppPage: React.FC = () => {
     if (!entradaTs) return;
 
     const tick = () => {
-      // Total worked time including current partial
       const now = Date.now();
       let totalMs = 0;
       for (const per of jornada.periodos) {
@@ -125,15 +123,18 @@ const AppPage: React.FC = () => {
 
   const handleMarcacao = async (tipo: typeof proximo.tipo) => {
     if (!user) return;
-    // Validate sequence
     const validacao = validarProximaMarcacao(marcacoes, tipo);
     if (!validacao.valido) {
       toast({ title: 'Marcação inválida', description: validacao.erro, variant: 'destructive' });
       return;
     }
+
     setLoading(true);
     try {
       await registrarMarcacao(user.id, tipo);
+      await sincronizarRegistroDia(user.id, today, p);
+      await fetchMarcacoes();
+
       toast({
         title: tipo === 'entrada' ? '✅ Entrada registrada!' :
           tipo === 'saida_intervalo' ? '🍽 Saída para intervalo!' :
@@ -141,25 +142,8 @@ const AppPage: React.FC = () => {
           '🏠 Saída final registrada!',
         description: horaLocalAgora(),
       });
-      await fetchMarcacoes();
 
-      // If saida_final, generate alerts and banco de horas
       if (tipo === 'saida_final') {
-        const updated = await buscarMarcacoesDia(user.id, today);
-        const jornadaFinal = calcularJornada(updated);
-
-        // Banco de horas
-        if (p?.modo_trabalho === 'banco_horas' && jornadaFinal.totalTrabalhado > 0) {
-          const diff = jornadaFinal.totalTrabalhado - cargaDiaria * 60;
-          const bhConfig: BancoHorasConfig = {
-            modoTrabalho: 'banco_horas',
-            prazoCompensacaoDias: p.prazo_compensacao_dias ?? 180,
-            regraConversao: p.regra_conversao ?? '1.5x',
-            limiteBancoHoras: p.limite_banco_horas,
-          };
-          const entry = calcularEntradaBancoHoras(user.id, today, diff, bhConfig, updated[0]?.id);
-          if (entry) await insertBancoHorasEntry(entry);
-        }
         fetchUnread();
       }
     } catch (err: any) {

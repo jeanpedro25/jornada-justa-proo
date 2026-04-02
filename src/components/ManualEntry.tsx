@@ -11,7 +11,8 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
-import { inserirMarcacaoManual, type TipoMarcacao } from '@/lib/jornada';
+import { substituirMarcacoesDiaManual } from '@/lib/registro-dia';
+import type { TipoMarcacao } from '@/lib/jornada';
 
 interface ManualEntryProps {
   onAdded: () => void;
@@ -85,28 +86,23 @@ const ManualEntry: React.FC<ManualEntryProps> = ({ onAdded }) => {
     const dateStr = format(date, 'yyyy-MM-dd');
 
     try {
-      // Create marcações based on the form
       const marcacoes: { tipo: TipoMarcacao; horario: string }[] = [];
 
       if (usaIntervalo && entrada2) {
-        // 4 marcações: entrada → saida_intervalo → volta_intervalo → saida_final
         marcacoes.push({ tipo: 'entrada', horario: new Date(`${dateStr}T${entrada1}:00`).toISOString() });
         if (saida1) marcacoes.push({ tipo: 'saida_intervalo', horario: new Date(`${dateStr}T${saida1}:00`).toISOString() });
         marcacoes.push({ tipo: 'volta_intervalo', horario: new Date(`${dateStr}T${entrada2}:00`).toISOString() });
         if (saida2) marcacoes.push({ tipo: 'saida_final', horario: new Date(`${dateStr}T${saida2}:00`).toISOString() });
       } else {
-        // 2 marcações: entrada → saida_final
         marcacoes.push({ tipo: 'entrada', horario: new Date(`${dateStr}T${entrada1}:00`).toISOString() });
         if (saida1) marcacoes.push({ tipo: 'saida_final', horario: new Date(`${dateStr}T${saida1}:00`).toISOString() });
       }
 
-      for (const m of marcacoes) {
-        await inserirMarcacaoManual(user.id, dateStr, m.tipo, m.horario);
-      }
+      await substituirMarcacoesDiaManual(user.id, dateStr, marcacoes, p);
 
       toast({
-        title: '✅ Registro manual adicionado!',
-        description: `${format(date, "dd/MM/yyyy", { locale: ptBR })} — ${marcacoes.length} marcações`,
+        title: '✅ Registro manual salvo!',
+        description: `${format(date, 'dd/MM/yyyy', { locale: ptBR })} — ${marcacoes.length} marcações`,
       });
       onAdded();
       setOpen(false);
