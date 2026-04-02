@@ -36,7 +36,7 @@ export async function gerarAlertas(registro: Registro, perfil: Profile) {
   if (horasTrabalhadas > 10) {
     alertas.push({
       tipo: 'jornada_excessiva',
-      mensagem: `Você trabalhou ${horasTrabalhadas.toFixed(1)}h hoje. Jornada acima de 10h é irregular pela CLT.`,
+      mensagem: `Você trabalhou ${horasTrabalhadas.toFixed(2)}h hoje. Jornada acima de 10h é irregular pela CLT.`,
       user_id: perfil.id,
       registro_id: registro.id,
     });

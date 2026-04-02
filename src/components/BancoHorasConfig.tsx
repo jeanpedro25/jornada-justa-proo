@@ -27,7 +27,7 @@ function calcularEquivalenciaDias(horas: number, minutos: number, cargaDiariaHor
     return `${diasExatos} dia${diasExatos !== 1 ? 's' : ''} de trabalho`;
   }
   const diasInteiros = Math.floor(diasExatos);
-  const horasRestantes = ((diasExatos - diasInteiros) * cargaDiariaHoras).toFixed(1);
+  const horasRestantes = ((diasExatos - diasInteiros) * cargaDiariaHoras).toFixed(2);
   if (diasInteiros === 0) return `${horasRestantes}h`;
   return `${diasInteiros} dia${diasInteiros !== 1 ? 's' : ''} e ${horasRestantes}h`;
 }
