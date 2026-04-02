@@ -16,6 +16,13 @@ import {
 
 type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
 
+interface FeriasInfo {
+  data_inicio: string;
+  data_fim: string;
+  status: string;
+  tipo: string | null;
+}
+
 interface DaySummary {
   data: string;
   marcacoes: Marcacao[];
@@ -25,12 +32,13 @@ interface DaySummary {
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
   ferias?: boolean;
+  feriasInfo?: FeriasInfo | null;
 }
 
 const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
-  const [feriasDias, setFeriasDias] = useState<Set<string>>(new Set());
+  const [feriasDias, setFeriasDias] = useState<Map<string, FeriasInfo>>(new Map());
   const [filter, setFilter] = useState<FilterPeriod>('month');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -78,14 +86,24 @@ const HistoricoPage: React.FC = () => {
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
-    // Build set of vacation days within range
-    const dias = new Set<string>();
+    // Build map of vacation days within range
+    const dias = new Map<string, FeriasInfo>();
     (feriasRes.data || []).forEach((f: any) => {
+      const hoje = new Date();
+      hoje.setHours(12, 0, 0, 0);
+      const fInicio = new Date(f.data_inicio + 'T12:00:00');
+      const fFim = new Date(f.data_fim + 'T12:00:00');
+      let autoStatus = f.status;
+      if (hoje > fFim) autoStatus = 'concluida';
+      else if (hoje >= fInicio && hoje <= fFim) autoStatus = 'ativa';
+      else if (hoje < fInicio) autoStatus = 'agendada';
+
       let d = new Date(f.data_inicio + 'T12:00:00');
-      const fim = new Date(f.data_fim + 'T12:00:00');
-      while (d <= fim) {
+      while (d <= fFim) {
         const ds = d.toISOString().split('T')[0];
-        if (ds >= start && ds <= end) dias.add(ds);
+        if (ds >= start && ds <= end) {
+          dias.set(ds, { data_inicio: f.data_inicio, data_fim: f.data_fim, status: autoStatus, tipo: f.tipo });
+        }
         d.setDate(d.getDate() + 1);
       }
     });
@@ -119,11 +137,12 @@ const HistoricoPage: React.FC = () => {
         primeiraEntrada: jornada.primeiraEntrada,
         ultimaSaida: jornada.ultimaSaida,
         ferias: feriasDias.has(data),
+        feriasInfo: feriasDias.get(data) || null,
       });
     });
 
     // Add vacation-only days (no marcações)
-    feriasDias.forEach(data => {
+    feriasDias.forEach((info, data) => {
       if (!map.has(data)) {
         summaries.push({
           data,
@@ -134,6 +153,7 @@ const HistoricoPage: React.FC = () => {
           primeiraEntrada: null,
           ultimaSaida: null,
           ferias: true,
+          feriasInfo: info,
         });
       }
     });
@@ -141,8 +161,8 @@ const HistoricoPage: React.FC = () => {
     return summaries.sort((a, b) => b.data.localeCompare(a.data));
   }, [allMarcacoes, carga, feriasDias]);
 
-  const totalHoras = daySummaries.reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = daySummaries.reduce((s, d) => s + d.extraHours, 0);
+  const totalHoras = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.extraHours, 0);
 
   const getDayStyle = (day: DaySummary) => {
     if (day.ferias) {
@@ -225,7 +245,16 @@ const HistoricoPage: React.FC = () => {
                         {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                       </p>
                       {day.ferias && day.marcacoes.length === 0 ? (
-                        <p className="text-xs text-accent">Férias</p>
+                        <div>
+                          <p className="text-xs text-accent font-medium">
+                            {day.feriasInfo?.status === 'agendada' ? '📅 Férias agendadas' : '🏖 Férias'}
+                          </p>
+                          {day.feriasInfo && (
+                            <p className="text-[10px] text-muted-foreground">
+                              Período: {new Date(day.feriasInfo.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} – {new Date(day.feriasInfo.data_fim + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            </p>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">
                           {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
@@ -234,7 +263,15 @@ const HistoricoPage: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    {day.ferias && <Palmtree size={14} className="text-accent" />}
+                    {day.ferias && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        day.feriasInfo?.status === 'ativa' ? 'bg-accent/20 text-accent' :
+                        day.feriasInfo?.status === 'agendada' ? 'bg-muted text-muted-foreground' :
+                        'bg-success/20 text-success'
+                      }`}>
+                        {day.feriasInfo?.status === 'ativa' ? 'Ativa' : day.feriasInfo?.status === 'agendada' ? 'Agendada' : 'Concluída'}
+                      </span>
+                    )}
                     {!day.ferias && day.extraHours > 0 && (
                       <span className="text-xs font-bold text-warning">+{day.extraHours.toFixed(1)}h</span>
                     )}
