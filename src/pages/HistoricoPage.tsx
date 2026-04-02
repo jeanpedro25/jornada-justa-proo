@@ -38,7 +38,7 @@ interface DaySummary {
 const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
-  const [feriasDias, setFeriasDias] = useState<Set<string>>(new Set());
+  const [feriasDias, setFeriasDias] = useState<Map<string, FeriasInfo>>(new Map());
   const [filter, setFilter] = useState<FilterPeriod>('month');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
