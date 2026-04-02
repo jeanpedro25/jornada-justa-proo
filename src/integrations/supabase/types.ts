@@ -95,6 +95,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ferias: {
+        Row: {
+          created_at: string | null
+          data_fim: string
+          data_inicio: string
+          dias_direito: number | null
+          id: string
+          observacao: string | null
+          status: string | null
+          tipo: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data_fim: string
+          data_inicio: string
+          dias_direito?: number | null
+          id?: string
+          observacao?: string | null
+          status?: string | null
+          tipo?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data_fim?: string
+          data_inicio?: string
+          dias_direito?: number | null
+          id?: string
+          observacao?: string | null
+          status?: string | null
+          tipo?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       marcacoes_ponto: {
         Row: {
           created_at: string | null
@@ -134,6 +170,8 @@ export type Database = {
           alternancia_turno: string
           carga_horaria_diaria: number | null
           created_at: string | null
+          data_admissao: string | null
+          data_vencimento_ferias: string | null
           dias_trabalhados_semana: number
           empresa: string | null
           escala_dias_folga: number | null
@@ -166,6 +204,8 @@ export type Database = {
           alternancia_turno?: string
           carga_horaria_diaria?: number | null
           created_at?: string | null
+          data_admissao?: string | null
+          data_vencimento_ferias?: string | null
           dias_trabalhados_semana?: number
           empresa?: string | null
           escala_dias_folga?: number | null
@@ -198,6 +238,8 @@ export type Database = {
           alternancia_turno?: string
           carga_horaria_diaria?: number | null
           created_at?: string | null
+          data_admissao?: string | null
+          data_vencimento_ferias?: string | null
           dias_trabalhados_semana?: number
           empresa?: string | null
           escala_dias_folga?: number | null
