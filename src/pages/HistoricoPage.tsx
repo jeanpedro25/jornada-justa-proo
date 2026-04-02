@@ -86,14 +86,24 @@ const HistoricoPage: React.FC = () => {
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
-    // Build set of vacation days within range
-    const dias = new Set<string>();
+    // Build map of vacation days within range
+    const dias = new Map<string, FeriasInfo>();
     (feriasRes.data || []).forEach((f: any) => {
+      const hoje = new Date();
+      hoje.setHours(12, 0, 0, 0);
+      const fInicio = new Date(f.data_inicio + 'T12:00:00');
+      const fFim = new Date(f.data_fim + 'T12:00:00');
+      let autoStatus = f.status;
+      if (hoje > fFim) autoStatus = 'concluida';
+      else if (hoje >= fInicio && hoje <= fFim) autoStatus = 'ativa';
+      else if (hoje < fInicio) autoStatus = 'agendada';
+
       let d = new Date(f.data_inicio + 'T12:00:00');
-      const fim = new Date(f.data_fim + 'T12:00:00');
-      while (d <= fim) {
+      while (d <= fFim) {
         const ds = d.toISOString().split('T')[0];
-        if (ds >= start && ds <= end) dias.add(ds);
+        if (ds >= start && ds <= end) {
+          dias.set(ds, { data_inicio: f.data_inicio, data_fim: f.data_fim, status: autoStatus, tipo: f.tipo });
+        }
         d.setDate(d.getDate() + 1);
       }
     });
