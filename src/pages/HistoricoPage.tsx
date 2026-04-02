@@ -6,7 +6,7 @@ import BottomNav from '@/components/BottomNav';
 import { mesAnoAtual, diaSemanaAbrev } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, Palmtree } from 'lucide-react';
+import { Calendar, Palmtree, TrendingUp, Clock } from 'lucide-react';
 import ManualEntry from '@/components/ManualEntry';
 import EditMarcacoesDia from '@/components/EditMarcacoesDia';
 import {
@@ -86,7 +86,6 @@ const HistoricoPage: React.FC = () => {
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
-    // Build map of vacation days within range
     const dias = new Map<string, FeriasInfo>();
     (feriasRes.data || []).forEach((f: any) => {
       const hoje = new Date();
@@ -141,7 +140,6 @@ const HistoricoPage: React.FC = () => {
       });
     });
 
-    // Add vacation-only days (no marcações)
     feriasDias.forEach((info, data) => {
       if (!map.has(data)) {
         summaries.push({
@@ -163,13 +161,14 @@ const HistoricoPage: React.FC = () => {
 
   const totalHoras = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.extraHours, 0);
+  const diasTrabalhados = daySummaries.filter(d => d.marcacoes.length > 0).length;
 
   const getDayStyle = (day: DaySummary) => {
     if (day.ferias) {
-      return { bg: 'bg-card border-border', badge: 'bg-accent/20 text-accent' };
+      return { bg: 'bg-accent/5 border-accent/20', badge: 'bg-accent/20 text-accent' };
     }
     if (day.totalMin / 60 > 10) {
-      return { bg: 'bg-card border-border', badge: 'bg-destructive/20 text-destructive' };
+      return { bg: 'bg-destructive/5 border-destructive/20', badge: 'bg-destructive/20 text-destructive' };
     }
     if (day.extraHours > 0) {
       return { bg: 'bg-card border-border', badge: 'bg-warning/20 text-warning' };
@@ -182,31 +181,38 @@ const HistoricoPage: React.FC = () => {
       <AppHeader title="Histórico de jornada" subtitle={mesAnoAtual()} />
       <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
         {/* Summary */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">total trabalhado</p>
-            <p className="text-lg font-bold">{formatarDuracaoJornada(Math.round(totalHoras * 60))}</p>
+        <div className="grid grid-cols-3 gap-2 animate-slide-up">
+          <div className="bg-card rounded-xl p-3 border border-border text-center">
+            <Clock size={14} className="mx-auto text-muted-foreground mb-1" />
+            <p className="text-xs text-muted-foreground">trabalhado</p>
+            <p className="text-sm font-bold">{formatarDuracaoJornada(Math.round(totalHoras * 60))}</p>
           </div>
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">horas extras</p>
-            <p className={`text-lg font-bold ${totalExtra > 0 ? 'text-warning' : ''}`}>
+          <div className="bg-card rounded-xl p-3 border border-border text-center">
+            <TrendingUp size={14} className="mx-auto text-warning mb-1" />
+            <p className="text-xs text-muted-foreground">extras</p>
+            <p className={`text-sm font-bold ${totalExtra > 0 ? 'text-warning' : ''}`}>
               {totalExtra > 0 ? `+${formatarDuracaoJornada(Math.round(totalExtra * 60))}` : '—'}
             </p>
+          </div>
+          <div className="bg-card rounded-xl p-3 border border-border text-center">
+            <Calendar size={14} className="mx-auto text-accent mb-1" />
+            <p className="text-xs text-muted-foreground">dias</p>
+            <p className="text-sm font-bold">{diasTrabalhados}</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 flex-wrap">
-          {([['week', 'Esta semana'], ['month', 'Este mês'], ['prev_month', 'Mês anterior'], ['custom', 'Personalizado']] as const).map(([key, label]) => (
+        <div className="flex gap-2 flex-wrap animate-fade-in">
+          {([['week', 'Semana'], ['month', 'Mês'], ['prev_month', 'Anterior'], ['custom', 'Período']] as const).map(([key, label]) => (
             <button key={key} onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === key ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${filter === key ? 'bg-accent text-accent-foreground shadow-sm' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
               {label}
             </button>
           ))}
         </div>
 
         {filter === 'custom' && (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center animate-slide-up">
             <div className="flex-1">
               <label className="text-[10px] text-muted-foreground mb-1 block">De</label>
               <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="rounded-xl h-9 text-xs" />
@@ -218,30 +224,34 @@ const HistoricoPage: React.FC = () => {
           </div>
         )}
 
-        {/* Manual entry - only in histórico */}
+        {/* Manual entry */}
         <ManualEntry onAdded={fetchMarcacoes} />
 
         {/* Day list */}
         {daySummaries.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar size={40} className="mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">Nenhum registro neste período</p>
+          <div className="text-center py-16 animate-fade-in">
+            <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar size={28} className="text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground font-medium mb-1">Nenhum registro neste período</p>
+            <p className="text-xs text-muted-foreground/60">Use o botão acima para adicionar registros manuais</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {daySummaries.map((day) => {
+            {daySummaries.map((day, idx) => {
               const date = new Date(day.data + 'T12:00:00');
               const style = getDayStyle(day);
 
               return (
                 <button key={day.data} onClick={() => setSelectedDay(day.data)}
-                  className={`w-full rounded-xl p-4 border text-left transition-colors hover:bg-secondary/50 ${style.bg}`}>
+                  className={`w-full rounded-xl p-4 border text-left transition-all duration-200 hover:shadow-sm active:scale-[0.99] ${style.bg} animate-slide-up`}
+                  style={{ animationDelay: `${Math.min(idx, 10) * 30}ms` }}>
                   <div className="flex items-center gap-3">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${style.badge}`}>
+                    <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg min-w-[36px] text-center ${style.badge}`}>
                       {day.ferias ? '🏖' : diaSemanaAbrev(date)}
-                    </span>
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-semibold tabular-nums">
                         {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                       </p>
                       {day.ferias && day.marcacoes.length === 0 ? (
@@ -251,15 +261,15 @@ const HistoricoPage: React.FC = () => {
                           </p>
                           {day.feriasInfo && (
                             <p className="text-[10px] text-muted-foreground">
-                              Período: {new Date(day.feriasInfo.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} – {new Date(day.feriasInfo.data_fim + 'T12:00:00').toLocaleDateString('pt-BR')}
+                              {new Date(day.feriasInfo.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')} – {new Date(day.feriasInfo.data_fim + 'T12:00:00').toLocaleDateString('pt-BR')}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground tabular-nums">
                           {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
                           {' · '}{formatarDuracaoJornada(day.totalMin)}
-                          {day.intervaloMin > 0 && ` · intervalo ${formatarDuracaoJornada(day.intervaloMin)}`}
+                          {day.intervaloMin > 0 && ` · ☕${formatarDuracaoJornada(day.intervaloMin)}`}
                         </p>
                       )}
                     </div>
@@ -273,7 +283,9 @@ const HistoricoPage: React.FC = () => {
                       </span>
                     )}
                     {!day.ferias && day.extraHours > 0 && (
-                      <span className="text-xs font-bold text-warning">+{formatarDuracaoJornada(Math.round(day.extraHours * 60))}</span>
+                      <span className="text-xs font-bold text-warning bg-warning/10 px-2 py-0.5 rounded-full">
+                        +{formatarDuracaoJornada(Math.round(day.extraHours * 60))}
+                      </span>
                     )}
                   </div>
                 </button>
