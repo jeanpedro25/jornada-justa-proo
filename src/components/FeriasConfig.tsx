@@ -62,7 +62,7 @@ const FeriasConfig: React.FC = () => {
       .select('*')
       .eq('user_id', user.id)
       .order('data_inicio', { ascending: false });
-    setFerias((data as any as Ferias[]) || []);
+    setFerias(((data as any as Ferias[]) || []).map(autoStatus));
   };
 
   useEffect(() => { fetchFerias(); }, [user]);
