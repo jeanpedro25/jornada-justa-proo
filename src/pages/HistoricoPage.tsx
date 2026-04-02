@@ -100,7 +100,6 @@ const HistoricoPage: React.FC = () => {
   useEffect(() => { fetchMarcacoes(); }, [fetchMarcacoes]);
 
   const daySummaries: DaySummary[] = useMemo(() => {
-    // Group by data
     const map = new Map<string, Marcacao[]>();
     allMarcacoes.forEach(m => {
       if (!map.has(m.data)) map.set(m.data, []);
@@ -119,11 +118,28 @@ const HistoricoPage: React.FC = () => {
         intervaloMin: jornada.totalIntervalo,
         primeiraEntrada: jornada.primeiraEntrada,
         ultimaSaida: jornada.ultimaSaida,
+        ferias: feriasDias.has(data),
       });
     });
 
+    // Add vacation-only days (no marcações)
+    feriasDias.forEach(data => {
+      if (!map.has(data)) {
+        summaries.push({
+          data,
+          marcacoes: [],
+          totalMin: 0,
+          extraHours: 0,
+          intervaloMin: 0,
+          primeiraEntrada: null,
+          ultimaSaida: null,
+          ferias: true,
+        });
+      }
+    });
+
     return summaries.sort((a, b) => b.data.localeCompare(a.data));
-  }, [allMarcacoes, carga]);
+  }, [allMarcacoes, carga, feriasDias]);
 
   const totalHoras = daySummaries.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = daySummaries.reduce((s, d) => s + d.extraHours, 0);
