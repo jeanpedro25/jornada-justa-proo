@@ -43,11 +43,12 @@ const MonthSummaryCard: React.FC = () => {
     outrosDescontos: (p?.outros_descontos_detalhados as number) ?? 0,
   };
 
+  const diaFechamento = (p?.dia_fechamento_folha as number) ?? 0;
+
   const fetchData = useCallback(async () => {
     if (!user) return;
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const end = now.toISOString().split('T')[0];
+    const { start, end } = getCicloQuery(diaFechamento, now);
 
     const [marcRes, feriadosRes] = await Promise.all([
       supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
