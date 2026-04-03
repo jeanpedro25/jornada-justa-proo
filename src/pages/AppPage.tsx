@@ -179,7 +179,7 @@ const AppPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       <AppHeader />
-      <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
+      <div className="px-4 pt-3 max-w-lg mx-auto space-y-4">
         {/* Greeting */}
         {userName && (
           <p className="text-sm text-muted-foreground animate-fade-in">

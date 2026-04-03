@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { formatDatePtBR } from '@/lib/formatters';
 import HoraJustaLogo from '@/components/HoraJustaLogo';
 
-
 interface AppHeaderProps {
   title?: string;
   subtitle?: string;
@@ -24,32 +23,29 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
   });
 
   return (
-    <header className="bg-primary text-primary-foreground px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-8 relative overflow-hidden">
-      {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-accent/10 pointer-events-none" />
-      
-      <div className="max-w-lg mx-auto flex flex-col items-center gap-3 relative z-10">
-        {/* Logo + title row */}
-        <div className="flex items-center justify-between w-full">
+    <header className="bg-primary text-primary-foreground px-4 sticky top-0 z-10"
+      style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
+      <div className="max-w-lg mx-auto flex flex-col gap-0.5 py-2.5">
+        {/* Row 1: Logo + title + day badge */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <HoraJustaLogo size={36} />
-            <span className="text-lg font-bold">{title || 'Hora Justa'}</span>
+            <HoraJustaLogo size={24} />
+            <span className="text-base font-medium">{title || 'Hora Justa'}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="bg-accent text-accent-foreground text-xs font-bold px-2.5 py-1 rounded-full">
-              {dias[now.getDay()]}
-            </span>
-          </div>
+          <span className="bg-accent/20 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full">
+            {dias[now.getDay()]}
+          </span>
         </div>
 
-        {/* Big real-time clock */}
-        <div className="text-5xl font-extrabold tabular-nums tracking-tight font-mono animate-fade-in">
-          {timeStr}
+        {/* Row 2: Date + clock */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs opacity-60">
+            {subtitle || formatDatePtBR(now)}
+          </p>
+          <span className="text-xs opacity-80 font-mono tabular-nums">
+            {timeStr}
+          </span>
         </div>
-
-        <p className="text-sm opacity-70">
-          {subtitle || formatDatePtBR(now)}
-        </p>
       </div>
     </header>
   );
