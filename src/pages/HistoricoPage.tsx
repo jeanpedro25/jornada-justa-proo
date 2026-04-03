@@ -205,7 +205,7 @@ const HistoricoPage: React.FC = () => {
     }
 
     return summaries.reverse();
-  }, [allMarcacoes, carga, feriasDias, compensacoes, filter, dataInicio, dataFim, hojeStr]);
+  }, [allMarcacoes, carga, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
 
   // Apply quick filter
   const filteredDays = useMemo(() => {
