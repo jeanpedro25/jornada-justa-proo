@@ -34,8 +34,8 @@ interface Props {
   cicloLabel?: string;
 }
 
-const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, generating }) => {
-  const [periodo, setPeriodo] = useState<PeriodoTipo>('mes');
+const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, generating, cicloLabel }) => {
+  const [periodo, setPeriodo] = useState<PeriodoTipo>(cicloLabel ? 'ciclo' : 'mes');
   const [tipo, setTipo] = useState<TipoRelatorio>('completo');
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
   const [dataFim, setDataFim] = useState<Date | undefined>();
