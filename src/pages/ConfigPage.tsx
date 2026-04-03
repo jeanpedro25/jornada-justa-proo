@@ -24,6 +24,7 @@ const ConfigPage: React.FC = () => {
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
+  const [percentualFeriado, setPercentualFeriado] = useState('');
   const [almoco, setAlmoco] = useState('60');
   const [saving, setSaving] = useState(false);
   const [descontosFixos, setDescontosFixos] = useState('0');
@@ -70,6 +71,7 @@ const ConfigPage: React.FC = () => {
       setSalario(String(p.salario_base || ''));
       setCarga(String(p.carga_horaria_diaria || ''));
       setPercentual(String(p.hora_extra_percentual || ''));
+      setPercentualFeriado(String(p.hora_extra_percentual_feriado ?? 100));
       setAlmoco(String(p.intervalo_almoco ?? 60));
       setModoTrabalho(p.modo_trabalho || 'horas_extras');
       setPrazoComp(String(p.prazo_compensacao_dias || 180));
@@ -110,6 +112,7 @@ const ConfigPage: React.FC = () => {
       salario_base: Number(salario),
       carga_horaria_diaria: Number(carga),
       hora_extra_percentual: Number(percentual),
+      hora_extra_percentual_feriado: Number(percentualFeriado) || 100,
       intervalo_almoco: Number(almoco),
       modo_trabalho: modoTrabalho,
       prazo_compensacao_dias: prazoComp === 'custom' ? Number(limiteBH) || 180 : Number(prazoComp),
@@ -231,10 +234,21 @@ const ConfigPage: React.FC = () => {
               <Input type="number" value={carga} onChange={(e) => setCarga(e.target.value)} className="rounded-xl" placeholder="Ex: 8" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">% hora extra</label>
+              <label className="text-xs text-muted-foreground mb-1 block">% hora extra (dias úteis)</label>
               <Input type="number" value={percentual} onChange={(e) => setPercentual(e.target.value)} className="rounded-xl" placeholder="Ex: 50" />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">% hora extra (dom/feriado)</label>
+              <Input type="number" value={percentualFeriado} onChange={(e) => setPercentualFeriado(e.target.value)} className="rounded-xl" placeholder="Ex: 100" />
+            </div>
+            <div />
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Estes são os valores padrão da CLT. Verifique se o seu sindicato possui porcentagens maiores.
+          </p>
 
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">⏰ Horário de almoço (minutos)</label>

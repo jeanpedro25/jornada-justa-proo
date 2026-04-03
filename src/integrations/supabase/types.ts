@@ -243,6 +243,7 @@ export type Database = {
           escala_inicio: string | null
           escala_tipo: string | null
           hora_extra_percentual: number | null
+          hora_extra_percentual_feriado: number | null
           horario_entrada_padrao: string | null
           horario_saida_padrao: string | null
           id: string
@@ -287,6 +288,7 @@ export type Database = {
           escala_inicio?: string | null
           escala_tipo?: string | null
           hora_extra_percentual?: number | null
+          hora_extra_percentual_feriado?: number | null
           horario_entrada_padrao?: string | null
           horario_saida_padrao?: string | null
           id: string
@@ -331,6 +333,7 @@ export type Database = {
           escala_inicio?: string | null
           escala_tipo?: string | null
           hora_extra_percentual?: number | null
+          hora_extra_percentual_feriado?: number | null
           horario_entrada_padrao?: string | null
           horario_saida_padrao?: string | null
           id?: string
