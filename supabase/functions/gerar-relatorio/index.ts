@@ -247,6 +247,7 @@ serve(async (req) => {
   </div>
 
   <div class="footer">
+    <p>Cálculo baseado nos percentuais de adicional informados pelo usuário (${percentual}% dias úteis). Verifique com seu sindicato.</p>
     <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
     <p>Hora Justa — Ferramenta de Controle de Jornada</p>
   </div>
