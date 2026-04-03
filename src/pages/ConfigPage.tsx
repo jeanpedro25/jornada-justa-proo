@@ -272,16 +272,33 @@ const ConfigPage: React.FC = () => {
         </Button>
 
         {/* Plan */}
-        <div className="bg-card rounded-xl border border-border p-4">
+        <div className="bg-card rounded-xl border border-border p-4 space-y-3">
           <div className="flex items-center gap-2">
             <CreditCard size={16} className="text-accent" />
             <span className="font-semibold text-sm">Plano atual</span>
             <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${
-              profile?.plano === 'pro' ? 'bg-accent/20 text-accent' : 'bg-secondary text-muted-foreground'
+              profile?.plano === 'pro' || profile?.plano === 'anual' ? 'bg-accent/20 text-accent' : 'bg-secondary text-muted-foreground'
             }`}>
-              {profile?.plano === 'pro' ? 'PRO' : 'FREE'}
+              {profile?.plano === 'pro' ? 'PRO Mensal' : profile?.plano === 'anual' ? 'PRO Anual' : 'FREE'}
             </span>
           </div>
+          {(profile?.plano === 'pro' || profile?.plano === 'anual') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 text-xs"
+              onClick={async () => {
+                if (!confirm('Tem certeza que deseja cancelar seu plano? Você voltará ao plano Free.')) return;
+                if (!user) return;
+                await supabase.from('profiles').update({ plano: null } as any).eq('id', user.id);
+                await refreshProfile();
+                toast({ title: 'Plano cancelado', description: 'Você voltou para o plano Free.' });
+              }}
+            >
+              <XCircle size={14} />
+              Cancelar assinatura
+            </Button>
+          )}
         </div>
 
         {/* Export */}
@@ -298,19 +315,22 @@ const ConfigPage: React.FC = () => {
         </div>
 
         {/* About */}
-        <div className="bg-card rounded-xl border border-border p-4">
+        <div className="bg-card rounded-xl border border-border p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Info size={16} className="text-accent" />
-            <span className="font-semibold text-sm">Sobre</span>
+            <span className="font-semibold text-sm">Sobre o Hora Justa</span>
             <span className="ml-auto text-xs text-muted-foreground">v1.0.0</span>
           </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {LEGAL_COPY.about}
+          </p>
         </div>
 
         {/* Privacy */}
         <div className="bg-card rounded-xl border border-border p-4">
           <button onClick={() => navigate('/privacidade')} className="flex items-center gap-2 w-full">
             <Shield size={16} className="text-accent" />
-            <span className="font-semibold text-sm">Privacidade</span>
+            <span className="font-semibold text-sm">Privacidade (LGPD)</span>
             <span className="ml-auto text-xs text-muted-foreground">→</span>
           </button>
         </div>
