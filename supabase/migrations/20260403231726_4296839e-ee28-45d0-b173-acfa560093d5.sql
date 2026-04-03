@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN hora_extra_percentual_feriado numeric DEFAULT 100;
