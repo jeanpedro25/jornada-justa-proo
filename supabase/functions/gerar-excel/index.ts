@@ -98,18 +98,42 @@ serve(async (req) => {
     const wsDash = wb.addWorksheet('📊 Dashboard', { properties: { tabColor: { argb: ACCENT } } });
     wsDash.columns = [{ width: 32 }, { width: 22 }, { width: 18 }, { width: 18 }, { width: 18 }];
 
-    // Title
-    wsDash.mergeCells('A1:E1');
-    const titleCell = wsDash.getCell('A1');
+    // Legal disclaimer rows (locked, rows 1-5)
+    const disclaimerLines = [
+      '⚠ AVISO LEGAL — ISENÇÃO DE RESPONSABILIDADE',
+      'Este documento é um extrato matemático privado para organização pessoal.',
+      'Não possui valor de laudo pericial, não substitui cartões de ponto oficiais e não constitui prova legal absoluta.',
+      'O desenvolvedor isenta-se de responsabilidade por decisões judiciais ou administrativas tomadas com base nestas estimativas.',
+      'O nome da empresa e demais dados são informados pelo próprio usuário. Para validação jurídica, consulte um profissional qualificado.',
+    ];
+    disclaimerLines.forEach((text, i) => {
+      wsDash.mergeCells(`A${i + 1}:E${i + 1}`);
+      const cell = wsDash.getCell(`A${i + 1}`);
+      cell.value = text;
+      cell.font = i === 0
+        ? { bold: true, size: 11, color: { argb: DANGER }, name: 'Arial' }
+        : { size: 9, color: { argb: '666666' }, italic: true, name: 'Arial' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_YELLOW } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.protection = { locked: true };
+      wsDash.getRow(i + 1).height = i === 0 ? 24 : 18;
+    });
+
+    // Protect the sheet but allow selecting/scrolling
+    wsDash.protect('horajusta', { selectLockedCells: true, selectUnlockedCells: true, formatCells: false, formatColumns: false, insertRows: false, deleteRows: false });
+
+    // Title (row 7)
+    wsDash.mergeCells('A7:E7');
+    const titleCell = wsDash.getCell('A7');
     titleCell.value = '⚖️ HORA JUSTA — RELATÓRIO COMPLETO';
     titleCell.font = { bold: true, size: 18, color: { argb: PRIMARY }, name: 'Arial' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_ACCENT } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    wsDash.getRow(1).height = 40;
+    wsDash.getRow(7).height = 40;
 
-    // Date
-    wsDash.mergeCells('A2:E2');
-    const dateCell = wsDash.getCell('A2');
+    // Date (row 8)
+    wsDash.mergeCells('A8:E8');
+    const dateCell = wsDash.getCell('A8');
     dateCell.value = `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
     dateCell.font = { size: 9, color: { argb: '888888' }, italic: true, name: 'Arial' };
     dateCell.alignment = { horizontal: 'center' };
