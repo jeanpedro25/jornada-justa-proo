@@ -99,10 +99,10 @@ const MonthSummaryCard: React.FC = () => {
     const estimativaExtra = (extraMin / 60) * valorHE;
     const bruto = salario + estimativaExtra;
 
-    const resumo = calcularLiquido(bruto, descontosFixos);
+    const resumo = calcularLiquido(bruto, descontosFixos, beneficios, descontosDetalhados);
 
     return { totalMin, extraMin, diasTrab, estimativaExtra, bruto, valorHN, valorHE, resumo };
-  }, [marcacoes, carga, salario, percentual, feriadosLocais, descontosFixos]);
+  }, [marcacoes, carga, salario, percentual, feriadosLocais, descontosFixos, beneficios, descontosDetalhados]);
 
   const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long' }).replace(/^./, s => s.toUpperCase());
 
