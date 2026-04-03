@@ -244,6 +244,7 @@ export function validarProximaMarcacao(
 ): { valido: boolean; erro: string } {
   const ultima = marcacoes[marcacoes.length - 1]?.tipo;
 
+  // Allow re-entry after saida_final (return to work same day)
   const regras: Record<string, (string | undefined)[]> = {
     'entrada': [undefined, 'saida_final'],
     'saida_intervalo': ['entrada', 'volta_intervalo'],

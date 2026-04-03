@@ -150,9 +150,13 @@ export async function sincronizarRegistroDia(
       intervalos: [],
       totalTrabalhado: 0,
       totalIntervalo: 0,
+      horaExtraMin: 0,
+      devendoMin: 0,
       emAndamento: false,
       primeiraEntrada: null,
       ultimaSaida: null,
+      retornouMesmoDia: false,
+      contSaidasFinais: 0,
     }, perfil);
     return { registro: null, marcacoes, jornada: null };
   }
