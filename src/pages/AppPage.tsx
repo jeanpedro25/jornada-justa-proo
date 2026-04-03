@@ -350,8 +350,8 @@ const AppPage: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground mb-1">hora extra hoje</p>
-            <p className={`text-lg font-bold ${horaExtra > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
-              {horaExtra > 0 ? formatarDuracaoJornada(Math.round(horaExtra * 60)) : '—'}
+            <p className={`text-lg font-bold ${jornada.horaExtraMin > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
+              {jornada.horaExtraMin > 0 ? formatarDuracaoJornada(jornada.horaExtraMin) : '—'}
             </p>
           </div>
           <ProGate action="money" blurred estimatedValue={valorReceber}>
