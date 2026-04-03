@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Upload, ExternalLink, Trash2, Loader2, FileText, Plus, Pencil, AlertTriangle } from 'lucide-react';
 import {
-  buscarMarcacoesDia, calcularJornada, calcularHoraExtra, formatarHoraLocal,
+  buscarMarcacoesDia, calcularJornada, formatarHoraLocal,
   formatarDuracaoJornada, getMarcacaoVisual, inserirMarcacaoManual, getCargaDiaria,
   type Marcacao, type TipoMarcacao,
 } from '@/lib/jornada';
