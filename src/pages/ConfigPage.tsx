@@ -97,6 +97,7 @@ const ConfigPage: React.FC = () => {
       setPlanoSaude(String(p.plano_saude ?? 0));
       setAdiantamentos(String(p.adiantamentos ?? 0));
       setOutrosDescontos(String(p.outros_descontos_detalhados ?? 0));
+      setDiaFechamento(String(p.dia_fechamento_folha ?? 0));
     }
   }, [profile]);
 
