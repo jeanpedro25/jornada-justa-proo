@@ -234,10 +234,21 @@ const ConfigPage: React.FC = () => {
               <Input type="number" value={carga} onChange={(e) => setCarga(e.target.value)} className="rounded-xl" placeholder="Ex: 8" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">% hora extra</label>
+              <label className="text-xs text-muted-foreground mb-1 block">% hora extra (dias úteis)</label>
               <Input type="number" value={percentual} onChange={(e) => setPercentual(e.target.value)} className="rounded-xl" placeholder="Ex: 50" />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">% hora extra (dom/feriado)</label>
+              <Input type="number" value={percentualFeriado} onChange={(e) => setPercentualFeriado(e.target.value)} className="rounded-xl" placeholder="Ex: 100" />
+            </div>
+            <div />
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Estes são os valores padrão da CLT. Verifique se o seu sindicato possui porcentagens maiores.
+          </p>
 
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">⏰ Horário de almoço (minutos)</label>
