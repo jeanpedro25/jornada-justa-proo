@@ -111,6 +111,7 @@ const ConfigPage: React.FC = () => {
       turno_c_inicio: turnoCInicio || null,
       turno_c_fim: turnoCFim || null,
       alternancia_turno: alternanciaTurno,
+      descontos_fixos: Number(descontosFixos) || 0,
     } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
