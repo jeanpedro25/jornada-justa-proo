@@ -159,7 +159,7 @@ const HistoricoPage: React.FC = () => {
       const marcacoes = marcMap.get(dataStr) || [];
       const feriasInfo = feriasDias.get(dataStr) || null;
       const compensacao = compensacoes.get(dataStr) || null;
-      const feriado = getFeriado(dataStr);
+      const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
 
       let status: DayStatus;
       if (feriado && marcacoes.length === 0) {
