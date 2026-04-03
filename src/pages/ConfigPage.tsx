@@ -24,6 +24,7 @@ const ConfigPage: React.FC = () => {
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState('');
   const [percentual, setPercentual] = useState('');
+  const [percentualFeriado, setPercentualFeriado] = useState('');
   const [almoco, setAlmoco] = useState('60');
   const [saving, setSaving] = useState(false);
   const [descontosFixos, setDescontosFixos] = useState('0');
