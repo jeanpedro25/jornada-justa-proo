@@ -15,7 +15,8 @@ const OnboardingPage: React.FC = () => {
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState<number | null>(null);
   const [cargaCustom, setCargaCustom] = useState('');
-  const [percentual, setPercentual] = useState<number | null>(null);
+  const [percentual, setPercentual] = useState('50');
+  const [percentualFeriado, setPercentualFeriado] = useState('100');
   const [loading, setLoading] = useState(false);
 
   const progress = (step / 4) * 100;
@@ -24,7 +25,7 @@ const OnboardingPage: React.FC = () => {
     if (step === 1) return nome.trim().length > 0;
     if (step === 2) return salario.trim().length > 0 && Number(salario) > 0;
     if (step === 3) return carga !== null || (cargaCustom.trim().length > 0 && Number(cargaCustom) > 0);
-    if (step === 4) return percentual !== null;
+    if (step === 4) return Number(percentual) > 0 && Number(percentualFeriado) > 0;
     return false;
   };
 
@@ -38,9 +39,10 @@ const OnboardingPage: React.FC = () => {
         nome: nome.trim(),
         salario_base: Number(salario),
         carga_horaria_diaria: cargaFinal,
-        hora_extra_percentual: percentual!,
+        hora_extra_percentual: Number(percentual),
+        hora_extra_percentual_feriado: Number(percentualFeriado),
         onboarding_completo: true,
-      })
+      } as any)
       .eq('id', user.id);
 
     if (error) {
@@ -152,29 +154,32 @@ const OnboardingPage: React.FC = () => {
         {step === 4 && (
           <div className="space-y-4">
             <h2 className="text-xl font-bold">Qual é o seu adicional de hora extra?</h2>
+            <p className="text-xs text-muted-foreground">
+              Estes são os valores padrão da CLT. Verifique se o seu sindicato possui porcentagens maiores.
+            </p>
             <div className="space-y-3">
-              <button
-                onClick={() => setPercentual(50)}
-                className={`w-full py-4 rounded-xl border-2 text-left px-4 transition-colors ${
-                  percentual === 50
-                    ? 'border-accent bg-accent/10'
-                    : 'border-border'
-                }`}
-              >
-                <span className="font-semibold">50%</span>
-                <span className="text-sm text-muted-foreground ml-2">dias úteis</span>
-              </button>
-              <button
-                onClick={() => setPercentual(100)}
-                className={`w-full py-4 rounded-xl border-2 text-left px-4 transition-colors ${
-                  percentual === 100
-                    ? 'border-accent bg-accent/10'
-                    : 'border-border'
-                }`}
-              >
-                <span className="font-semibold">100%</span>
-                <span className="text-sm text-muted-foreground ml-2">domingos/feriados</span>
-              </button>
+              <div className="w-full py-4 rounded-xl border-2 border-border px-4">
+                <label className="text-sm text-muted-foreground">Dias úteis (%)</label>
+                <Input
+                  type="number"
+                  value={percentual}
+                  onChange={(e) => setPercentual(e.target.value)}
+                  className="rounded-xl h-12 text-base mt-1"
+                  min={1}
+                  max={200}
+                />
+              </div>
+              <div className="w-full py-4 rounded-xl border-2 border-border px-4">
+                <label className="text-sm text-muted-foreground">Domingos/Feriados (%)</label>
+                <Input
+                  type="number"
+                  value={percentualFeriado}
+                  onChange={(e) => setPercentualFeriado(e.target.value)}
+                  className="rounded-xl h-12 text-base mt-1"
+                  min={1}
+                  max={200}
+                />
+              </div>
             </div>
           </div>
         )}
