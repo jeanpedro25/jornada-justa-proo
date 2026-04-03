@@ -503,10 +503,16 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
                     <span className="font-semibold">{formatarDuracaoJornada(jornada.totalIntervalo)}</span>
                   </p>
                 )}
-                {horaExtra > 0 && (
+                {jornada.horaExtraMin > 0 && (
                   <p className="text-sm">
                     <span className="text-muted-foreground">Hora extra:</span>{' '}
-                    <span className="font-semibold text-warning">+{formatarDuracaoJornada(Math.round(horaExtra * 60))}</span>
+                    <span className="font-semibold text-warning">+{formatarDuracaoJornada(jornada.horaExtraMin)}</span>
+                  </p>
+                )}
+                {jornada.devendoMin > 0 && (
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Devendo:</span>{' '}
+                    <span className="font-semibold text-destructive">-{formatarDuracaoJornada(jornada.devendoMin)}</span>
                   </p>
                 )}
               </div>
