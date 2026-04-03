@@ -550,6 +550,10 @@ const RelatorioPage: React.FC = () => {
         const s = new Date(now.getFullYear(), now.getMonth(), 1);
         return { start: fmt(s), end: fmt(now), label: `${meses[now.getMonth()]} ${now.getFullYear()}` };
       }
+      case 'ciclo': {
+        const ciclo = getCicloQuery(diaFechamento, now);
+        return { start: ciclo.start, end: ciclo.end, label: `Ciclo de Apuração: ${ciclo.label}` };
+      }
       case 'personalizado': {
         const s = options.dataInicio!;
         const e = options.dataFim!;
