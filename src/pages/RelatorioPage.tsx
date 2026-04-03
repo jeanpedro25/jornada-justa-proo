@@ -54,13 +54,13 @@ function buildDaySummaries(
 
   const summaries: DaySummary[] = [];
   map.forEach((marks, data) => {
-    const j = calcularJornada(marks);
-    const extra = calcularHoraExtra(j.totalTrabalhado, cargaHoras);
+    const cargaMin = cargaHoras * 60;
+    const j = calcularJornada(marks, cargaMin);
     summaries.push({
       data,
       marcacoes: marks,
       totalMin: j.totalTrabalhado,
-      extraMin: Math.round(extra * 60),
+      extraMin: j.horaExtraMin,
       intervaloMin: j.totalIntervalo,
       primeiraEntrada: j.primeiraEntrada,
       ultimaSaida: j.ultimaSaida,
