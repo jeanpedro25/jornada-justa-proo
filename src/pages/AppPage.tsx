@@ -14,6 +14,7 @@ import { sincronizarRegistroDia } from '@/lib/registro-dia';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import BancoHorasCards from '@/components/BancoHorasCards';
+import MonthSummaryCard from '@/components/MonthSummaryCard';
 import AvisoLegal from '@/components/AvisoLegal';
 import ProGate from '@/components/ProGate';
 import PaywallModal from '@/components/PaywallModal';
