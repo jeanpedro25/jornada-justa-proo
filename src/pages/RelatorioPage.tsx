@@ -10,7 +10,7 @@ import {
   type BancoHorasEntry,
 } from '@/lib/banco-horas';
 import {
-  calcularJornada, calcularHoraExtra, formatarHoraLocal,
+  calcularJornada, formatarHoraLocal,
   formatarDuracaoJornada, getCargaDiaria, hojeLocal,
   type Marcacao,
 } from '@/lib/jornada';
