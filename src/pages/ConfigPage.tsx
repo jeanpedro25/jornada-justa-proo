@@ -274,6 +274,11 @@ const ConfigPage: React.FC = () => {
         {/* Férias */}
         <FeriasConfig />
 
+        {/* Feriados Locais */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <FeriadosLocaisConfig />
+        </div>
+
         {/* Save */}
         <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
           {saving ? 'Salvando...' : 'Salvar configurações'}
