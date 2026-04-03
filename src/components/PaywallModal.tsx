@@ -70,7 +70,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
             <p className="text-2xl font-bold text-success">{formatCurrency(estimatedValue)}</p>
             <p className="text-xs text-muted-foreground mt-1">em horas extras</p>
             <p className="text-[10px] text-muted-foreground mt-2 italic">
-              Estimativa baseada nos dados informados pelo usuário
+              Estimativa baseada nos dados informados pelo usuário. Não substitui documentos oficiais.
             </p>
           </div>
         )}
