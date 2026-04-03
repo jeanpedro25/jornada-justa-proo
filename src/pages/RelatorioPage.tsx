@@ -399,21 +399,22 @@ function gerarExtratoPDF(
   y += 4;
 
   // Legal footer
-  y = checkPage(doc, y, 30);
+  y = checkPage(doc, y, 40);
   doc.setFillColor(255, 248, 225);
   doc.setDrawColor(243, 156, 18);
   const avisoTexto =
-    'Este documento foi gerado com base em informacoes fornecidas pelo usuario no aplicativo Hora Justa. ' +
+    'Este documento é um extrato matematico privado para organizacao pessoal. ' +
+    'Nao possui valor de laudo pericial, nao substitui cartoes de ponto oficiais e nao constitui prova legal absoluta. ' +
     'O nome da empresa e demais dados sao informados pelo proprio usuario para fins de controle pessoal. ' +
-    'Os dados apresentados possuem carater estimativo e informativo, nao sendo considerados documentos oficiais ou prova legal absoluta. ' +
-    'Recomenda-se a validacao das informacoes com um profissional qualificado antes de qualquer utilizacao legal.';
+    'O desenvolvedor isenta-se de responsabilidade por decisoes judiciais ou administrativas tomadas com base nestas estimativas. ' +
+    'Para validacao juridica, consulte um advogado ou contador qualificado.';
   const avisoLines = doc.splitTextToSize(avisoTexto, contentW - 6);
   const avisoH = avisoLines.length * 3.5 + 10;
   doc.roundedRect(margem, y, contentW, avisoH, 2, 2, 'FD');
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(100, 60, 0);
-  doc.text('AVISO LEGAL:', margem + 3, y + 5);
+  doc.text('⚠ AVISO LEGAL — ISENCAO DE RESPONSABILIDADE:', margem + 3, y + 5);
   doc.setFont('helvetica', 'normal');
   doc.text(avisoLines, margem + 3, y + 10);
 
@@ -428,9 +429,12 @@ function gerarExtratoPDF(
     doc.setFontSize(7);
     doc.setTextColor(170, 170, 180);
     doc.setFont('helvetica', 'normal');
-    doc.text('Hora Justa · Controle de Jornada Inteligente', margem, pH - 6);
+    doc.text('Hora Justa · Controle de Jornada Inteligente · Extrato para conferencia pessoal', margem, pH - 6);
     doc.text(`Pagina ${p} de ${totalPaginas}`, largura - margem, pH - 6, { align: 'right' });
   }
+
+  // Add watermark to all pages
+  addWatermark(doc);
 
   doc.save(`extrato-jornada-${new Date().toISOString().slice(0, 7)}.pdf`);
 }
