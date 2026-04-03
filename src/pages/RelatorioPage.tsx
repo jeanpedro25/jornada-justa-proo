@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { getCicloQuery } from '@/lib/ciclo-folha';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -494,13 +495,13 @@ const RelatorioPage: React.FC = () => {
     setTotalCompensado(total);
   };
 
+  const diaFechamento = (p?.dia_fechamento_folha as number) ?? 0;
+
   useEffect(() => {
     if (!user) return;
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const end = now.toISOString().split('T')[0];
+    const { start, end } = getCicloQuery(diaFechamento);
     fetchData(start, end);
-  }, [user]);
+  }, [user, diaFechamento]);
 
   const days = useMemo(
     () => buildDaySummaries(allMarcacoes, carga),
@@ -548,6 +549,10 @@ const RelatorioPage: React.FC = () => {
       case 'mes': {
         const s = new Date(now.getFullYear(), now.getMonth(), 1);
         return { start: fmt(s), end: fmt(now), label: `${meses[now.getMonth()]} ${now.getFullYear()}` };
+      }
+      case 'ciclo': {
+        const ciclo = getCicloQuery(diaFechamento, now);
+        return { start: ciclo.start, end: ciclo.end, label: `Ciclo de Apuração: ${ciclo.label}` };
       }
       case 'personalizado': {
         const s = options.dataInicio!;
@@ -685,7 +690,7 @@ const RelatorioPage: React.FC = () => {
         </Button>
         <AvisoLegal />
       </div>
-      <ReportOptionsModal open={showOptionsModal} onOpenChange={setShowOptionsModal} onGenerate={handleGeneratePDF} generating={generating} />
+      <ReportOptionsModal open={showOptionsModal} onOpenChange={setShowOptionsModal} onGenerate={handleGeneratePDF} generating={generating} cicloLabel={diaFechamento > 0 ? getCicloQuery(diaFechamento).label : undefined} />
       <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorTotal} trigger="pdf" />
       <BottomNav />
     </div>

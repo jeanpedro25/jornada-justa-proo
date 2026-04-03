@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export type PeriodoTipo = 'hoje' | 'semana' | 'mes' | 'personalizado' | 'tudo';
+export type PeriodoTipo = 'hoje' | 'semana' | 'mes' | 'ciclo' | 'personalizado' | 'tudo';
 export type TipoRelatorio = 'resumido' | 'completo';
 
 export interface ReportOptions {
@@ -31,10 +31,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onGenerate: (options: ReportOptions) => void;
   generating: boolean;
+  cicloLabel?: string;
 }
 
-const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, generating }) => {
-  const [periodo, setPeriodo] = useState<PeriodoTipo>('mes');
+const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, generating, cicloLabel }) => {
+  const [periodo, setPeriodo] = useState<PeriodoTipo>(cicloLabel ? 'ciclo' : 'mes');
   const [tipo, setTipo] = useState<TipoRelatorio>('completo');
   const [dataInicio, setDataInicio] = useState<Date | undefined>();
   const [dataFim, setDataFim] = useState<Date | undefined>();
@@ -77,6 +78,7 @@ const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, g
                 { value: 'hoje', label: 'Hoje' },
                 { value: 'semana', label: 'Esta semana' },
                 { value: 'mes', label: 'Este mês' },
+                ...(cicloLabel ? [{ value: 'ciclo', label: `📑 ${cicloLabel}` }] : []),
                 { value: 'personalizado', label: 'Personalizado' },
                 { value: 'tudo', label: 'Todo o histórico' },
               ].map((opt) => (

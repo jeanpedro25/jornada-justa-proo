@@ -6,6 +6,7 @@ import { calcularJornada, formatarDuracaoJornada, getCargaDiaria, type Marcacao 
 import { fetchBancoHorasEntries, summarizeBancoHoras, formatMinutosHoras } from '@/lib/banco-horas';
 import { getFeriadoComLocais } from '@/lib/feriados';
 import { calcularLiquido } from '@/lib/descontos';
+import { getCicloQuery } from '@/lib/ciclo-folha';
 import { usePaywall } from '@/hooks/usePaywall';
 import ProGate from '@/components/ProGate';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
@@ -43,11 +44,12 @@ const MonthSummaryCard: React.FC = () => {
     outrosDescontos: (p?.outros_descontos_detalhados as number) ?? 0,
   };
 
+  const diaFechamento = (p?.dia_fechamento_folha as number) ?? 0;
+
   const fetchData = useCallback(async () => {
     if (!user) return;
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const end = now.toISOString().split('T')[0];
+    const { start, end } = getCicloQuery(diaFechamento, now);
 
     const [marcRes, feriadosRes] = await Promise.all([
       supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
@@ -66,7 +68,7 @@ const MonthSummaryCard: React.FC = () => {
     const totalComp = (comps as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
     setBancoSaldo(saldoInicial + s.saldo - totalComp);
     setBancoUsado(totalComp);
-  }, [user, profile, salario, percentual]);
+  }, [user, profile, salario, percentual, diaFechamento]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
