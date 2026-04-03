@@ -288,36 +288,38 @@ function gerarExtratoPDF(
     y = (doc as any).lastAutoTable.finalY + 6;
   }
 
-  // Events
-  y = checkPage(doc, y, 20);
-  y = addSectionTitle(doc, 'Eventos do Periodo', y, margem);
+  // Events (conditional)
+  if (incluirEventos) {
+    y = checkPage(doc, y, 20);
+    y = addSectionTitle(doc, 'Eventos do Periodo', y, margem);
 
-  const eventos: { data: string; descricao: string }[] = [];
-  bancoEntries.forEach(e => {
-    const dl = new Date(e.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    if (e.tipo === 'compensacao') eventos.push({ data: dl, descricao: `Folga (compensacao banco de horas)${e.nota ? ' — ' + e.nota : ''}` });
-    if (e.tipo === 'acumulo') eventos.push({ data: dl, descricao: `Acumulo banco de horas: ${formatMinutosHoras(e.minutos)}` });
-  });
-
-  if (eventos.length === 0) {
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 140);
-    doc.text('Nenhum evento relevante no periodo.', margem, y);
-    y += 6;
-  } else {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    eventos.forEach(ev => {
-      y = checkPage(doc, y, 5);
-      doc.setTextColor(78, 205, 196);
-      doc.text(ev.data, margem, y);
-      doc.setTextColor(60, 60, 70);
-      doc.text(` — ${ev.descricao}`, margem + 14, y);
-      y += 4.5;
+    const eventos: { data: string; descricao: string }[] = [];
+    bancoEntries.forEach(e => {
+      const dl = new Date(e.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      if (e.tipo === 'compensacao') eventos.push({ data: dl, descricao: `Folga (compensacao banco de horas)${e.nota ? ' — ' + e.nota : ''}` });
+      if (e.tipo === 'acumulo') eventos.push({ data: dl, descricao: `Acumulo banco de horas: ${formatMinutosHoras(e.minutos)}` });
     });
+
+    if (eventos.length === 0) {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 140);
+      doc.text('Nenhum evento relevante no periodo.', margem, y);
+      y += 6;
+    } else {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      eventos.forEach(ev => {
+        y = checkPage(doc, y, 5);
+        doc.setTextColor(78, 205, 196);
+        doc.text(ev.data, margem, y);
+        doc.setTextColor(60, 60, 70);
+        doc.text(` — ${ev.descricao}`, margem + 14, y);
+        y += 4.5;
+      });
+    }
+    y += 3;
   }
-  y += 3;
 
   // Summary
   y = checkPage(doc, y, 25);
