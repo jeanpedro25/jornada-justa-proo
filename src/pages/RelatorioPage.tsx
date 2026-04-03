@@ -495,13 +495,13 @@ const RelatorioPage: React.FC = () => {
     setTotalCompensado(total);
   };
 
+  const diaFechamento = (p?.dia_fechamento_folha as number) ?? 0;
+
   useEffect(() => {
     if (!user) return;
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const end = now.toISOString().split('T')[0];
+    const { start, end } = getCicloQuery(diaFechamento);
     fetchData(start, end);
-  }, [user]);
+  }, [user, diaFechamento]);
 
   const days = useMemo(
     () => buildDaySummaries(allMarcacoes, carga),
