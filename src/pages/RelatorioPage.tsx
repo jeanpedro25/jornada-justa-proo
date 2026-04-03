@@ -621,6 +621,7 @@ const RelatorioPage: React.FC = () => {
         </Button>
         <AvisoLegal />
       </div>
+      <ReportOptionsModal open={showOptionsModal} onOpenChange={setShowOptionsModal} onGenerate={handleGeneratePDF} generating={generating} />
       <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorTotal} trigger="pdf" />
       <BottomNav />
     </div>
