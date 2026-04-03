@@ -39,9 +39,11 @@ const OnboardingPage: React.FC = () => {
         nome: nome.trim(),
         salario_base: Number(salario),
         carga_horaria_diaria: cargaFinal,
-        hora_extra_percentual: percentual!,
+        hora_extra_percentual: Number(percentual),
+        hora_extra_percentual_feriado: Number(percentualFeriado),
         onboarding_completo: true,
-      })
+      } as any)
+      .eq('id', user.id);
       .eq('id', user.id);
 
     if (error) {
