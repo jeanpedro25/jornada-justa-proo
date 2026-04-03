@@ -11,6 +11,7 @@ import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide
 import BancoHorasConfig from '@/components/BancoHorasConfig';
 import JornadaConfig from '@/components/JornadaConfig';
 import FeriasConfig from '@/components/FeriasConfig';
+import FeriadosLocaisConfig from '@/components/FeriadosLocaisConfig';
 import AvisoLegal from '@/components/AvisoLegal';
 
 const ConfigPage: React.FC = () => {
