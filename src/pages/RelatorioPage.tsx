@@ -617,7 +617,7 @@ const RelatorioPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       <AppHeader title="Extrato de Jornada" subtitle="Relatório completo da sua jornada" />
-      <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
+      <div className="px-4 mt-2 max-w-lg mx-auto space-y-4">
         {/* Preview Card */}
         <div className="bg-primary text-primary-foreground rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 mb-1">
