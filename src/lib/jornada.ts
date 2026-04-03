@@ -230,7 +230,7 @@ export function proximoTipoAvancado(marcacoes: Marcacao[]): {
   }
 
   if (estado === 'encerrada') {
-    return { tipo: 'entrada', label: 'Nova Entrada', icone: '▶', cor: 'success' };
+    return { tipo: 'entrada', label: 'Retornei ao trabalho', icone: '↩', cor: 'accent' };
   }
 
   return { tipo: 'entrada', label: 'Bater Entrada', icone: '▶', cor: 'success' };
