@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN descontos_fixos numeric NOT NULL DEFAULT 0;

@@ -25,6 +25,7 @@ const ConfigPage: React.FC = () => {
   const [percentual, setPercentual] = useState('');
   const [almoco, setAlmoco] = useState('60');
   const [saving, setSaving] = useState(false);
+  const [descontosFixos, setDescontosFixos] = useState('0');
 
   // Banco de Horas
   const [modoTrabalho, setModoTrabalho] = useState('horas_extras');
@@ -77,6 +78,7 @@ const ConfigPage: React.FC = () => {
       setTurnoCInicio(p.turno_c_inicio || '');
       setTurnoCFim(p.turno_c_fim || '');
       setAlternanciaTurno(p.alternancia_turno || 'manual');
+      setDescontosFixos(String(p.descontos_fixos ?? 0));
     }
   }, [profile]);
 
@@ -109,6 +111,7 @@ const ConfigPage: React.FC = () => {
       turno_c_inicio: turnoCInicio || null,
       turno_c_fim: turnoCFim || null,
       alternancia_turno: alternanciaTurno,
+      descontos_fixos: Number(descontosFixos) || 0,
     } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -212,6 +215,17 @@ const ConfigPage: React.FC = () => {
             <Input type="number" value={almoco} onChange={(e) => setAlmoco(e.target.value)} className="rounded-xl" placeholder="Ex: 60" />
             <p className="text-[10px] text-muted-foreground mt-1">
               Tempo de intervalo padrão. CLT exige mínimo de 1h para jornadas &gt; 6h.
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">💰 Descontos fixos mensais (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={descontosFixos} onChange={(e) => setDescontosFixos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 150" />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Convênio médico, sindicato, VT, etc. Será descontado na estimativa de líquido.
             </p>
           </div>
         </div>
