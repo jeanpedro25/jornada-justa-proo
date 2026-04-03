@@ -428,6 +428,11 @@ const HistoricoPage: React.FC = () => {
                         +{formatarDuracaoJornada(Math.round(day.extraHours * 60))}
                       </span>
                     )}
+                    {day.status === 'registrado' && day.devendoMin > 0 && day.extraHours <= 0 && (
+                      <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">
+                        -{formatarDuracaoJornada(day.devendoMin)} devendo
+                      </span>
+                    )}
                   </div>
                 </button>
               );
