@@ -123,64 +123,171 @@ const ConfigPage: React.FC = () => {
     if (!user) return;
     try {
       const XLSX = await import('xlsx');
-      const [marcRes, regRes, feriasRes, compRes] = await Promise.all([
-        supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id).is('deleted_at', null).order('horario', { ascending: true }),
-        supabase.from('registros_ponto').select('*').eq('user_id', user.id).is('deleted_at', null),
-        supabase.from('ferias').select('*').eq('user_id', user.id),
-        supabase.from('compensacoes_banco_horas').select('*').eq('user_id', user.id),
+      const [marcRes, regRes, feriasRes, compRes, bhRes] = await Promise.all([
+        supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id).is('deleted_at', null).order('data', { ascending: true }).order('horario', { ascending: true }),
+        supabase.from('registros_ponto').select('*').eq('user_id', user.id).is('deleted_at', null).order('data', { ascending: true }),
+        supabase.from('ferias').select('*').eq('user_id', user.id).order('data_inicio', { ascending: true }),
+        supabase.from('compensacoes_banco_horas').select('*').eq('user_id', user.id).order('data', { ascending: true }),
+        supabase.from('banco_horas').select('*').eq('user_id', user.id).order('data', { ascending: true }),
       ]);
 
       const wb = XLSX.utils.book_new();
+      const p = profile as any;
 
-      // Marcações
+      const fmtData = (d: string) => {
+        if (!d) return '';
+        const [y, m, day] = d.split('-');
+        return `${day}/${m}/${y}`;
+      };
+      const fmtHora = (iso: string) => {
+        if (!iso) return '';
+        try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+        catch { return iso; }
+      };
+      const fmtMinHoras = (min: number) => {
+        if (!min && min !== 0) return '';
+        const h = Math.floor(Math.abs(min) / 60);
+        const m = Math.abs(min) % 60;
+        return `${min < 0 ? '-' : ''}${h}h ${String(m).padStart(2, '0')}min`;
+      };
+      const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+      const getDiaSemana = (d: string) => {
+        if (!d) return '';
+        const dt = new Date(d + 'T12:00:00');
+        return diasSemana[dt.getDay()];
+      };
+
+      const setColWidths = (ws: any, widths: number[]) => {
+        ws['!cols'] = widths.map(w => ({ wch: w }));
+      };
+
+      // ── ABA 1: Resumo Diário (agrupado por dia)
+      const marcsPorDia = new Map<string, any[]>();
+      (marcRes.data || []).forEach((m: any) => {
+        if (!marcsPorDia.has(m.data)) marcsPorDia.set(m.data, []);
+        marcsPorDia.get(m.data)!.push(m);
+      });
+
+      const resumoDiario: any[] = [];
+      marcsPorDia.forEach((marks, data) => {
+        const sorted = marks.sort((a: any, b: any) => a.horario.localeCompare(b.horario));
+        const entrada = sorted.find((m: any) => m.tipo === 'entrada');
+        const saidaIntervalo = sorted.find((m: any) => m.tipo === 'saida_intervalo');
+        const voltaIntervalo = sorted.find((m: any) => m.tipo === 'volta_intervalo');
+        const saidaFinal = sorted.find((m: any) => m.tipo === 'saida_final');
+
+        const cargaMin = (p?.carga_horaria_diaria || 8) * 60;
+        let totalTrab = 0;
+        if (entrada && saidaIntervalo) {
+          totalTrab += (new Date(saidaIntervalo.horario).getTime() - new Date(entrada.horario).getTime()) / 60000;
+        }
+        if (voltaIntervalo && saidaFinal) {
+          totalTrab += (new Date(saidaFinal.horario).getTime() - new Date(voltaIntervalo.horario).getTime()) / 60000;
+        } else if (entrada && saidaFinal && !saidaIntervalo) {
+          totalTrab = (new Date(saidaFinal.horario).getTime() - new Date(entrada.horario).getTime()) / 60000;
+        }
+        totalTrab = Math.round(totalTrab);
+
+        let intervaloMin = 0;
+        if (saidaIntervalo && voltaIntervalo) {
+          intervaloMin = Math.round((new Date(voltaIntervalo.horario).getTime() - new Date(saidaIntervalo.horario).getTime()) / 60000);
+        }
+
+        const extra = Math.max(0, totalTrab - cargaMin);
+        const devendo = Math.max(0, cargaMin - totalTrab);
+
+        resumoDiario.push({
+          'Data': fmtData(data),
+          'Dia da Semana': getDiaSemana(data),
+          'Entrada': entrada ? fmtHora(entrada.horario) : '',
+          'Saída Intervalo': saidaIntervalo ? fmtHora(saidaIntervalo.horario) : '',
+          'Volta Intervalo': voltaIntervalo ? fmtHora(voltaIntervalo.horario) : '',
+          'Saída Final': saidaFinal ? fmtHora(saidaFinal.horario) : '',
+          'Intervalo': intervaloMin > 0 ? fmtMinHoras(intervaloMin) : '',
+          'Total Trabalhado': totalTrab > 0 ? fmtMinHoras(totalTrab) : '',
+          'Carga Diária': fmtMinHoras(cargaMin),
+          'Hora Extra': extra > 0 ? fmtMinHoras(extra) : '',
+          'Devendo': devendo > 0 ? fmtMinHoras(devendo) : '',
+          'Origem': marks[0]?.origem || '',
+        });
+      });
+      const wsResumo = XLSX.utils.json_to_sheet(resumoDiario);
+      setColWidths(wsResumo, [12, 14, 10, 16, 16, 12, 12, 16, 14, 14, 14, 10]);
+      XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo Diário');
+
+      // ── ABA 2: Todas as Marcações
       const marcData = (marcRes.data || []).map((m: any) => ({
-        Data: m.data,
-        Tipo: m.tipo,
-        Horário: new Date(m.horario).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        Origem: m.origem,
+        'Data': fmtData(m.data),
+        'Dia da Semana': getDiaSemana(m.data),
+        'Tipo': m.tipo === 'entrada' ? 'Entrada' :
+                m.tipo === 'saida_intervalo' ? 'Saída Intervalo' :
+                m.tipo === 'volta_intervalo' ? 'Volta Intervalo' :
+                m.tipo === 'saida_final' ? 'Saída Final' : m.tipo,
+        'Horário': fmtHora(m.horario),
+        'Origem': m.origem === 'botao' ? 'Botão' : m.origem === 'manual' ? 'Manual' : m.origem || '',
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(marcData), 'Marcações');
+      const wsMarcacoes = XLSX.utils.json_to_sheet(marcData);
+      setColWidths(wsMarcacoes, [12, 14, 18, 10, 10]);
+      XLSX.utils.book_append_sheet(wb, wsMarcacoes, 'Marcações');
 
-      // Registros
-      const regData = (regRes.data || []).map((r: any) => ({
-        Data: r.data,
-        Entrada: r.entrada ? new Date(r.entrada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
-        Saída: r.saida ? new Date(r.saida).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
-        'Intervalo (min)': r.intervalo_minutos,
-        Observação: r.observacao || '',
-        Atestado: r.atestado_periodo || '',
+      // ── ABA 3: Banco de Horas
+      const bhData = (bhRes.data || []).map((b: any) => ({
+        'Data': fmtData(b.data),
+        'Tipo': b.tipo === 'acumulo' ? 'Acúmulo' : b.tipo === 'compensacao' ? 'Compensação' : b.tipo,
+        'Horas': fmtMinHoras(b.minutos),
+        'Minutos': b.minutos,
+        'Expira em': fmtData(b.expira_em),
+        'Nota': b.nota || '',
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(regData), 'Registros');
+      const wsBH = XLSX.utils.json_to_sheet(bhData);
+      setColWidths(wsBH, [12, 16, 14, 10, 12, 30]);
+      XLSX.utils.book_append_sheet(wb, wsBH, 'Banco de Horas');
 
-      // Férias
-      const feriasData = (feriasRes.data || []).map((f: any) => ({
-        Início: f.data_inicio,
-        Fim: f.data_fim,
-        Tipo: f.tipo,
-        Status: f.status,
-        Observação: f.observacao || '',
-      }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(feriasData), 'Férias');
-
-      // Compensações
+      // ── ABA 4: Compensações
       const compData = (compRes.data || []).map((c: any) => ({
-        Data: c.data,
+        'Data': fmtData(c.data),
+        'Horas': fmtMinHoras(c.minutos),
         'Minutos': c.minutos,
-        Tipo: c.tipo,
-        Observação: c.observacao || '',
+        'Tipo': c.tipo === 'dia_completo' ? 'Dia Completo' : c.tipo || '',
+        'Observação': c.observacao || '',
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(compData), 'Compensações');
+      const wsComp = XLSX.utils.json_to_sheet(compData);
+      setColWidths(wsComp, [12, 14, 10, 16, 30]);
+      XLSX.utils.book_append_sheet(wb, wsComp, 'Compensações');
 
-      // Perfil
-      const perfilData = [{
-        Nome: (profile as any)?.nome || '',
-        Empresa: (profile as any)?.empresa || '',
-        'Carga Horária': (profile as any)?.carga_horaria_diaria || 8,
-        'Salário Base': (profile as any)?.salario_base || 0,
-      }];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(perfilData), 'Perfil');
+      // ── ABA 5: Férias
+      const feriasData = (feriasRes.data || []).map((f: any) => ({
+        'Início': fmtData(f.data_inicio),
+        'Fim': fmtData(f.data_fim),
+        'Tipo': f.tipo || '',
+        'Status': f.status || '',
+        'Dias de Direito': f.dias_direito || '',
+        'Observação': f.observacao || '',
+      }));
+      const wsFerias = XLSX.utils.json_to_sheet(feriasData);
+      setColWidths(wsFerias, [12, 12, 16, 14, 16, 30]);
+      XLSX.utils.book_append_sheet(wb, wsFerias, 'Férias');
 
-      XLSX.writeFile(wb, 'hora-justa-dados.xlsx');
+      // ── ABA 6: Perfil
+      const perfilData = [
+        { 'Campo': 'Nome', 'Valor': p?.nome || '' },
+        { 'Campo': 'Empresa', 'Valor': p?.empresa || '' },
+        { 'Campo': 'Carga Horária Diária', 'Valor': `${p?.carga_horaria_diaria || 8}h` },
+        { 'Campo': 'Salário Base', 'Valor': p?.salario_base ? `R$ ${Number(p.salario_base).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '' },
+        { 'Campo': 'Tipo de Jornada', 'Valor': p?.tipo_jornada || '' },
+        { 'Campo': 'Percentual Hora Extra', 'Valor': `${p?.hora_extra_percentual || 50}%` },
+        { 'Campo': 'Intervalo Almoço', 'Valor': `${p?.intervalo_almoco || 60} min` },
+        { 'Campo': 'Dias Trabalhados/Semana', 'Valor': p?.dias_trabalhados_semana || 5 },
+        { 'Campo': 'Saldo Inicial Banco Horas', 'Valor': p?.banco_horas_saldo_inicial ? fmtMinHoras(p.banco_horas_saldo_inicial) : '0h 00min' },
+        { 'Campo': 'Data Admissão', 'Valor': p?.data_admissao ? fmtData(p.data_admissao) : '' },
+      ];
+      const wsPerfil = XLSX.utils.json_to_sheet(perfilData);
+      setColWidths(wsPerfil, [28, 30]);
+      XLSX.utils.book_append_sheet(wb, wsPerfil, 'Perfil');
+
+      const now = new Date();
+      const fileName = `hora-justa-dados-${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}.xlsx`;
+      XLSX.writeFile(wb, fileName);
       toast({ title: '📊 Dados exportados em Excel!' });
     } catch (err: any) {
       toast({ title: 'Erro ao exportar', description: err.message, variant: 'destructive' });
