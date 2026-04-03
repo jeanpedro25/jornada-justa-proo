@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar, Clock, TrendingUp, AlertTriangle, Palmtree, PartyPopper, Moon } from 'lucide-react';
 import ManualEntry from '@/components/ManualEntry';
 import EditMarcacoesDia from '@/components/EditMarcacoesDia';
-import { getFeriado } from '@/lib/feriados';
+import { getFeriadoComLocais } from '@/lib/feriados';
 import {
   calcularJornada, formatarDuracaoJornada,
   formatarHoraLocal, getCargaDiaria, type Marcacao,
