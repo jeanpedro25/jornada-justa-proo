@@ -690,7 +690,7 @@ const RelatorioPage: React.FC = () => {
         </Button>
         <AvisoLegal />
       </div>
-      <ReportOptionsModal open={showOptionsModal} onOpenChange={setShowOptionsModal} onGenerate={handleGeneratePDF} generating={generating} />
+      <ReportOptionsModal open={showOptionsModal} onOpenChange={setShowOptionsModal} onGenerate={handleGeneratePDF} generating={generating} cicloLabel={diaFechamento > 0 ? getCicloQuery(diaFechamento).label : undefined} />
       <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorTotal} trigger="pdf" />
       <BottomNav />
     </div>
