@@ -15,8 +15,8 @@ interface PaywallModalProps {
 }
 
 const benefits = [
-  { icon: TrendingUp, text: 'Ver valor completo em dinheiro (estimativa)' },
-  { icon: FileText, text: 'Relatório PDF completo' },
+  { icon: TrendingUp, text: 'Estimativa completa de ganhos e descontos' },
+  { icon: FileText, text: 'Extrato pessoal detalhado em PDF' },
   { icon: Clock, text: 'Histórico ilimitado' },
   { icon: Shield, text: 'Backup na nuvem' },
   { icon: Sparkles, text: 'Alertas inteligentes' },
@@ -24,9 +24,9 @@ const benefits = [
 ];
 
 const phrases = [
-  'Você pode estar perdendo dinheiro sem perceber',
-  'Veja quanto suas horas realmente valem',
-  'Descubra seu valor acumulado agora',
+  'Organize sua jornada com mais clareza',
+  'Tenha controle total das suas horas',
+  'Sua jornada merece ser acompanhada de perto',
 ];
 
 const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimatedValue, trigger }) => {
