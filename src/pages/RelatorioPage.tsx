@@ -172,7 +172,7 @@ function gerarExtratoPDF(
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
     { label: 'Horas Compensadas', valor: fmtHM(bhSummary.aCompensar + totalCompensado), cor: [52, 152, 219] as const },
     { label: 'Horas Vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h', cor: [243, 156, 18] as const },
-    { label: 'Estimativa (R$)', valor: valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
+    { label: 'Ganho adicional em\nhoras extras (estimado)', valor: valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
   ];
 
   const cardW = (contentW - 6) / 3;
@@ -185,16 +185,48 @@ function gerarExtratoPDF(
     doc.setFillColor(248, 249, 255);
     doc.setDrawColor(220, 220, 230);
     doc.roundedRect(x, cy, cardW, cardH, 2, 2, 'FD');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(120, 120, 140);
-    doc.text(c.label, x + cardW / 2, cy + 7, { align: 'center' });
+    const labelLines = c.label.split('\n');
+    if (labelLines.length > 1) {
+      doc.text(labelLines[0], x + cardW / 2, cy + 5, { align: 'center' });
+      doc.text(labelLines[1], x + cardW / 2, cy + 8.5, { align: 'center' });
+    } else {
+      doc.text(c.label, x + cardW / 2, cy + 7, { align: 'center' });
+    }
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(c.cor[0], c.cor[1], c.cor[2]);
     doc.text(c.valor, x + cardW / 2, cy + 15, { align: 'center' });
   });
   y += (cardH + 3) * 2 + 4;
+
+  // Financial breakdown when salary is set
+  if (salario > 0) {
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 90);
+    doc.text('Salario base:', margem, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(26, 26, 46);
+    doc.text(salario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), margem + 45, y);
+    y += 4.5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 90);
+    doc.text('Extras no periodo:', margem, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(totalMinExtra > 0 ? 243 : 26, totalMinExtra > 0 ? 156 : 26, totalMinExtra > 0 ? 18 : 46);
+    doc.text(valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), margem + 45, y);
+    y += 4.5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 90);
+    doc.text('Total estimado:', margem, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(39, 174, 96);
+    doc.text((salario + valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), margem + 45, y);
+    y += 6;
+  }
 
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'italic');
