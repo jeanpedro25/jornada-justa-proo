@@ -59,7 +59,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
           <Lock size={28} className="mx-auto mb-3 opacity-80" />
           <h2 className="text-xl font-bold mb-1">Veja quanto suas horas realmente valem</h2>
           <p className="text-sm opacity-80">
-            Tenha acesso completo aos valores estimados, relatórios e controle total da sua jornada
+            Veja seu valor real e baixe extratos profissionais por apenas R$ 9,90/mês ou R$ 79,90/ano
           </p>
         </div>
 
