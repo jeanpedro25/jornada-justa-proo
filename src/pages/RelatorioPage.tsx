@@ -234,57 +234,59 @@ function gerarExtratoPDF(
     y += 3;
   }
 
-  // Detailed table using marcacoes_ponto data
-  y = checkPage(doc, y, 20);
-  y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
+  // Detailed table (only for 'completo')
+  if (!isResumido) {
+    y = checkPage(doc, y, 20);
+    y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
 
-  const tableBody = days.map(d => {
-    const dateObj = new Date(d.data + 'T12:00:00');
-    const hT = Math.floor(d.totalMin / 60);
-    const mT = Math.round(d.totalMin % 60);
-    const hE = Math.floor(d.extraMin / 60);
-    const mE = Math.round(d.extraMin % 60);
+    const tableBody = days.map(d => {
+      const dateObj = new Date(d.data + 'T12:00:00');
+      const hT = Math.floor(d.totalMin / 60);
+      const mT = Math.round(d.totalMin % 60);
+      const hE = Math.floor(d.extraMin / 60);
+      const mE = Math.round(d.extraMin % 60);
 
-    let tipo = 'Normal';
-    if (d.extraMin > 0) tipo = 'Hora extra';
-    else if (!d.ultimaSaida) tipo = 'Incompleto';
+      let tipo = 'Normal';
+      if (d.extraMin > 0) tipo = 'Hora extra';
+      else if (!d.ultimaSaida) tipo = 'Incompleto';
 
-    return [
-      dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      diasSemana[dateObj.getDay()],
-      d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
-      d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
-      d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
-      `${hT}h${mT}min`,
-      d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
-      tipo,
-    ];
-  });
+      return [
+        dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        diasSemana[dateObj.getDay()],
+        d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
+        d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
+        d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
+        `${hT}h${mT}min`,
+        d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
+        tipo,
+      ];
+    });
 
-  autoTable(doc, {
-    startY: y,
-    head: [['Data', 'Dia', 'Entrada', 'Saída', 'Intervalo', 'Trabalhado', 'Extra', 'Tipo']],
-    body: tableBody,
-    theme: 'grid',
-    styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak', halign: 'center' },
-    headStyles: { fillColor: [26, 26, 46], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
-    alternateRowStyles: { fillColor: [248, 249, 255] },
-    margin: { left: margem, right: margem },
-    didParseCell: (data) => {
-      if (data.section === 'body') {
-        const extra = tableBody[data.row.index]?.[6];
-        const tipo = tableBody[data.row.index]?.[7];
-        if (data.column.index === 6 && extra !== '—') {
-          data.cell.styles.textColor = [231, 76, 60];
+    autoTable(doc, {
+      startY: y,
+      head: [['Data', 'Dia', 'Entrada', 'Saída', 'Intervalo', 'Trabalhado', 'Extra', 'Tipo']],
+      body: tableBody,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak', halign: 'center' },
+      headStyles: { fillColor: [26, 26, 46], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      alternateRowStyles: { fillColor: [248, 249, 255] },
+      margin: { left: margem, right: margem },
+      didParseCell: (data) => {
+        if (data.section === 'body') {
+          const extra = tableBody[data.row.index]?.[6];
+          const tipo = tableBody[data.row.index]?.[7];
+          if (data.column.index === 6 && extra !== '—') {
+            data.cell.styles.textColor = [231, 76, 60];
+          }
+          if (data.column.index === 7) {
+            if (tipo === 'Hora extra') data.cell.styles.textColor = [243, 156, 18];
+          }
         }
-        if (data.column.index === 7) {
-          if (tipo === 'Hora extra') data.cell.styles.textColor = [243, 156, 18];
-        }
-      }
-    },
-  });
+      },
+    });
 
-  y = (doc as any).lastAutoTable.finalY + 6;
+    y = (doc as any).lastAutoTable.finalY + 6;
+  }
 
   // Events
   y = checkPage(doc, y, 20);
