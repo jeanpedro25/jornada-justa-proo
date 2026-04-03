@@ -15,7 +15,8 @@ const OnboardingPage: React.FC = () => {
   const [salario, setSalario] = useState('');
   const [carga, setCarga] = useState<number | null>(null);
   const [cargaCustom, setCargaCustom] = useState('');
-  const [percentual, setPercentual] = useState<number | null>(null);
+  const [percentual, setPercentual] = useState('50');
+  const [percentualFeriado, setPercentualFeriado] = useState('100');
   const [loading, setLoading] = useState(false);
 
   const progress = (step / 4) * 100;
