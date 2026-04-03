@@ -32,6 +32,16 @@ const MonthSummaryCard: React.FC = () => {
   const salario = profile?.salario_base ?? 0;
   const percentual = profile?.hora_extra_percentual ?? 50;
   const descontosFixos = (p?.descontos_fixos as number) ?? 0;
+  const beneficios = {
+    valeAlimentacao: (p?.vale_alimentacao as number) ?? 0,
+    auxilioCombustivel: (p?.auxilio_combustivel as number) ?? 0,
+    bonificacoes: (p?.bonificacoes as number) ?? 0,
+  };
+  const descontosDetalhados = {
+    planoSaude: (p?.plano_saude as number) ?? 0,
+    adiantamentos: (p?.adiantamentos as number) ?? 0,
+    outrosDescontos: (p?.outros_descontos_detalhados as number) ?? 0,
+  };
 
   const fetchData = useCallback(async () => {
     if (!user) return;
