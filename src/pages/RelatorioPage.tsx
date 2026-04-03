@@ -20,11 +20,13 @@ import {
   Clock, Calendar,
 } from 'lucide-react';
 import AvisoLegal from '@/components/AvisoLegal';
+import ReportOptionsModal, { type ReportOptions } from '@/components/ReportOptionsModal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
