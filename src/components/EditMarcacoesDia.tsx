@@ -106,8 +106,8 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     setObservacao(regs?.[0]?.observacao || '');
   };
 
-  const jornada = calcularJornada(marcacoes);
-  const horaExtra = calcularHoraExtra(jornada.totalTrabalhado, carga);
+  const cargaMin = carga * 60;
+  const jornada = calcularJornada(marcacoes, cargaMin);
 
   const avisos = useMemo(() => {
     const list: { tipo: 'warning' | 'info'; msg: string }[] = [];
