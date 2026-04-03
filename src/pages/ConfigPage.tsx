@@ -28,6 +28,16 @@ const ConfigPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [descontosFixos, setDescontosFixos] = useState('0');
 
+  // Benefícios
+  const [valeAlimentacao, setValeAlimentacao] = useState('0');
+  const [auxilioCombustivel, setAuxilioCombustivel] = useState('0');
+  const [bonificacoes, setBonificacoes] = useState('0');
+
+  // Descontos detalhados
+  const [planoSaude, setPlanoSaude] = useState('0');
+  const [adiantamentos, setAdiantamentos] = useState('0');
+  const [outrosDescontos, setOutrosDescontos] = useState('0');
+
   // Banco de Horas
   const [modoTrabalho, setModoTrabalho] = useState('horas_extras');
   const [prazoComp, setPrazoComp] = useState('180');
@@ -80,6 +90,12 @@ const ConfigPage: React.FC = () => {
       setTurnoCFim(p.turno_c_fim || '');
       setAlternanciaTurno(p.alternancia_turno || 'manual');
       setDescontosFixos(String(p.descontos_fixos ?? 0));
+      setValeAlimentacao(String(p.vale_alimentacao ?? 0));
+      setAuxilioCombustivel(String(p.auxilio_combustivel ?? 0));
+      setBonificacoes(String(p.bonificacoes ?? 0));
+      setPlanoSaude(String(p.plano_saude ?? 0));
+      setAdiantamentos(String(p.adiantamentos ?? 0));
+      setOutrosDescontos(String(p.outros_descontos_detalhados ?? 0));
     }
   }, [profile]);
 
@@ -113,6 +129,12 @@ const ConfigPage: React.FC = () => {
       turno_c_fim: turnoCFim || null,
       alternancia_turno: alternanciaTurno,
       descontos_fixos: Number(descontosFixos) || 0,
+      vale_alimentacao: Number(valeAlimentacao) || 0,
+      auxilio_combustivel: Number(auxilioCombustivel) || 0,
+      bonificacoes: Number(bonificacoes) || 0,
+      plano_saude: Number(planoSaude) || 0,
+      adiantamentos: Number(adiantamentos) || 0,
+      outros_descontos_detalhados: Number(outrosDescontos) || 0,
     } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -219,15 +241,69 @@ const ConfigPage: React.FC = () => {
             </p>
           </div>
 
+        </div>
+
+        {/* Benefícios (Entradas) */}
+        <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">💰</span>
+            <span className="font-semibold text-sm">Benefícios (não tributáveis)</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Estes valores somam ao montante final mas não sofrem descontos de INSS/IRRF.
+          </p>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">💰 Descontos fixos mensais (R$)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Vale Alimentação/Refeição (R$)</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-              <Input type="number" value={descontosFixos} onChange={(e) => setDescontosFixos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 150" />
+              <Input type="number" value={valeAlimentacao} onChange={(e) => setValeAlimentacao(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 600" />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Convênio médico, sindicato, VT, etc. Será descontado na estimativa de líquido.
-            </p>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Auxílio Combustível/Home Office (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={auxilioCombustivel} onChange={(e) => setAuxilioCombustivel(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 200" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Bonificações/Prêmios (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={bonificacoes} onChange={(e) => setBonificacoes(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 300" />
+            </div>
+          </div>
+        </div>
+
+        {/* Descontos detalhados */}
+        <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">📉</span>
+            <span className="font-semibold text-sm">Descontos adicionais</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Cadastre seus descontos para bater com a realidade do contracheque.
+          </p>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Plano de Saúde/Odonto (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={planoSaude} onChange={(e) => setPlanoSaude(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 250" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Adiantamentos / Vales (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={adiantamentos} onChange={(e) => setAdiantamentos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 500" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Coparticipação e Outros (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={outrosDescontos} onChange={(e) => setOutrosDescontos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 50" />
+            </div>
           </div>
         </div>
 

@@ -32,6 +32,16 @@ const MonthSummaryCard: React.FC = () => {
   const salario = profile?.salario_base ?? 0;
   const percentual = profile?.hora_extra_percentual ?? 50;
   const descontosFixos = (p?.descontos_fixos as number) ?? 0;
+  const beneficios = {
+    valeAlimentacao: (p?.vale_alimentacao as number) ?? 0,
+    auxilioCombustivel: (p?.auxilio_combustivel as number) ?? 0,
+    bonificacoes: (p?.bonificacoes as number) ?? 0,
+  };
+  const descontosDetalhados = {
+    planoSaude: (p?.plano_saude as number) ?? 0,
+    adiantamentos: (p?.adiantamentos as number) ?? 0,
+    outrosDescontos: (p?.outros_descontos_detalhados as number) ?? 0,
+  };
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -89,10 +99,10 @@ const MonthSummaryCard: React.FC = () => {
     const estimativaExtra = (extraMin / 60) * valorHE;
     const bruto = salario + estimativaExtra;
 
-    const resumo = calcularLiquido(bruto, descontosFixos);
+    const resumo = calcularLiquido(bruto, descontosFixos, beneficios, descontosDetalhados);
 
     return { totalMin, extraMin, diasTrab, estimativaExtra, bruto, valorHN, valorHE, resumo };
-  }, [marcacoes, carga, salario, percentual, feriadosLocais, descontosFixos]);
+  }, [marcacoes, carga, salario, percentual, feriadosLocais, descontosFixos, beneficios, descontosDetalhados]);
 
   const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long' }).replace(/^./, s => s.toUpperCase());
 
@@ -178,6 +188,49 @@ const MonthSummaryCard: React.FC = () => {
                     <span className="text-muted-foreground">(-) Descontos fixos</span>
                     <span className="font-medium text-destructive">-{formatCurrency(descontosFixos)}</span>
                   </div>
+                )}
+                {/* Descontos detalhados */}
+                {stats.resumo.descontosDetalhados.planoSaude > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">(-) Plano Saúde/Odonto</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(stats.resumo.descontosDetalhados.planoSaude)}</span>
+                  </div>
+                )}
+                {stats.resumo.descontosDetalhados.adiantamentos > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">(-) Adiantamentos</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(stats.resumo.descontosDetalhados.adiantamentos)}</span>
+                  </div>
+                )}
+                {stats.resumo.descontosDetalhados.outrosDescontos > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">(-) Outros descontos</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(stats.resumo.descontosDetalhados.outrosDescontos)}</span>
+                  </div>
+                )}
+                {/* Benefícios */}
+                {stats.resumo.totalBeneficios > 0 && (
+                  <>
+                    <div className="border-t border-border pt-1.5 mt-1.5" />
+                    {stats.resumo.beneficios.valeAlimentacao > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">(+) VA/VR</span>
+                        <span className="font-medium text-success">+{formatCurrency(stats.resumo.beneficios.valeAlimentacao)}</span>
+                      </div>
+                    )}
+                    {stats.resumo.beneficios.auxilioCombustivel > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">(+) Auxílio Combustível/HO</span>
+                        <span className="font-medium text-success">+{formatCurrency(stats.resumo.beneficios.auxilioCombustivel)}</span>
+                      </div>
+                    )}
+                    {stats.resumo.beneficios.bonificacoes > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">(+) Bonificações</span>
+                        <span className="font-medium text-success">+{formatCurrency(stats.resumo.beneficios.bonificacoes)}</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 {/* Extras breakdown */}
                 <div className="border-t border-border pt-1.5 mt-1.5" />

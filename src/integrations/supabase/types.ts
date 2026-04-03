@@ -224,9 +224,12 @@ export type Database = {
       profiles: {
         Row: {
           aceite_termos: boolean
+          adiantamentos: number
           alternancia_turno: string
+          auxilio_combustivel: number
           banco_horas_saldo_inicial: number | null
           banco_horas_saldo_inicial_data: string | null
+          bonificacoes: number
           carga_horaria_diaria: number | null
           created_at: string | null
           data_admissao: string | null
@@ -247,7 +250,9 @@ export type Database = {
           modo_trabalho: string
           nome: string | null
           onboarding_completo: boolean | null
+          outros_descontos_detalhados: number
           plano: string | null
+          plano_saude: number
           prazo_compensacao_dias: number
           regra_conversao: string
           salario_base: number | null
@@ -258,12 +263,16 @@ export type Database = {
           turno_b_inicio: string | null
           turno_c_fim: string | null
           turno_c_inicio: string | null
+          vale_alimentacao: number
         }
         Insert: {
           aceite_termos?: boolean
+          adiantamentos?: number
           alternancia_turno?: string
+          auxilio_combustivel?: number
           banco_horas_saldo_inicial?: number | null
           banco_horas_saldo_inicial_data?: string | null
+          bonificacoes?: number
           carga_horaria_diaria?: number | null
           created_at?: string | null
           data_admissao?: string | null
@@ -284,7 +293,9 @@ export type Database = {
           modo_trabalho?: string
           nome?: string | null
           onboarding_completo?: boolean | null
+          outros_descontos_detalhados?: number
           plano?: string | null
+          plano_saude?: number
           prazo_compensacao_dias?: number
           regra_conversao?: string
           salario_base?: number | null
@@ -295,12 +306,16 @@ export type Database = {
           turno_b_inicio?: string | null
           turno_c_fim?: string | null
           turno_c_inicio?: string | null
+          vale_alimentacao?: number
         }
         Update: {
           aceite_termos?: boolean
+          adiantamentos?: number
           alternancia_turno?: string
+          auxilio_combustivel?: number
           banco_horas_saldo_inicial?: number | null
           banco_horas_saldo_inicial_data?: string | null
+          bonificacoes?: number
           carga_horaria_diaria?: number | null
           created_at?: string | null
           data_admissao?: string | null
@@ -321,7 +336,9 @@ export type Database = {
           modo_trabalho?: string
           nome?: string | null
           onboarding_completo?: boolean | null
+          outros_descontos_detalhados?: number
           plano?: string | null
+          plano_saude?: number
           prazo_compensacao_dias?: number
           regra_conversao?: string
           salario_base?: number | null
@@ -332,6 +349,7 @@ export type Database = {
           turno_b_inicio?: string | null
           turno_c_fim?: string | null
           turno_c_inicio?: string | null
+          vale_alimentacao?: number
         }
         Relationships: []
       }
