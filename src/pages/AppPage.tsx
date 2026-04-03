@@ -344,31 +344,8 @@ const AppPage: React.FC = () => {
           </div>
         )}
 
-        {/* Monthly Summary */}
+        {/* Monthly Summary (hero + details + banco + CTA + disclaimer) */}
         <MonthSummaryCard />
-
-        {/* Banco de Horas Cards */}
-        <BancoHorasCards />
-
-        {/* Mini-cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-xs text-muted-foreground mb-1">hora extra hoje</p>
-            <p className={`text-lg font-bold ${jornada.horaExtraMin > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
-              {jornada.horaExtraMin > 0 ? formatarDuracaoJornada(jornada.horaExtraMin) : '—'}
-            </p>
-          </div>
-          <ProGate action="money" blurred estimatedValue={valorReceber}>
-            <div className="bg-card rounded-xl p-4 border border-border">
-              <p className="text-xs text-muted-foreground mb-1">valor estimado hoje</p>
-              <p className={`text-lg font-bold ${valorReceber > 0 ? 'text-accent' : 'text-muted-foreground'}`}>
-                {valorReceber > 0 ? formatCurrency(valorReceber) : '—'}
-              </p>
-            </div>
-          </ProGate>
-        </div>
-
-        <AvisoLegal />
       </div>
 
       <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorReceber} />
