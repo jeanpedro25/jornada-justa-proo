@@ -50,17 +50,45 @@ export function calcularIRRF(bruto: number, inss: number): number {
   return 0;
 }
 
+export interface DescontosDetalhados {
+  planoSaude: number;
+  adiantamentos: number;
+  outrosDescontos: number;
+}
+
+export interface BeneficiosEntrada {
+  valeAlimentacao: number;
+  auxilioCombustivel: number;
+  bonificacoes: number;
+}
+
 export interface ResumoLiquido {
   bruto: number;
   inss: number;
   irrf: number;
   descontosFixos: number;
+  descontosDetalhados: DescontosDetalhados;
+  beneficios: BeneficiosEntrada;
+  totalBeneficios: number;
+  totalDescontos: number;
   liquido: number;
 }
 
-export function calcularLiquido(bruto: number, descontosFixos = 0): ResumoLiquido {
+export function calcularLiquido(
+  bruto: number,
+  descontosFixos = 0,
+  beneficios: BeneficiosEntrada = { valeAlimentacao: 0, auxilioCombustivel: 0, bonificacoes: 0 },
+  descontosDetalhados: DescontosDetalhados = { planoSaude: 0, adiantamentos: 0, outrosDescontos: 0 },
+): ResumoLiquido {
   const inss = calcularINSS(bruto);
   const irrf = calcularIRRF(bruto, inss);
-  const liquido = Math.max(0, bruto - inss - irrf - descontosFixos);
-  return { bruto, inss, irrf, descontosFixos, liquido };
+  const totalBeneficios = beneficios.valeAlimentacao + beneficios.auxilioCombustivel + beneficios.bonificacoes;
+  const totalDescontosExtra = descontosDetalhados.planoSaude + descontosDetalhados.adiantamentos + descontosDetalhados.outrosDescontos;
+  const totalDescontos = inss + irrf + descontosFixos + totalDescontosExtra;
+  const liquido = Math.max(0, bruto + totalBeneficios - totalDescontos);
+  return {
+    bruto, inss, irrf, descontosFixos,
+    descontosDetalhados, beneficios,
+    totalBeneficios, totalDescontos, liquido,
+  };
 }

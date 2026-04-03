@@ -241,15 +241,69 @@ const ConfigPage: React.FC = () => {
             </p>
           </div>
 
+        </div>
+
+        {/* Benefícios (Entradas) */}
+        <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">💰</span>
+            <span className="font-semibold text-sm">Benefícios (não tributáveis)</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Estes valores somam ao montante final mas não sofrem descontos de INSS/IRRF.
+          </p>
           <div>
-            <label className="text-xs text-muted-foreground mb-1 block">💰 Descontos fixos mensais (R$)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Vale Alimentação/Refeição (R$)</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-              <Input type="number" value={descontosFixos} onChange={(e) => setDescontosFixos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 150" />
+              <Input type="number" value={valeAlimentacao} onChange={(e) => setValeAlimentacao(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 600" />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Convênio médico, sindicato, VT, etc. Será descontado na estimativa de líquido.
-            </p>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Auxílio Combustível/Home Office (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={auxilioCombustivel} onChange={(e) => setAuxilioCombustivel(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 200" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Bonificações/Prêmios (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={bonificacoes} onChange={(e) => setBonificacoes(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 300" />
+            </div>
+          </div>
+        </div>
+
+        {/* Descontos detalhados */}
+        <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">📉</span>
+            <span className="font-semibold text-sm">Descontos adicionais</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Cadastre seus descontos para bater com a realidade do contracheque.
+          </p>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Plano de Saúde/Odonto (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={planoSaude} onChange={(e) => setPlanoSaude(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 250" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Adiantamentos / Vales (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={adiantamentos} onChange={(e) => setAdiantamentos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 500" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Coparticipação e Outros (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={outrosDescontos} onChange={(e) => setOutrosDescontos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 50" />
+            </div>
           </div>
         </div>
 
