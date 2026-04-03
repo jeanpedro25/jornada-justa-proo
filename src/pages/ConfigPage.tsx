@@ -28,6 +28,16 @@ const ConfigPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [descontosFixos, setDescontosFixos] = useState('0');
 
+  // Benefícios
+  const [valeAlimentacao, setValeAlimentacao] = useState('0');
+  const [auxilioCombustivel, setAuxilioCombustivel] = useState('0');
+  const [bonificacoes, setBonificacoes] = useState('0');
+
+  // Descontos detalhados
+  const [planoSaude, setPlanoSaude] = useState('0');
+  const [adiantamentos, setAdiantamentos] = useState('0');
+  const [outrosDescontos, setOutrosDescontos] = useState('0');
+
   // Banco de Horas
   const [modoTrabalho, setModoTrabalho] = useState('horas_extras');
   const [prazoComp, setPrazoComp] = useState('180');
