@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Calendar, Clock, TrendingUp, AlertTriangle, Palmtree, PartyPopper, Moon } from 'lucide-react';
 import ManualEntry from '@/components/ManualEntry';
 import EditMarcacoesDia from '@/components/EditMarcacoesDia';
-import { getFeriado } from '@/lib/feriados';
+import { getFeriadoComLocais } from '@/lib/feriados';
 import {
   calcularJornada, formatarDuracaoJornada,
   formatarHoraLocal, getCargaDiaria, type Marcacao,
@@ -61,6 +61,7 @@ const HistoricoPage: React.FC = () => {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [feriadosLocais, setFeriadosLocais] = useState<{ data: string; nome: string; recorrente: boolean }[]>([]);
 
   const p = profile as any;
   const carga = getCargaDiaria(
@@ -87,7 +88,7 @@ const HistoricoPage: React.FC = () => {
   const fetchData = useCallback(async () => {
     if (!user) return;
     const { start, end } = getDateRange(filter);
-    const [marcRes, feriasRes, compRes] = await Promise.all([
+    const [marcRes, feriasRes, compRes, feriadosLocaisRes] = await Promise.all([
       supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
         .is('deleted_at', null).gte('data', start).lte('data', end)
         .order('horario', { ascending: true }),
@@ -95,6 +96,8 @@ const HistoricoPage: React.FC = () => {
         .eq('user_id', user.id).in('status', ['ativa', 'agendada', 'concluida']),
       supabase.from('compensacoes_banco_horas').select('*')
         .eq('user_id', user.id).gte('data', start).lte('data', end),
+      supabase.from('feriados_locais').select('data, nome, recorrente')
+        .eq('user_id', user.id),
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
@@ -125,6 +128,7 @@ const HistoricoPage: React.FC = () => {
       compMap.set(c.data, { data: c.data, minutos: c.minutos, observacao: c.observacao });
     });
     setCompensacoes(compMap);
+    setFeriadosLocais((feriadosLocaisRes.data as any[]) || []);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
@@ -156,7 +160,7 @@ const HistoricoPage: React.FC = () => {
       const marcacoes = marcMap.get(dataStr) || [];
       const feriasInfo = feriasDias.get(dataStr) || null;
       const compensacao = compensacoes.get(dataStr) || null;
-      const feriado = getFeriado(dataStr);
+      const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
 
       let status: DayStatus;
       if (feriado && marcacoes.length === 0) {
@@ -201,7 +205,7 @@ const HistoricoPage: React.FC = () => {
     }
 
     return summaries.reverse();
-  }, [allMarcacoes, carga, feriasDias, compensacoes, filter, dataInicio, dataFim, hojeStr]);
+  }, [allMarcacoes, carga, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
 
   // Apply quick filter
   const filteredDays = useMemo(() => {

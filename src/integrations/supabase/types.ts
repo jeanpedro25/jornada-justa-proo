@@ -125,6 +125,33 @@ export type Database = {
         }
         Relationships: []
       }
+      feriados_locais: {
+        Row: {
+          created_at: string | null
+          data: string
+          id: string
+          nome: string
+          recorrente: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: string
+          id?: string
+          nome: string
+          recorrente?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: string
+          id?: string
+          nome?: string
+          recorrente?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       ferias: {
         Row: {
           created_at: string | null

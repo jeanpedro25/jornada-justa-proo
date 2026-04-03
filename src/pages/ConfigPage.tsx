@@ -11,6 +11,7 @@ import { LogOut, Download, User, CreditCard, Info, Trash2, Shield } from 'lucide
 import BancoHorasConfig from '@/components/BancoHorasConfig';
 import JornadaConfig from '@/components/JornadaConfig';
 import FeriasConfig from '@/components/FeriasConfig';
+import FeriadosLocaisConfig from '@/components/FeriadosLocaisConfig';
 import AvisoLegal from '@/components/AvisoLegal';
 
 const ConfigPage: React.FC = () => {
@@ -272,6 +273,11 @@ const ConfigPage: React.FC = () => {
 
         {/* Férias */}
         <FeriasConfig />
+
+        {/* Feriados Locais */}
+        <div className="bg-card rounded-xl border border-border p-4">
+          <FeriadosLocaisConfig />
+        </div>
 
         {/* Save */}
         <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-primary text-primary-foreground">
