@@ -133,8 +133,8 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
             {processing ? 'Ativando...' : 'Desbloquear agora'}
           </Button>
 
-          <p className="text-[10px] text-muted-foreground text-center">
-            Valores estimados. Estimativa baseada nos dados informados pelo usuário.
+          <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+            Os valores apresentados são estimativas baseadas nos dados informados pelo usuário. O Hora Justa é uma ferramenta de organização pessoal e não substitui documentos oficiais.
           </p>
         </div>
       </DialogContent>
