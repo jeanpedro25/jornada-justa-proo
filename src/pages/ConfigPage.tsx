@@ -27,6 +27,7 @@ const ConfigPage: React.FC = () => {
   const [almoco, setAlmoco] = useState('60');
   const [saving, setSaving] = useState(false);
   const [descontosFixos, setDescontosFixos] = useState('0');
+  const [diaFechamento, setDiaFechamento] = useState('0');
 
   // Benefícios
   const [valeAlimentacao, setValeAlimentacao] = useState('0');
