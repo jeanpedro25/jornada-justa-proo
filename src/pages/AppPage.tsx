@@ -344,6 +344,9 @@ const AppPage: React.FC = () => {
           </div>
         )}
 
+        {/* Monthly Summary */}
+        <MonthSummaryCard />
+
         {/* Banco de Horas Cards */}
         <BancoHorasCards />
 
