@@ -101,6 +101,28 @@ function checkPage(doc: jsPDF, y: number, need: number): number {
 
 // ── PDF generator ──
 
+function addWatermark(doc: jsPDF) {
+  const totalPages = doc.getNumberOfPages();
+  const largura = doc.internal.pageSize.getWidth();
+  const altura = doc.internal.pageSize.getHeight();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    doc.saveGraphicsState();
+    doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
+    doc.setFontSize(28);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(120, 120, 120);
+    // Diagonal watermark
+    const text = 'EXTRATO PARA CONFERENCIA PESSOAL - SEM VALOR OFICIAL';
+    const centerX = largura / 2;
+    const centerY = altura / 2;
+    (doc as any).text(text, centerX, centerY, { align: 'center', angle: 35 });
+    // Second watermark lower
+    (doc as any).text(text, centerX, centerY + 80, { align: 'center', angle: 35 });
+    doc.restoreGraphicsState();
+  }
+}
+
 function gerarExtratoPDF(
   days: DaySummary[],
   perfil: any,
@@ -138,12 +160,12 @@ function gerarExtratoPDF(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(200, 215, 225);
-  doc.text(`Funcionario: ${perfil?.nome || 'Trabalhador'}`, margem, 30);
+  doc.text(`Usuario do Sistema: ${perfil?.nome || 'Trabalhador'}`, margem, 30);
   if (perfil?.empresa) {
-    doc.text(`Empresa: ${perfil.empresa}`, margem, 35);
+    doc.text(`Empresa Informada pelo Usuario: ${perfil.empresa}`, margem, 35);
     doc.setFontSize(6.5);
     doc.setTextColor(150, 170, 180);
-    doc.text('Empresa informada pelo usuario para fins de organizacao pessoal', margem, 39);
+    doc.text('Dado informado pelo usuario para fins de organizacao pessoal', margem, 39);
   }
   doc.setFontSize(9);
   doc.setTextColor(200, 215, 225);
