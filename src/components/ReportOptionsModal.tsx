@@ -31,6 +31,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onGenerate: (options: ReportOptions) => void;
   generating: boolean;
+  cicloLabel?: string;
 }
 
 const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, generating }) => {
