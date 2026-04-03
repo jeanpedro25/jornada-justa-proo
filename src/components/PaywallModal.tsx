@@ -15,8 +15,8 @@ interface PaywallModalProps {
 }
 
 const benefits = [
-  { icon: TrendingUp, text: 'Ver valor completo em dinheiro (estimativa)' },
-  { icon: FileText, text: 'Relatório PDF completo' },
+  { icon: TrendingUp, text: 'Estimativa completa de ganhos e descontos' },
+  { icon: FileText, text: 'Extrato pessoal detalhado em PDF' },
   { icon: Clock, text: 'Histórico ilimitado' },
   { icon: Shield, text: 'Backup na nuvem' },
   { icon: Sparkles, text: 'Alertas inteligentes' },
@@ -24,9 +24,9 @@ const benefits = [
 ];
 
 const phrases = [
-  'Você pode estar perdendo dinheiro sem perceber',
-  'Veja quanto suas horas realmente valem',
-  'Descubra seu valor acumulado agora',
+  'Organize sua jornada com mais clareza',
+  'Tenha controle total das suas horas',
+  'Sua jornada merece ser acompanhada de perto',
 ];
 
 const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimatedValue, trigger }) => {
@@ -57,9 +57,9 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
         {/* Header */}
         <div className="bg-primary text-primary-foreground p-6 pb-8 text-center">
           <Lock size={28} className="mx-auto mb-3 opacity-80" />
-          <h2 className="text-xl font-bold mb-1">Veja quanto suas horas realmente valem</h2>
+          <h2 className="text-xl font-bold mb-1">Visualize a estimativa completa da sua jornada</h2>
           <p className="text-sm opacity-80">
-            Veja seu valor real e baixe extratos profissionais por apenas R$ 9,90/mês ou R$ 79,90/ano
+            Desbloqueie sua estimativa financeira e organize seu extrato pessoal por apenas R$ 9,90/mês ou R$ 79,90/ano
           </p>
         </div>
 
@@ -70,7 +70,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
             <p className="text-2xl font-bold text-success">{formatCurrency(estimatedValue)}</p>
             <p className="text-xs text-muted-foreground mt-1">em horas extras</p>
             <p className="text-[10px] text-muted-foreground mt-2 italic">
-              Estimativa baseada nos dados informados pelo usuário
+              Estimativa baseada nos dados informados pelo usuário. Não substitui documentos oficiais.
             </p>
           </div>
         )}
@@ -133,8 +133,8 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
             {processing ? 'Ativando...' : 'Desbloquear agora'}
           </Button>
 
-          <p className="text-[10px] text-muted-foreground text-center">
-            Valores estimados. Estimativa baseada nos dados informados pelo usuário.
+          <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+            Os valores apresentados são estimativas baseadas nos dados informados pelo usuário. O Hora Justa é uma ferramenta de organização pessoal e não substitui documentos oficiais.
           </p>
         </div>
       </DialogContent>
