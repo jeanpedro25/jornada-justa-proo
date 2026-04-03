@@ -78,6 +78,7 @@ const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, g
                 { value: 'hoje', label: 'Hoje' },
                 { value: 'semana', label: 'Esta semana' },
                 { value: 'mes', label: 'Este mês' },
+                ...(cicloLabel ? [{ value: 'ciclo', label: `📑 ${cicloLabel}` }] : []),
                 { value: 'personalizado', label: 'Personalizado' },
                 { value: 'tudo', label: 'Todo o histórico' },
               ].map((opt) => (

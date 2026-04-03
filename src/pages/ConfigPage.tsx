@@ -310,6 +310,38 @@ const ConfigPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Ciclo de Fechamento */}
+        <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base">📑</span>
+            <span className="font-semibold text-sm">Ciclo de Fechamento da Folha</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground -mt-2">
+            Qual dia a sua empresa encerra a contagem das horas? (Geralmente aparece no seu holerite como período de apuração)
+          </p>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Dia de fechamento</label>
+            <select
+              value={diaFechamento}
+              onChange={(e) => setDiaFechamento(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="0">Mês civil (dia 1 ao último dia)</option>
+              {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                <option key={d} value={String(d)}>Dia {d}</option>
+              ))}
+            </select>
+          </div>
+          {Number(diaFechamento) > 0 && (
+            <p className="text-[10px] text-muted-foreground bg-secondary/50 rounded-lg p-2">
+              💡 Ex: Se sua empresa fecha dia {diaFechamento}, as horas feitas no dia {Number(diaFechamento) + 1 > 28 ? 1 : Number(diaFechamento) + 1} já contam para o salário do mês que vem.
+            </p>
+          )}
+          <p className="text-[10px] text-muted-foreground italic">
+            ⚠️ O ciclo é definido pelo usuário. Divergências podem ocorrer caso a empresa altere a data de corte sem aviso prévio.
+          </p>
+        </div>
+
         {/* Jornada */}
         <JornadaConfig
           tipoJornada={tipoJornada} setTipoJornada={setTipoJornada}

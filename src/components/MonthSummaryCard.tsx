@@ -68,7 +68,7 @@ const MonthSummaryCard: React.FC = () => {
     const totalComp = (comps as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
     setBancoSaldo(saldoInicial + s.saldo - totalComp);
     setBancoUsado(totalComp);
-  }, [user, profile, salario, percentual]);
+  }, [user, profile, salario, percentual, diaFechamento]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
