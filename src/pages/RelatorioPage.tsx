@@ -614,19 +614,11 @@ const RelatorioPage: React.FC = () => {
 
         {/* Generate Button */}
         <Button
-          onClick={handleGeneratePDF}
-          disabled={generating || days.length === 0}
+          onClick={handleOpenOptions}
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl h-12 font-semibold gap-2"
         >
-          {generating ? (
-            <><Loader2 size={18} className="animate-spin" /> Gerando...</>
-          ) : (
-            <><Download size={18} /> Baixar Extrato PDF</>
-          )}
+          <Download size={18} /> Gerar Relatório PDF
         </Button>
-        {days.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center">Nenhum registro neste mês.</p>
-        )}
         <AvisoLegal />
       </div>
       <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorTotal} trigger="pdf" />
