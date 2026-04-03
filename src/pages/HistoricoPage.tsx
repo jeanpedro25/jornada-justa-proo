@@ -61,6 +61,7 @@ const HistoricoPage: React.FC = () => {
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [feriadosLocais, setFeriadosLocais] = useState<{ data: string; nome: string; recorrente: boolean }[]>([]);
 
   const p = profile as any;
   const carga = getCargaDiaria(
