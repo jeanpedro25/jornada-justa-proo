@@ -10,7 +10,7 @@ import { Calendar, Palmtree, TrendingUp, Clock } from 'lucide-react';
 import ManualEntry from '@/components/ManualEntry';
 import EditMarcacoesDia from '@/components/EditMarcacoesDia';
 import {
-  calcularJornada, calcularHoraExtra, formatarDuracaoJornada,
+  calcularJornada, formatarDuracaoJornada,
   formatarHoraLocal, getCargaDiaria, type Marcacao,
 } from '@/lib/jornada';
 
