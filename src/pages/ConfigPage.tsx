@@ -71,6 +71,7 @@ const ConfigPage: React.FC = () => {
       setSalario(String(p.salario_base || ''));
       setCarga(String(p.carga_horaria_diaria || ''));
       setPercentual(String(p.hora_extra_percentual || ''));
+      setPercentualFeriado(String(p.hora_extra_percentual_feriado ?? 100));
       setAlmoco(String(p.intervalo_almoco ?? 60));
       setModoTrabalho(p.modo_trabalho || 'horas_extras');
       setPrazoComp(String(p.prazo_compensacao_dias || 180));
