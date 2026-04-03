@@ -138,7 +138,7 @@ serve(async (req) => {
     dateCell.font = { size: 9, color: { argb: '888888' }, italic: true, name: 'Arial' };
     dateCell.alignment = { horizontal: 'center' };
 
-    let row = 4;
+    let row = 10;
     function addSection(title: string, color: string) {
       wsDash.mergeCells(`A${row}:E${row}`);
       const c = wsDash.getCell(`A${row}`);
