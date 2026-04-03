@@ -114,6 +114,7 @@ function gerarExtratoPDF(
 ) {
   const isResumido = opcoes?.tipo === 'resumido';
   const incluirEventos = opcoes?.incluirEventos !== false;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const largura = doc.internal.pageSize.getWidth();
   const margem = 14;
   const contentW = largura - margem * 2;
