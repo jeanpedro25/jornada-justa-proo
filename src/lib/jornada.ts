@@ -93,13 +93,28 @@ export function calcularJornada(marcacoes: Marcacao[], cargaDiariaMin?: number):
   let inicioAtual: string | null = null;
   let saidaIntervalo: string | null = null;
   let contSaidasFinais = 0;
+  let teveSaidaFinal = false;
 
   for (let i = 0; i < marcacoes.length; i++) {
     const m = marcacoes[i];
 
-    if (m.tipo === 'entrada' || m.tipo === 'volta_intervalo') {
-      // Close pending interval if volta_intervalo
-      if (m.tipo === 'volta_intervalo' && saidaIntervalo) {
+    if (m.tipo === 'entrada') {
+      // Nova entrada sempre abre período (inclusive retorno após saída final)
+      if (m.tipo === 'entrada' && saidaIntervalo) {
+        // Close any pending interval
+        saidaIntervalo = null;
+      }
+      inicioAtual = m.horario;
+      teveSaidaFinal = false; // reset — new work session
+    }
+
+    if (m.tipo === 'volta_intervalo') {
+      // Only valid if we had a saida_intervalo and NO saida_final after it
+      if (teveSaidaFinal) {
+        // Ignore volta_intervalo after saida_final — invalid sequence
+        continue;
+      }
+      if (saidaIntervalo) {
         const durInt = difMin(saidaIntervalo, m.horario);
         intervalos.push({ inicio: saidaIntervalo, fim: m.horario, minutos: durInt });
         totalIntervalo += durInt;
@@ -124,12 +139,14 @@ export function calcularJornada(marcacoes: Marcacao[], cargaDiariaMin?: number):
       }
       inicioAtual = null;
       saidaIntervalo = null;
+      teveSaidaFinal = true;
       contSaidasFinais++;
     }
   }
 
-  // If still in service (entrada/volta without saida)
-  const emAndamento = inicioAtual !== null;
+  // Only count as "em andamento" if it's today
+  const ehHoje = marcacoes.length > 0 && marcacoes[0].data === hojeLocal();
+  const emAndamento = inicioAtual !== null && ehHoje;
   if (emAndamento && inicioAtual) {
     const minutosParcial = difMin(inicioAtual, new Date().toISOString());
     periodos.push({ inicio: inicioAtual, fim: null, minutos: minutosParcial, parcial: true });
@@ -137,7 +154,7 @@ export function calcularJornada(marcacoes: Marcacao[], cargaDiariaMin?: number):
   }
 
   // If in interval (saida_intervalo without volta)
-  const emIntervalo = saidaIntervalo !== null && !emAndamento;
+  const emIntervalo = saidaIntervalo !== null && !emAndamento && ehHoje;
 
   const carga = cargaDiariaMin ?? 0;
   const horaExtraMin = carga > 0 ? Math.max(0, totalTrabalhado - carga) : 0;
