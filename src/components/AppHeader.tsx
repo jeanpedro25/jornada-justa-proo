@@ -30,7 +30,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ title, subtitle }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <HoraJustaLogo size={24} />
-            <span className="text-base font-medium">{title || 'Hora Justa'}</span>
+            <span className="text-lg font-semibold">{title || 'Hora Justa'}</span>
           </div>
           <span className="bg-accent/20 text-accent text-[10px] font-bold px-2 py-0.5 rounded-full">
             {dias[now.getDay()]}
