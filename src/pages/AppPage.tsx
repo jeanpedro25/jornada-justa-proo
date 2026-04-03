@@ -86,22 +86,23 @@ const AppPage: React.FC = () => {
     }
   }, [shouldShowPaywall]);
 
-  const jornada = calcularJornada(marcacoes);
-  const estado = getEstadoJornada(marcacoes);
-  const proximo = proximoTipoAvancado(marcacoes);
-
   const cargaDiaria = getCargaDiaria(
     (p?.tipo_jornada || 'jornada_fixa') as any,
     p?.escala_tipo || null,
     p?.carga_horaria_diaria ?? 8,
   );
+  const cargaDiariaMin = cargaDiaria * 60;
 
-  const horaExtra = estado === 'encerrada' ? calcularHoraExtra(jornada.totalTrabalhado, cargaDiaria) : 0;
+  const jornada = calcularJornada(marcacoes, cargaDiariaMin);
+  const estado = getEstadoJornada(marcacoes);
+  const proximo = proximoTipoAvancado(marcacoes);
+
+  const horaExtra = estado === 'encerrada' ? jornada.horaExtraMin / 60 : 0;
   const valorHE = profile ? calcValorHoraExtra(profile.salario_base ?? 0, profile.hora_extra_percentual ?? 50) : 0;
   const valorReceber = horaExtra * valorHE;
 
   // Progress percentage
-  const progressPercent = Math.min(100, Math.round((jornada.totalTrabalhado / (cargaDiaria * 60)) * 100));
+  const progressPercent = Math.min(100, Math.round((jornada.totalTrabalhado / cargaDiariaMin) * 100));
 
   // Live timer
   useEffect(() => {
