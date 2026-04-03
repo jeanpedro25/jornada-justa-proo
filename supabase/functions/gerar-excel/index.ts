@@ -168,8 +168,8 @@ serve(async (req) => {
 
     // Dados do Trabalhador
     addSection('📋 DADOS DO TRABALHADOR', PRIMARY);
-    addField('Nome', p.nome || '', LIGHT_BG);
-    addField('Empresa', p.empresa || '');
+    addField('Usuário do Sistema', p.nome || '', LIGHT_BG);
+    addField('Empresa Informada pelo Usuário', p.empresa || '');
     addField('Carga Horária Diária', `${p.carga_horaria_diaria || 8}h`, LIGHT_BG);
     addField('Salário Base', salario ? `R$ ${Number(salario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '');
     addField('Percentual Hora Extra', `${percentual}%`, LIGHT_BG);
