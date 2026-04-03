@@ -112,6 +112,7 @@ const ConfigPage: React.FC = () => {
       salario_base: Number(salario),
       carga_horaria_diaria: Number(carga),
       hora_extra_percentual: Number(percentual),
+      hora_extra_percentual_feriado: Number(percentualFeriado) || 100,
       intervalo_almoco: Number(almoco),
       modo_trabalho: modoTrabalho,
       prazo_compensacao_dias: prazoComp === 'custom' ? Number(limiteBH) || 180 : Number(prazoComp),
