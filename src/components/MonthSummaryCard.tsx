@@ -7,14 +7,20 @@ import { fetchBancoHorasEntries, summarizeBancoHoras, formatMinutosHoras } from 
 import { getFeriadoComLocais } from '@/lib/feriados';
 import { usePaywall } from '@/hooks/usePaywall';
 import ProGate from '@/components/ProGate';
-import { Clock, TrendingUp, Wallet, PiggyBank, Calendar } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Clock, TrendingUp, Wallet, PiggyBank, ChevronDown, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 const MonthSummaryCard: React.FC = () => {
   const { user, profile } = useAuth();
   const { canSeeMoney } = usePaywall();
+  const navigate = useNavigate();
   const [marcacoes, setMarcacoes] = useState<Marcacao[]>([]);
   const [bancoSaldo, setBancoSaldo] = useState(0);
+  const [bancoUsado, setBancoUsado] = useState(0);
   const [feriadosLocais, setFeriadosLocais] = useState<{ data: string; nome: string; recorrente: boolean }[]>([]);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const p = profile as any;
   const carga = getCargaDiaria(
@@ -40,7 +46,6 @@ const MonthSummaryCard: React.FC = () => {
     setMarcacoes((marcRes.data as Marcacao[]) || []);
     setFeriadosLocais((feriadosRes.data as any[]) || []);
 
-    // Banco de horas
     const entries = await fetchBancoHorasEntries(user.id);
     const s = summarizeBancoHoras(entries, salario, percentual);
     const saldoInicial = p?.banco_horas_saldo_inicial ?? 0;
@@ -48,6 +53,7 @@ const MonthSummaryCard: React.FC = () => {
       .select('minutos').eq('user_id', user.id);
     const totalComp = (comps as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
     setBancoSaldo(saldoInicial + s.saldo - totalComp);
+    setBancoUsado(totalComp);
   }, [user, profile, salario, percentual]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -87,99 +93,129 @@ const MonthSummaryCard: React.FC = () => {
   const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long' }).replace(/^./, s => s.toUpperCase());
 
   return (
-    <div className="space-y-3 animate-fade-in">
-      <p className="text-xs font-semibold text-muted-foreground px-1 flex items-center gap-1.5">
-        <Calendar size={12} />
-        RESUMO DE {mesNome.toUpperCase()}
-      </p>
+    <div className="space-y-5 animate-fade-in">
 
-      {/* Main stats grid */}
+      {/* === HERO: Big money value === */}
+      <ProGate action="money" blurred estimatedValue={stats.estimativaTotal}>
+        <div className="text-center py-6">
+          <p className="text-3xl font-black text-accent tabular-nums tracking-tight leading-none">
+            {stats.estimativaTotal > 0 ? formatCurrency(stats.estimativaTotal) : 'R$ 0,00'}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            Estimativa de {mesNome}
+          </p>
+          {stats.estimativaExtra > 0 && canSeeMoney && (
+            <p className="text-xs text-warning font-medium mt-1">
+              +{formatCurrency(stats.estimativaExtra)} em horas extras (estimativa)
+            </p>
+          )}
+        </div>
+      </ProGate>
+
+      {/* === Secondary: 2 columns === */}
       <div className="grid grid-cols-2 gap-3">
-        {/* Total trabalhado */}
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Clock size={12} className="text-accent" />
-            <p className="text-[10px] text-muted-foreground uppercase">Trabalhado</p>
+        <div className="bg-card rounded-xl p-4 border border-border text-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Clock size={13} className="text-accent" />
+            <p className="text-[10px] text-muted-foreground uppercase font-semibold">Trabalhado</p>
           </div>
           <p className="text-lg font-bold">
             {stats.totalMin > 0 ? formatarDuracaoJornada(stats.totalMin) : '—'}
           </p>
-          <p className="text-[10px] text-muted-foreground">{stats.diasTrab} dias registrados</p>
+          <p className="text-[10px] text-muted-foreground">{stats.diasTrab} dias</p>
         </div>
 
-        {/* Horas extras */}
-        <div className="bg-card rounded-xl p-4 border border-border">
-          <div className="flex items-center gap-1.5 mb-1">
-            <TrendingUp size={12} className="text-warning" />
-            <p className="text-[10px] text-muted-foreground uppercase">Horas extras</p>
-          </div>
-          <p className={`text-lg font-bold ${stats.extraMin > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
-            {stats.extraMin > 0 ? `+${formatarDuracaoJornada(stats.extraMin)}` : '—'}
-          </p>
-        </div>
-
-        {/* Banco de horas */}
-        {p?.modo_trabalho === 'banco_horas' && (
-          <div className={`rounded-xl p-4 border ${bancoSaldo >= 0 ? 'bg-success/5 border-success/20' : 'bg-destructive/5 border-destructive/20'}`}>
-            <div className="flex items-center gap-1.5 mb-1">
-              <PiggyBank size={12} className={bancoSaldo >= 0 ? 'text-success' : 'text-destructive'} />
-              <p className="text-[10px] text-muted-foreground uppercase">Banco de horas</p>
+        <ProGate action="money" blurred estimatedValue={stats.estimativaExtra}>
+          <div className="bg-card rounded-xl p-4 border border-border text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <TrendingUp size={13} className="text-warning" />
+              <p className="text-[10px] text-muted-foreground uppercase font-semibold">Extras acumulados</p>
             </div>
-            <p className={`text-lg font-bold ${bancoSaldo >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {formatMinutosHoras(bancoSaldo)}
-            </p>
-          </div>
-        )}
-
-        {/* Estimativa financeira */}
-        <ProGate action="money" blurred estimatedValue={stats.estimativaTotal}>
-          <div className="bg-card rounded-xl p-4 border border-border">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Wallet size={12} className="text-accent" />
-              <p className="text-[10px] text-muted-foreground uppercase">Estimativa do mês</p>
-            </div>
-            <p className="text-lg font-bold text-accent">
-              {stats.estimativaTotal > 0 ? formatCurrency(stats.estimativaTotal) : '—'}
+            <p className={`text-lg font-bold ${stats.estimativaExtra > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
+              {stats.estimativaExtra > 0 ? `+${formatCurrency(stats.estimativaExtra)}` : '—'}
             </p>
           </div>
         </ProGate>
       </div>
 
-      {/* Financial breakdown */}
+      {/* === Collapsible details === */}
       {canSeeMoney && salario > 0 && (
-        <div className="bg-card rounded-xl p-4 border border-border space-y-2">
-          <p className="text-[10px] text-muted-foreground uppercase font-semibold">Estimativa financeira</p>
-          <div className="text-xs space-y-1.5">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Salário base</span>
-              <span className="font-medium">{formatCurrency(salario)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Valor hora normal</span>
-              <span className="font-medium">{formatCurrency(stats.valorHN)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Valor hora extra ({percentual}%)</span>
-              <span className="font-medium">{formatCurrency(stats.valorHE)}</span>
-            </div>
-            <div className="border-t border-border pt-1.5 mt-1.5">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Horas extras</span>
-                <span className="font-medium text-warning">
-                  {stats.estimativaExtra > 0 ? `+ ${formatCurrency(stats.estimativaExtra)}` : '—'}
-                </span>
+        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <CollapsibleTrigger className="flex items-center justify-center gap-1.5 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+            <span>Ver detalhes</span>
+            <ChevronDown size={14} className={`transition-transform duration-200 ${detailsOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="bg-card rounded-xl p-4 border border-border mt-2 space-y-2 animate-fade-in">
+              <div className="text-xs space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Salário base</span>
+                  <span className="font-medium">{formatCurrency(salario)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Valor hora normal</span>
+                  <span className="font-medium">{formatCurrency(stats.valorHN)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Valor hora extra ({percentual}%)</span>
+                  <span className="font-medium">{formatCurrency(stats.valorHE)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total horas extras</span>
+                  <span className="font-medium text-warning">
+                    {stats.extraMin > 0 ? `+${formatarDuracaoJornada(stats.extraMin)}` : '—'}
+                  </span>
+                </div>
+                <div className="border-t border-border pt-1.5 mt-1.5 flex justify-between">
+                  <span className="font-semibold">Total estimado</span>
+                  <span className="font-bold text-accent">{formatCurrency(stats.estimativaTotal)}</span>
+                </div>
               </div>
-              <div className="flex justify-between mt-1">
-                <span className="font-semibold">Total estimado</span>
-                <span className="font-bold text-accent">{formatCurrency(stats.estimativaTotal)}</span>
-              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* === Banco de horas === */}
+      {p?.modo_trabalho === 'banco_horas' && (
+        <div className={`rounded-xl p-4 border ${bancoSaldo >= 0 ? 'bg-success/5 border-success/20' : 'bg-destructive/5 border-destructive/20'}`}>
+          <div className="flex items-center gap-1.5 mb-2">
+            <PiggyBank size={14} className={bancoSaldo >= 0 ? 'text-success' : 'text-destructive'} />
+            <p className="text-xs font-semibold">Banco de horas</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div>
+              <p className="text-muted-foreground">Saldo</p>
+              <p className={`font-bold ${bancoSaldo >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {formatMinutosHoras(bancoSaldo)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Usado</p>
+              <p className="font-bold">-{formatMinutosHoras(bancoUsado)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Vencido</p>
+              <p className="font-bold text-muted-foreground">—</p>
             </div>
           </div>
-          <p className="text-[9px] text-muted-foreground/60 mt-2">
-            Valores estimados com base nos dados informados pelo usuário.
-          </p>
         </div>
       )}
+
+      {/* === CTA Button === */}
+      <Button
+        variant="outline"
+        className="w-full rounded-xl gap-2 border-accent/30 text-accent hover:bg-accent/10"
+        onClick={() => navigate('/relatorio')}
+      >
+        <FileText size={16} />
+        Gerar relatório profissional
+      </Button>
+
+      {/* === Legal disclaimer === */}
+      <p className="text-[9px] text-muted-foreground/50 text-center px-4 leading-relaxed">
+        Os valores apresentados são estimativas baseadas nos dados informados pelo usuário.
+      </p>
     </div>
   );
 };
