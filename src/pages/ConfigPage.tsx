@@ -90,6 +90,12 @@ const ConfigPage: React.FC = () => {
       setTurnoCFim(p.turno_c_fim || '');
       setAlternanciaTurno(p.alternancia_turno || 'manual');
       setDescontosFixos(String(p.descontos_fixos ?? 0));
+      setValeAlimentacao(String(p.vale_alimentacao ?? 0));
+      setAuxilioCombustivel(String(p.auxilio_combustivel ?? 0));
+      setBonificacoes(String(p.bonificacoes ?? 0));
+      setPlanoSaude(String(p.plano_saude ?? 0));
+      setAdiantamentos(String(p.adiantamentos ?? 0));
+      setOutrosDescontos(String(p.outros_descontos_detalhados ?? 0));
     }
   }, [profile]);
 
