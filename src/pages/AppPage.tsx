@@ -14,7 +14,6 @@ import { sincronizarRegistroDia } from '@/lib/registro-dia';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import MonthSummaryCard from '@/components/MonthSummaryCard';
-import PaywallModal from '@/components/PaywallModal';
 import ProGate from '@/components/ProGate';
 import PaywallModal from '@/components/PaywallModal';
 import { usePaywall } from '@/hooks/usePaywall';
