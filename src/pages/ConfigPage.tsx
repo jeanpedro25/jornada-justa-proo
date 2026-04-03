@@ -137,6 +137,7 @@ const ConfigPage: React.FC = () => {
       plano_saude: Number(planoSaude) || 0,
       adiantamentos: Number(adiantamentos) || 0,
       outros_descontos_detalhados: Number(outrosDescontos) || 0,
+      dia_fechamento_folha: Number(diaFechamento) || 0,
     } as any).eq('id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
