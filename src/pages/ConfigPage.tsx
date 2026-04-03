@@ -217,6 +217,17 @@ const ConfigPage: React.FC = () => {
               Tempo de intervalo padrão. CLT exige mínimo de 1h para jornadas &gt; 6h.
             </p>
           </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">💰 Descontos fixos mensais (R$)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+              <Input type="number" value={descontosFixos} onChange={(e) => setDescontosFixos(e.target.value)} className="rounded-xl pl-9" placeholder="Ex: 150" />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Convênio médico, sindicato, VT, etc. Será descontado na estimativa de líquido.
+            </p>
+          </div>
         </div>
 
         {/* Jornada */}
