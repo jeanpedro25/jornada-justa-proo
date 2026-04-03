@@ -4,7 +4,7 @@ import { formatCurrency, calcValorHoraExtra } from '@/lib/formatters';
 import { horaLocalAgora } from '@/lib/dataHora';
 import {
   buscarMarcacoesDia, calcularJornada, proximoTipoAvancado, registrarMarcacao,
-  getEstadoJornada, calcularHoraExtra, formatarDuracaoJornada, formatarHoraLocal,
+  getEstadoJornada, formatarDuracaoJornada, formatarHoraLocal,
   getCargaDiaria, isDiaTrabalhoEscala, hojeLocal, getMarcacaoVisual,
   validarProximaMarcacao,
   type Marcacao,
@@ -86,22 +86,23 @@ const AppPage: React.FC = () => {
     }
   }, [shouldShowPaywall]);
 
-  const jornada = calcularJornada(marcacoes);
-  const estado = getEstadoJornada(marcacoes);
-  const proximo = proximoTipoAvancado(marcacoes);
-
   const cargaDiaria = getCargaDiaria(
     (p?.tipo_jornada || 'jornada_fixa') as any,
     p?.escala_tipo || null,
     p?.carga_horaria_diaria ?? 8,
   );
+  const cargaDiariaMin = cargaDiaria * 60;
 
-  const horaExtra = estado === 'encerrada' ? calcularHoraExtra(jornada.totalTrabalhado, cargaDiaria) : 0;
+  const jornada = calcularJornada(marcacoes, cargaDiariaMin);
+  const estado = getEstadoJornada(marcacoes);
+  const proximo = proximoTipoAvancado(marcacoes);
+
+  const horaExtra = estado === 'encerrada' ? jornada.horaExtraMin / 60 : 0;
   const valorHE = profile ? calcValorHoraExtra(profile.salario_base ?? 0, profile.hora_extra_percentual ?? 50) : 0;
   const valorReceber = horaExtra * valorHE;
 
   // Progress percentage
-  const progressPercent = Math.min(100, Math.round((jornada.totalTrabalhado / (cargaDiaria * 60)) * 100));
+  const progressPercent = Math.min(100, Math.round((jornada.totalTrabalhado / cargaDiariaMin) * 100));
 
   // Live timer
   useEffect(() => {
@@ -200,7 +201,9 @@ const AppPage: React.FC = () => {
             <>
               <div className="flex items-center justify-center gap-2 mb-2">
                 <CheckCircle2 size={22} className="text-success" />
-                <span className="font-semibold text-lg">Jornada encerrada</span>
+                <span className="font-semibold text-lg">
+                  {jornada.retornouMesmoDia ? 'Jornada cumprida + retorno' : 'Jornada encerrada'}
+                </span>
               </div>
               <p className="text-2xl font-bold mb-1">{formatarDuracaoJornada(jornada.totalTrabalhado)} trabalhadas</p>
               <p className="text-sm text-muted-foreground mb-1">
@@ -213,16 +216,20 @@ const AppPage: React.FC = () => {
               {/* Progress bar */}
               <div className="mb-3">
                 <Progress value={progressPercent} className="h-2" />
-                <p className="text-[10px] text-muted-foreground mt-1">{progressPercent}% da carga diária ({cargaDiaria}h)</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {progressPercent >= 100 ? '✅ Carga completa!' : `${progressPercent}% da carga diária (${cargaDiaria}h)`}
+                </p>
               </div>
 
               <span className={`inline-block text-xs font-bold px-3 py-1.5 rounded-full ${
-                horaExtra > 0 ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
+                horaExtra > 0 ? 'bg-warning/20 text-warning' : jornada.devendoMin > 0 ? 'bg-destructive/20 text-destructive' : 'bg-success/20 text-success'
               }`}>
                 {horaExtra > 0 ? (
                   canSeeMoney
-                    ? `+${formatarDuracaoJornada(Math.round(horaExtra * 60))} extra · Estimativa: ${formatCurrency(valorReceber)}`
-                    : `+${formatarDuracaoJornada(Math.round(horaExtra * 60))} extra`
+                    ? `+${formatarDuracaoJornada(jornada.horaExtraMin)} extra · Estimativa: ${formatCurrency(valorReceber)}`
+                    : `+${formatarDuracaoJornada(jornada.horaExtraMin)} extra`
+                ) : jornada.devendoMin > 0 ? (
+                  `-${formatarDuracaoJornada(jornada.devendoMin)} devendo`
                 ) : 'Jornada normal ✓'}
               </span>
               {horaExtra > 0 && !canSeeMoney && (
@@ -230,14 +237,14 @@ const AppPage: React.FC = () => {
                   Ver valor em dinheiro
                 </button>
               )}
-              {/* Allow new entry after encerrada */}
+              {/* Smart re-entry button */}
               <Button
                 onClick={() => handleMarcacao('entrada')}
                 disabled={loading}
                 variant="outline"
-                className="mt-4 rounded-xl gap-2 text-xs"
+                className="mt-4 rounded-xl gap-2 text-xs border-accent/40 text-accent hover:bg-accent/10"
               >
-                ▶ Adicionar período extra
+                ↩ {loading ? 'Registrando...' : 'Retornei ao trabalho'}
               </Button>
             </>
           ) : estado === 'em_intervalo' ? (
@@ -343,8 +350,8 @@ const AppPage: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-xs text-muted-foreground mb-1">hora extra hoje</p>
-            <p className={`text-lg font-bold ${horaExtra > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
-              {horaExtra > 0 ? formatarDuracaoJornada(Math.round(horaExtra * 60)) : '—'}
+            <p className={`text-lg font-bold ${jornada.horaExtraMin > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
+              {jornada.horaExtraMin > 0 ? formatarDuracaoJornada(jornada.horaExtraMin) : '—'}
             </p>
           </div>
           <ProGate action="money" blurred estimatedValue={valorReceber}>

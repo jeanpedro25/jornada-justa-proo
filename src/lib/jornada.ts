@@ -33,9 +33,13 @@ export interface JornadaDia {
   intervalos: Periodo[];
   totalTrabalhado: number;   // minutos
   totalIntervalo: number;    // minutos
+  horaExtraMin: number;      // minutos de hora extra (requer cargaDiariaMin)
+  devendoMin: number;        // minutos devendo (requer cargaDiariaMin)
   emAndamento: boolean;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
+  retornouMesmoDia: boolean; // voltou após saída final
+  contSaidasFinais: number;
 }
 
 export type TipoJornada = 'jornada_fixa' | 'escala' | 'turno';
@@ -81,17 +85,20 @@ function difMin(inicio: string, fim: string): number {
   ));
 }
 
-export function calcularJornada(marcacoes: Marcacao[]): JornadaDia {
+export function calcularJornada(marcacoes: Marcacao[], cargaDiariaMin?: number): JornadaDia {
   let totalTrabalhado = 0;
   let totalIntervalo = 0;
   const periodos: Periodo[] = [];
   const intervalos: Periodo[] = [];
   let inicioAtual: string | null = null;
   let saidaIntervalo: string | null = null;
+  let contSaidasFinais = 0;
 
-  for (const m of marcacoes) {
+  for (let i = 0; i < marcacoes.length; i++) {
+    const m = marcacoes[i];
+
     if (m.tipo === 'entrada' || m.tipo === 'volta_intervalo') {
-      // If we had a pending interval, close it
+      // Close pending interval if volta_intervalo
       if (m.tipo === 'volta_intervalo' && saidaIntervalo) {
         const durInt = difMin(saidaIntervalo, m.horario);
         intervalos.push({ inicio: saidaIntervalo, fim: m.horario, minutos: durInt });
@@ -115,12 +122,9 @@ export function calcularJornada(marcacoes: Marcacao[]): JornadaDia {
         periodos.push({ inicio: inicioAtual, fim: m.horario, minutos });
         totalTrabalhado += minutos;
       }
-      // Close any pending interval
-      if (saidaIntervalo && !inicioAtual) {
-        // volta_intervalo was already processed above
-      }
       inicioAtual = null;
       saidaIntervalo = null;
+      contSaidasFinais++;
     }
   }
 
@@ -135,14 +139,22 @@ export function calcularJornada(marcacoes: Marcacao[]): JornadaDia {
   // If in interval (saida_intervalo without volta)
   const emIntervalo = saidaIntervalo !== null && !emAndamento;
 
+  const carga = cargaDiariaMin ?? 0;
+  const horaExtraMin = carga > 0 ? Math.max(0, totalTrabalhado - carga) : 0;
+  const devendoMin = carga > 0 ? Math.max(0, carga - totalTrabalhado) : 0;
+
   return {
     periodos,
     intervalos,
     totalTrabalhado,
     totalIntervalo,
+    horaExtraMin,
+    devendoMin,
     emAndamento: emAndamento || emIntervalo,
     primeiraEntrada: marcacoes.find(m => m.tipo === 'entrada')?.horario || null,
     ultimaSaida: marcacoes.filter(m => m.tipo === 'saida_final').pop()?.horario || null,
+    retornouMesmoDia: contSaidasFinais > 1,
+    contSaidasFinais,
   };
 }
 
@@ -218,7 +230,7 @@ export function proximoTipoAvancado(marcacoes: Marcacao[]): {
   }
 
   if (estado === 'encerrada') {
-    return { tipo: 'entrada', label: 'Nova Entrada', icone: '▶', cor: 'success' };
+    return { tipo: 'entrada', label: 'Retornei ao trabalho', icone: '↩', cor: 'accent' };
   }
 
   return { tipo: 'entrada', label: 'Bater Entrada', icone: '▶', cor: 'success' };
@@ -232,6 +244,7 @@ export function validarProximaMarcacao(
 ): { valido: boolean; erro: string } {
   const ultima = marcacoes[marcacoes.length - 1]?.tipo;
 
+  // Allow re-entry after saida_final (return to work same day)
   const regras: Record<string, (string | undefined)[]> = {
     'entrada': [undefined, 'saida_final'],
     'saida_intervalo': ['entrada', 'volta_intervalo'],

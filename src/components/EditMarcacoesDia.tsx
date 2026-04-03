@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Upload, ExternalLink, Trash2, Loader2, FileText, Plus, Pencil, AlertTriangle } from 'lucide-react';
 import {
-  buscarMarcacoesDia, calcularJornada, calcularHoraExtra, formatarHoraLocal,
+  buscarMarcacoesDia, calcularJornada, formatarHoraLocal,
   formatarDuracaoJornada, getMarcacaoVisual, inserirMarcacaoManual, getCargaDiaria,
   type Marcacao, type TipoMarcacao,
 } from '@/lib/jornada';
@@ -106,8 +106,8 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     setObservacao(regs?.[0]?.observacao || '');
   };
 
-  const jornada = calcularJornada(marcacoes);
-  const horaExtra = calcularHoraExtra(jornada.totalTrabalhado, carga);
+  const cargaMin = carga * 60;
+  const jornada = calcularJornada(marcacoes, cargaMin);
 
   const avisos = useMemo(() => {
     const list: { tipo: 'warning' | 'info'; msg: string }[] = [];
@@ -503,10 +503,16 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
                     <span className="font-semibold">{formatarDuracaoJornada(jornada.totalIntervalo)}</span>
                   </p>
                 )}
-                {horaExtra > 0 && (
+                {jornada.horaExtraMin > 0 && (
                   <p className="text-sm">
                     <span className="text-muted-foreground">Hora extra:</span>{' '}
-                    <span className="font-semibold text-warning">+{formatarDuracaoJornada(Math.round(horaExtra * 60))}</span>
+                    <span className="font-semibold text-warning">+{formatarDuracaoJornada(jornada.horaExtraMin)}</span>
+                  </p>
+                )}
+                {jornada.devendoMin > 0 && (
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Devendo:</span>{' '}
+                    <span className="font-semibold text-destructive">-{formatarDuracaoJornada(jornada.devendoMin)}</span>
                   </p>
                 )}
               </div>
