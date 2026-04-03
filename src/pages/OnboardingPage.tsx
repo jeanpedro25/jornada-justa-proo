@@ -25,7 +25,7 @@ const OnboardingPage: React.FC = () => {
     if (step === 1) return nome.trim().length > 0;
     if (step === 2) return salario.trim().length > 0 && Number(salario) > 0;
     if (step === 3) return carga !== null || (cargaCustom.trim().length > 0 && Number(cargaCustom) > 0);
-    if (step === 4) return percentual !== null;
+    if (step === 4) return Number(percentual) > 0 && Number(percentualFeriado) > 0;
     return false;
   };
 
