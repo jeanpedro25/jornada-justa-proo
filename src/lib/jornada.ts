@@ -33,9 +33,13 @@ export interface JornadaDia {
   intervalos: Periodo[];
   totalTrabalhado: number;   // minutos
   totalIntervalo: number;    // minutos
+  horaExtraMin: number;      // minutos de hora extra (requer cargaDiariaMin)
+  devendoMin: number;        // minutos devendo (requer cargaDiariaMin)
   emAndamento: boolean;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
+  retornouMesmoDia: boolean; // voltou após saída final
+  contSaidasFinais: number;
 }
 
 export type TipoJornada = 'jornada_fixa' | 'escala' | 'turno';
