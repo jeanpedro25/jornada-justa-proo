@@ -78,6 +78,7 @@ const ConfigPage: React.FC = () => {
       setTurnoCInicio(p.turno_c_inicio || '');
       setTurnoCFim(p.turno_c_fim || '');
       setAlternanciaTurno(p.alternancia_turno || 'manual');
+      setDescontosFixos(String(p.descontos_fixos ?? 0));
     }
   }, [profile]);
 
