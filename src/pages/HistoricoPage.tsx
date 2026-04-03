@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import BottomNav from '@/components/BottomNav';
 import { mesAnoAtual, diaSemanaAbrev } from '@/lib/formatters';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Calendar, Palmtree, TrendingUp, Clock } from 'lucide-react';
+import { Calendar, Clock, TrendingUp, AlertTriangle, Palmtree, PartyPopper, Moon } from 'lucide-react';
 import ManualEntry from '@/components/ManualEntry';
 import EditMarcacoesDia from '@/components/EditMarcacoesDia';
+import { getFeriado } from '@/lib/feriados';
 import {
   calcularJornada, formatarDuracaoJornada,
   formatarHoraLocal, getCargaDiaria, type Marcacao,
 } from '@/lib/jornada';
 
 type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
+type DayStatus = 'registrado' | 'pendente' | 'ferias' | 'compensado' | 'fimdesemana' | 'feriado' | 'em_andamento';
+type QuickFilter = 'todos' | 'pendentes' | 'ferias' | 'extras';
 
 interface FeriasInfo {
   data_inicio: string;
@@ -23,23 +26,38 @@ interface FeriasInfo {
   tipo: string | null;
 }
 
+interface CompensacaoInfo {
+  data: string;
+  minutos: number;
+  observacao: string | null;
+}
+
 interface DaySummary {
   data: string;
+  diaSemana: number;
+  status: DayStatus;
   marcacoes: Marcacao[];
   totalMin: number;
   extraHours: number;
+  devendoMin: number;
   intervaloMin: number;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
-  ferias?: boolean;
-  feriasInfo?: FeriasInfo | null;
+  feriasInfo: FeriasInfo | null;
+  compensacao: CompensacaoInfo | null;
+  feriadoNome: string | null;
+  ehHoje: boolean;
 }
 
 const HistoricoPage: React.FC = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
   const [feriasDias, setFeriasDias] = useState<Map<string, FeriasInfo>>(new Map());
+  const [compensacoes, setCompensacoes] = useState<Map<string, CompensacaoInfo>>(new Map());
   const [filter, setFilter] = useState<FilterPeriod>('month');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('todos');
+  const [showWeekends, setShowWeekends] = useState(false);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -66,37 +84,30 @@ const HistoricoPage: React.FC = () => {
     return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
   };
 
-  const fetchMarcacoes = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
     const { start, end } = getDateRange(filter);
-    const [marcRes, feriasRes] = await Promise.all([
-      supabase
-        .from('marcacoes_ponto')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .gte('data', start)
-        .lte('data', end)
+    const [marcRes, feriasRes, compRes] = await Promise.all([
+      supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
+        .is('deleted_at', null).gte('data', start).lte('data', end)
         .order('horario', { ascending: true }),
-      supabase
-        .from('ferias')
-        .select('data_inicio, data_fim, status')
-        .eq('user_id', user.id)
-        .in('status', ['ativa', 'agendada', 'concluida']),
+      supabase.from('ferias').select('data_inicio, data_fim, status, tipo')
+        .eq('user_id', user.id).in('status', ['ativa', 'agendada', 'concluida']),
+      supabase.from('compensacoes_banco_horas').select('*')
+        .eq('user_id', user.id).gte('data', start).lte('data', end),
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
+    // Build ferias map
     const dias = new Map<string, FeriasInfo>();
     (feriasRes.data || []).forEach((f: any) => {
-      const hoje = new Date();
-      hoje.setHours(12, 0, 0, 0);
+      const hoje = new Date(); hoje.setHours(12, 0, 0, 0);
       const fInicio = new Date(f.data_inicio + 'T12:00:00');
       const fFim = new Date(f.data_fim + 'T12:00:00');
       let autoStatus = f.status;
       if (hoje > fFim) autoStatus = 'concluida';
       else if (hoje >= fInicio && hoje <= fFim) autoStatus = 'ativa';
       else if (hoje < fInicio) autoStatus = 'agendada';
-
       let d = new Date(f.data_inicio + 'T12:00:00');
       while (d <= fFim) {
         const ds = d.toISOString().split('T')[0];
@@ -107,6 +118,13 @@ const HistoricoPage: React.FC = () => {
       }
     });
     setFeriasDias(dias);
+
+    // Build compensacoes map
+    const compMap = new Map<string, CompensacaoInfo>();
+    (compRes.data || []).forEach((c: any) => {
+      compMap.set(c.data, { data: c.data, minutos: c.minutos, observacao: c.observacao });
+    });
+    setCompensacoes(compMap);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
@@ -114,97 +132,163 @@ const HistoricoPage: React.FC = () => {
     supabase.from('alertas').update({ lido: true }).eq('user_id', user.id).eq('lido', false).then(() => {});
   }, [user]);
 
-  useEffect(() => { fetchMarcacoes(); }, [fetchMarcacoes]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const hojeStr = new Date().toISOString().split('T')[0];
 
   const daySummaries: DaySummary[] = useMemo(() => {
-    const map = new Map<string, Marcacao[]>();
+    const { start, end } = getDateRange(filter);
+    const marcMap = new Map<string, Marcacao[]>();
     allMarcacoes.forEach(m => {
-      if (!map.has(m.data)) map.set(m.data, []);
-      map.get(m.data)!.push(m);
+      if (!marcMap.has(m.data)) marcMap.set(m.data, []);
+      marcMap.get(m.data)!.push(m);
     });
 
     const summaries: DaySummary[] = [];
-    map.forEach((marcacoes, data) => {
-      const jornada = calcularJornada(marcacoes, carga * 60);
-      summaries.push({
-        data,
-        marcacoes,
-        totalMin: jornada.totalTrabalhado,
-        extraHours: jornada.horaExtraMin / 60,
-        intervaloMin: jornada.totalIntervalo,
-        primeiraEntrada: jornada.primeiraEntrada,
-        ultimaSaida: jornada.ultimaSaida,
-        ferias: feriasDias.has(data),
-        feriasInfo: feriasDias.get(data) || null,
-      });
-    });
+    let d = new Date(start + 'T12:00:00');
+    const endDate = new Date(end + 'T12:00:00');
 
-    feriasDias.forEach((info, data) => {
-      if (!map.has(data)) {
-        summaries.push({
-          data,
-          marcacoes: [],
-          totalMin: 0,
-          extraHours: 0,
-          intervaloMin: 0,
-          primeiraEntrada: null,
-          ultimaSaida: null,
-          ferias: true,
-          feriasInfo: info,
-        });
+    while (d <= endDate) {
+      const dataStr = d.toISOString().split('T')[0];
+      const diaSemana = d.getDay();
+      const ehFds = diaSemana === 0 || diaSemana === 6;
+      const ehHoje = dataStr === hojeStr;
+      const marcacoes = marcMap.get(dataStr) || [];
+      const feriasInfo = feriasDias.get(dataStr) || null;
+      const compensacao = compensacoes.get(dataStr) || null;
+      const feriado = getFeriado(dataStr);
+
+      let status: DayStatus;
+      if (feriado && marcacoes.length === 0) {
+        status = 'feriado';
+      } else if (feriasInfo && marcacoes.length === 0) {
+        status = 'ferias';
+      } else if (compensacao) {
+        status = 'compensado';
+      } else if (ehFds && marcacoes.length === 0) {
+        status = 'fimdesemana';
+      } else if (marcacoes.length > 0) {
+        const jornada = calcularJornada(marcacoes, carga * 60);
+        if (jornada.emAndamento && ehHoje) {
+          status = 'em_andamento';
+        } else {
+          status = 'registrado';
+        }
+      } else {
+        status = 'pendente';
       }
-    });
 
-    return summaries.sort((a, b) => b.data.localeCompare(a.data));
-  }, [allMarcacoes, carga, feriasDias]);
+      const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, carga * 60) : null;
 
-  const totalHoras = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = daySummaries.filter(d => !d.ferias || d.marcacoes.length > 0).reduce((s, d) => s + d.extraHours, 0);
-  const diasTrabalhados = daySummaries.filter(d => d.marcacoes.length > 0).length;
+      summaries.push({
+        data: dataStr,
+        diaSemana,
+        status,
+        marcacoes,
+        totalMin: jornada?.totalTrabalhado ?? 0,
+        extraHours: (jornada?.horaExtraMin ?? 0) / 60,
+        devendoMin: jornada?.devendoMin ?? 0,
+        intervaloMin: jornada?.totalIntervalo ?? 0,
+        primeiraEntrada: jornada?.primeiraEntrada ?? null,
+        ultimaSaida: jornada?.ultimaSaida ?? null,
+        feriasInfo,
+        compensacao,
+        feriadoNome: feriado?.nome ?? null,
+        ehHoje,
+      });
 
-  const getDayStyle = (day: DaySummary) => {
-    if (day.ferias) {
-      return { bg: 'bg-accent/5 border-accent/20', badge: 'bg-accent/20 text-accent' };
+      d.setDate(d.getDate() + 1);
     }
-    if (day.totalMin / 60 > 10) {
-      return { bg: 'bg-destructive/5 border-destructive/20', badge: 'bg-destructive/20 text-destructive' };
+
+    return summaries.reverse();
+  }, [allMarcacoes, carga, feriasDias, compensacoes, filter, dataInicio, dataFim, hojeStr]);
+
+  // Apply quick filter
+  const filteredDays = useMemo(() => {
+    let days = daySummaries;
+    if (!showWeekends) {
+      days = days.filter(d => d.status !== 'fimdesemana');
     }
-    if (day.extraHours > 0) {
-      return { bg: 'bg-card border-border', badge: 'bg-warning/20 text-warning' };
+    if (quickFilter === 'pendentes') return days.filter(d => d.status === 'pendente');
+    if (quickFilter === 'ferias') return days.filter(d => d.status === 'ferias' || d.status === 'feriado');
+    if (quickFilter === 'extras') return days.filter(d => d.extraHours > 0);
+    return days;
+  }, [daySummaries, quickFilter, showWeekends]);
+
+  // Stats
+  const diasComRegistro = daySummaries.filter(d => d.marcacoes.length > 0);
+  const totalHoras = diasComRegistro.reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = diasComRegistro.reduce((s, d) => s + d.extraHours, 0);
+  const diasTrabalhados = diasComRegistro.length;
+  const diasPendentes = daySummaries.filter(d => d.status === 'pendente').length;
+
+  const getStatusStyle = (day: DaySummary) => {
+    switch (day.status) {
+      case 'feriado': return { bg: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', label: 'Feriado' };
+      case 'ferias': return { bg: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Férias' };
+      case 'compensado': return { bg: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', label: 'Compensado' };
+      case 'fimdesemana': return { bg: 'bg-muted/50 border-border', badge: 'bg-muted text-muted-foreground', label: 'Fim de semana' };
+      case 'pendente': return { bg: 'bg-amber-50 border-amber-300 dark:bg-amber-950/20 dark:border-amber-700', badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', label: 'Pendente' };
+      case 'em_andamento': return { bg: 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', label: 'Em andamento' };
+      default: {
+        if (day.extraHours > 0) return { bg: 'bg-card border-border', badge: 'bg-warning/20 text-warning', label: '' };
+        return { bg: 'bg-card border-border', badge: 'bg-success/20 text-success', label: '' };
+      }
     }
-    return { bg: 'bg-card border-border', badge: 'bg-success/20 text-success' };
+  };
+
+  const handleDayClick = (day: DaySummary) => {
+    if (day.status === 'fimdesemana' && day.marcacoes.length === 0) return;
+    if (day.ehHoje && (day.status === 'pendente' || day.status === 'em_andamento')) {
+      navigate('/app');
+      return;
+    }
+    setSelectedDay(day.data);
   };
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <AppHeader title="Histórico de jornada" subtitle={mesAnoAtual()} />
-      <div className="px-4 -mt-3 max-w-lg mx-auto space-y-4">
-        {/* Summary */}
+      <div className="px-4 pt-3 max-w-lg mx-auto space-y-4">
+        {/* Summary cards */}
         <div className="grid grid-cols-3 gap-2 animate-slide-up">
           <div className="bg-card rounded-xl p-3 border border-border text-center">
             <Clock size={14} className="mx-auto text-muted-foreground mb-1" />
-            <p className="text-xs text-muted-foreground">trabalhado</p>
+            <p className="text-[10px] text-muted-foreground">trabalhado</p>
             <p className="text-sm font-bold">{formatarDuracaoJornada(Math.round(totalHoras * 60))}</p>
           </div>
           <div className="bg-card rounded-xl p-3 border border-border text-center">
             <TrendingUp size={14} className="mx-auto text-warning mb-1" />
-            <p className="text-xs text-muted-foreground">extras</p>
+            <p className="text-[10px] text-muted-foreground">extras</p>
             <p className={`text-sm font-bold ${totalExtra > 0 ? 'text-warning' : ''}`}>
               {totalExtra > 0 ? `+${formatarDuracaoJornada(Math.round(totalExtra * 60))}` : '—'}
             </p>
           </div>
           <div className="bg-card rounded-xl p-3 border border-border text-center">
             <Calendar size={14} className="mx-auto text-accent mb-1" />
-            <p className="text-xs text-muted-foreground">dias</p>
+            <p className="text-[10px] text-muted-foreground">dias</p>
             <p className="text-sm font-bold">{diasTrabalhados}</p>
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Pending days warning */}
+        {diasPendentes > 0 && (
+          <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-xl px-3 py-2 animate-fade-in">
+            <AlertTriangle size={14} className="text-orange-500 shrink-0" />
+            <p className="text-xs text-orange-700 dark:text-orange-300">
+              <strong>{diasPendentes} {diasPendentes === 1 ? 'dia pendente' : 'dias pendentes'}</strong> este mês
+            </p>
+            <button onClick={() => setQuickFilter('pendentes')} className="ml-auto text-[10px] text-orange-600 dark:text-orange-400 font-medium underline">
+              Ver
+            </button>
+          </div>
+        )}
+
+        {/* Period filters */}
         <div className="flex gap-2 flex-wrap animate-fade-in">
           {([['week', 'Semana'], ['month', 'Mês'], ['prev_month', 'Anterior'], ['custom', 'Período']] as const).map(([key, label]) => (
-            <button key={key} onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${filter === key ? 'bg-accent text-accent-foreground shadow-sm' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
+            <button key={key} onClick={() => { setFilter(key); setQuickFilter('todos'); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${filter === key ? 'bg-accent text-accent-foreground shadow-sm' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
               {label}
             </button>
           ))}
@@ -214,20 +298,34 @@ const HistoricoPage: React.FC = () => {
           <div className="flex gap-2 items-center animate-slide-up">
             <div className="flex-1">
               <label className="text-[10px] text-muted-foreground mb-1 block">De</label>
-              <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="rounded-xl h-9 text-xs" />
+              <Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} className="rounded-xl h-9 text-xs" />
             </div>
             <div className="flex-1">
               <label className="text-[10px] text-muted-foreground mb-1 block">Até</label>
-              <Input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="rounded-xl h-9 text-xs" />
+              <Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} className="rounded-xl h-9 text-xs" />
             </div>
           </div>
         )}
 
+        {/* Quick filters + weekend toggle */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {([['todos', 'Todos'], ['pendentes', 'Pendentes'], ['ferias', 'Férias'], ['extras', 'Com extra']] as const).map(([key, label]) => (
+            <button key={key} onClick={() => setQuickFilter(key)}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${quickFilter === key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+              {label}
+            </button>
+          ))}
+          <button onClick={() => setShowWeekends(!showWeekends)}
+            className={`ml-auto px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${showWeekends ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+            👁 FDS
+          </button>
+        </div>
+
         {/* Manual entry */}
-        <ManualEntry onAdded={fetchMarcacoes} />
+        <ManualEntry onAdded={fetchData} />
 
         {/* Day list */}
-        {daySummaries.length === 0 ? (
+        {filteredDays.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar size={28} className="text-muted-foreground" />
@@ -237,25 +335,39 @@ const HistoricoPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-2">
-            {daySummaries.map((day, idx) => {
+            {filteredDays.map((day, idx) => {
               const date = new Date(day.data + 'T12:00:00');
-              const style = getDayStyle(day);
+              const style = getStatusStyle(day);
 
               return (
-                <button key={day.data} onClick={() => setSelectedDay(day.data)}
-                  className={`w-full rounded-xl p-4 border text-left transition-all duration-200 hover:shadow-sm active:scale-[0.99] ${style.bg} animate-slide-up`}
+                <button key={day.data} onClick={() => handleDayClick(day)}
+                  className={`w-full rounded-xl p-3.5 border text-left transition-all hover:shadow-sm active:scale-[0.99] ${style.bg} animate-slide-up ${day.status === 'fimdesemana' ? 'opacity-60' : ''}`}
                   style={{ animationDelay: `${Math.min(idx, 10) * 30}ms` }}>
-                  <div className="flex items-center gap-3">
-                    <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg min-w-[36px] text-center ${style.badge}`}>
-                      {day.ferias ? '🏖' : diaSemanaAbrev(date)}
+                  <div className="flex items-start gap-3">
+                    {/* Day badge */}
+                    <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg min-w-[36px] text-center shrink-0 ${style.badge}`}>
+                      {day.status === 'ferias' ? '🏖' : day.status === 'feriado' ? '🎉' : day.status === 'compensado' ? '💤' : day.status === 'fimdesemana' ? '📅' : diaSemanaAbrev(date)}
                     </div>
+
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold tabular-nums">
-                        {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                      </p>
-                      {day.ferias && day.marcacoes.length === 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </p>
+                        {day.ehHoje && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/20 text-accent">HOJE</span>
+                        )}
+                      </div>
+
+                      {/* Status-specific content */}
+                      {day.status === 'feriado' && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">{day.feriadoNome}</p>
+                      )}
+
+                      {day.status === 'ferias' && (
                         <div>
-                          <p className="text-xs text-accent font-medium">
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                             {day.feriasInfo?.status === 'agendada' ? '📅 Férias agendadas' : '🏖 Férias'}
                           </p>
                           {day.feriasInfo && (
@@ -264,25 +376,55 @@ const HistoricoPage: React.FC = () => {
                             </p>
                           )}
                         </div>
-                      ) : (
+                      )}
+
+                      {day.status === 'compensado' && (
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                          Folga do banco de horas · {formatarDuracaoJornada(day.compensacao?.minutos ?? 0)} descontadas
+                        </p>
+                      )}
+
+                      {day.status === 'fimdesemana' && (
+                        <p className="text-[10px] text-muted-foreground">Fim de semana</p>
+                      )}
+
+                      {day.status === 'pendente' && (
+                        <div>
+                          <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                            {day.ehHoje ? 'Você ainda não registrou hoje' : 'Nenhum registro neste dia'}
+                          </p>
+                          <p className="text-[10px] text-orange-500 dark:text-orange-400 mt-0.5 font-medium">
+                            {day.ehHoje ? '▶ Ir para o ponto' : '+ Adicionar registro'}
+                          </p>
+                        </div>
+                      )}
+
+                      {day.status === 'em_andamento' && (
+                        <div>
+                          <p className="text-xs text-muted-foreground tabular-nums">
+                            {formatarHoraLocal(day.primeiraEntrada)} → ... · ⏱ em andamento
+                          </p>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">Ver no Ponto</p>
+                        </div>
+                      )}
+
+                      {day.status === 'registrado' && (
                         <p className="text-xs text-muted-foreground tabular-nums">
                           {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
                           {' · '}{formatarDuracaoJornada(day.totalMin)}
-                          {day.intervaloMin > 0 && ` · ☕${formatarDuracaoJornada(day.intervaloMin)}`}
+                          {day.intervaloMin > 0 && ` · ⏱${formatarDuracaoJornada(day.intervaloMin)}`}
                         </p>
                       )}
                     </div>
-                    {day.ferias && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        day.feriasInfo?.status === 'ativa' ? 'bg-accent/20 text-accent' :
-                        day.feriasInfo?.status === 'agendada' ? 'bg-muted text-muted-foreground' :
-                        'bg-success/20 text-success'
-                      }`}>
-                        {day.feriasInfo?.status === 'ativa' ? 'Ativa' : day.feriasInfo?.status === 'agendada' ? 'Agendada' : 'Concluída'}
+
+                    {/* Right badge */}
+                    {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana') && (
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${style.badge}`}>
+                        {style.label}
                       </span>
                     )}
-                    {!day.ferias && day.extraHours > 0 && (
-                      <span className="text-xs font-bold text-warning bg-warning/10 px-2 py-0.5 rounded-full">
+                    {day.status === 'registrado' && day.extraHours > 0 && (
+                      <span className="text-[10px] font-bold text-warning bg-warning/10 px-2 py-0.5 rounded-full shrink-0">
                         +{formatarDuracaoJornada(Math.round(day.extraHours * 60))}
                       </span>
                     )}
@@ -298,7 +440,7 @@ const HistoricoPage: React.FC = () => {
         open={!!selectedDay}
         onClose={() => setSelectedDay(null)}
         data={selectedDay}
-        onSaved={fetchMarcacoes}
+        onSaved={fetchData}
       />
 
       <BottomNav />
