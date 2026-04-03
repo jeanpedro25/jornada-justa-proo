@@ -110,6 +110,7 @@ function gerarExtratoPDF(
   salario: number,
   percentual: number,
   totalCompensado: number,
+  opcoes?: { tipo?: 'resumido' | 'completo'; incluirEventos?: boolean },
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const largura = doc.internal.pageSize.getWidth();
