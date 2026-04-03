@@ -5,10 +5,11 @@ import { formatCurrency } from '@/lib/formatters';
 import { calcularJornada, formatarDuracaoJornada, getCargaDiaria, type Marcacao } from '@/lib/jornada';
 import { fetchBancoHorasEntries, summarizeBancoHoras, formatMinutosHoras } from '@/lib/banco-horas';
 import { getFeriadoComLocais } from '@/lib/feriados';
+import { calcularLiquido } from '@/lib/descontos';
 import { usePaywall } from '@/hooks/usePaywall';
 import ProGate from '@/components/ProGate';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
-import { Clock, TrendingUp, Wallet, PiggyBank, ChevronDown, FileText } from 'lucide-react';
+import { Clock, TrendingUp, PiggyBank, ChevronDown, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -30,6 +31,7 @@ const MonthSummaryCard: React.FC = () => {
   );
   const salario = profile?.salario_base ?? 0;
   const percentual = profile?.hora_extra_percentual ?? 50;
+  const descontosFixos = (p?.descontos_fixos as number) ?? 0;
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -85,24 +87,29 @@ const MonthSummaryCard: React.FC = () => {
     const valorHN = salario > 0 ? salario / 220 : 0;
     const valorHE = valorHN * (1 + percentual / 100);
     const estimativaExtra = (extraMin / 60) * valorHE;
-    const estimativaTotal = salario + estimativaExtra;
+    const bruto = salario + estimativaExtra;
 
-    return { totalMin, extraMin, diasTrab, estimativaExtra, estimativaTotal, valorHN, valorHE };
-  }, [marcacoes, carga, salario, percentual, feriadosLocais]);
+    const resumo = calcularLiquido(bruto, descontosFixos);
+
+    return { totalMin, extraMin, diasTrab, estimativaExtra, bruto, valorHN, valorHE, resumo };
+  }, [marcacoes, carga, salario, percentual, feriadosLocais, descontosFixos]);
 
   const mesNome = new Date().toLocaleDateString('pt-BR', { month: 'long' }).replace(/^./, s => s.toUpperCase());
 
   return (
     <div className="space-y-5 animate-fade-in">
 
-      {/* === HERO: Big money value === */}
-      <ProGate action="money" blurred estimatedValue={stats.estimativaTotal}>
+      {/* === HERO: Salário líquido estimado === */}
+      <ProGate action="money" blurred estimatedValue={stats.resumo.liquido}>
         <div className="text-center py-6">
-          <p className="text-3xl font-black text-accent tabular-nums tracking-tight leading-none">
-            {stats.estimativaTotal > 0 ? formatCurrency(stats.estimativaTotal) : 'R$ 0,00'}
+          <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">
+            Salário Líquido Estimado
           </p>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            Estimativa de {mesNome}
+          <p className="text-3xl font-black text-accent tabular-nums tracking-tight leading-none">
+            {stats.resumo.liquido > 0 ? formatCurrency(stats.resumo.liquido) : 'R$ 0,00'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            {mesNome}
           </p>
           {stats.estimativaExtra > 0 && canSeeMoney && (
             <p className="text-xs text-warning font-medium mt-1">
@@ -138,7 +145,7 @@ const MonthSummaryCard: React.FC = () => {
         </ProGate>
       </div>
 
-      {/* === Collapsible details === */}
+      {/* === Collapsible: Breakdown bruto → líquido === */}
       {canSeeMoney && salario > 0 && (
         <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
           <CollapsibleTrigger className="flex items-center justify-center gap-1.5 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
@@ -148,6 +155,32 @@ const MonthSummaryCard: React.FC = () => {
           <CollapsibleContent>
             <div className="bg-card rounded-xl p-4 border border-border mt-2 space-y-2 animate-fade-in">
               <div className="text-xs space-y-1.5">
+                {/* Bruto */}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Bruto</span>
+                  <span className="font-medium">{formatCurrency(stats.bruto)}</span>
+                </div>
+                {/* INSS */}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">(-) INSS estimado</span>
+                  <span className="font-medium text-destructive">-{formatCurrency(stats.resumo.inss)}</span>
+                </div>
+                {/* IRRF */}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">(-) IRRF estimado</span>
+                  <span className="font-medium text-destructive">
+                    {stats.resumo.irrf > 0 ? `-${formatCurrency(stats.resumo.irrf)}` : 'Isento'}
+                  </span>
+                </div>
+                {/* Descontos fixos */}
+                {descontosFixos > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">(-) Descontos fixos</span>
+                    <span className="font-medium text-destructive">-{formatCurrency(descontosFixos)}</span>
+                  </div>
+                )}
+                {/* Extras breakdown */}
+                <div className="border-t border-border pt-1.5 mt-1.5" />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Salário base</span>
                   <span className="font-medium">{formatCurrency(salario)}</span>
@@ -166,9 +199,10 @@ const MonthSummaryCard: React.FC = () => {
                     {stats.extraMin > 0 ? `+${formatarDuracaoJornada(stats.extraMin)}` : '—'}
                   </span>
                 </div>
+                {/* Total líquido */}
                 <div className="border-t border-border pt-1.5 mt-1.5 flex justify-between">
-                  <span className="font-semibold">Total estimado</span>
-                  <span className="font-bold text-accent">{formatCurrency(stats.estimativaTotal)}</span>
+                  <span className="font-semibold">(=) Líquido estimado</span>
+                  <span className="font-bold text-accent">{formatCurrency(stats.resumo.liquido)}</span>
                 </div>
               </div>
             </div>
@@ -214,7 +248,7 @@ const MonthSummaryCard: React.FC = () => {
 
       {/* === Legal disclaimer === */}
       <p className="text-[9px] text-muted-foreground/50 text-center px-4 leading-relaxed">
-        Os valores apresentados são estimativas baseadas nos dados informados pelo usuário.
+        Os descontos são estimativas baseadas na legislação geral. Valores reais de benefícios (VT, VR, Saúde) e descontos específicos da empresa devem ser conferidos no seu holerite oficial.
       </p>
     </div>
   );

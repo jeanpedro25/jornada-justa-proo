@@ -25,6 +25,7 @@ const ConfigPage: React.FC = () => {
   const [percentual, setPercentual] = useState('');
   const [almoco, setAlmoco] = useState('60');
   const [saving, setSaving] = useState(false);
+  const [descontosFixos, setDescontosFixos] = useState('0');
 
   // Banco de Horas
   const [modoTrabalho, setModoTrabalho] = useState('horas_extras');
