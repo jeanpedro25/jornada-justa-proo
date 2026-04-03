@@ -391,6 +391,7 @@ const RelatorioPage: React.FC = () => {
   const [bancoEntries, setBancoEntries] = useState<BancoHorasEntry[]>([]);
   const [totalCompensado, setTotalCompensado] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
   const { canExportPdf } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
 
@@ -403,34 +404,37 @@ const RelatorioPage: React.FC = () => {
   const salario = profile?.salario_base ?? 0;
   const percentual = profile?.hora_extra_percentual ?? 50;
 
+  const fetchData = async (startDate?: string, endDate?: string) => {
+    if (!user) return;
+    let query = supabase
+      .from('marcacoes_ponto')
+      .select('*')
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .order('horario', { ascending: true });
+
+    if (startDate) query = query.gte('data', startDate);
+    if (endDate) query = query.lte('data', endDate);
+
+    const { data } = await query;
+    setAllMarcacoes((data as Marcacao[]) || []);
+
+    await fetchBancoHorasEntries(user.id).then(setBancoEntries);
+
+    const { data: compData } = await supabase
+      .from('compensacoes_banco_horas')
+      .select('minutos')
+      .eq('user_id', user.id);
+    const total = (compData as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
+    setTotalCompensado(total);
+  };
+
   useEffect(() => {
     if (!user) return;
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const end = now.toISOString().split('T')[0];
-
-    // Fetch from marcacoes_ponto (the actual data source)
-    supabase
-      .from('marcacoes_ponto')
-      .select('*')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .gte('data', start)
-      .lte('data', end)
-      .order('horario', { ascending: true })
-      .then(({ data }) => setAllMarcacoes((data as Marcacao[]) || []));
-
-    fetchBancoHorasEntries(user.id).then(setBancoEntries);
-
-    // Fetch compensações from compensacoes_banco_horas table
-    supabase
-      .from('compensacoes_banco_horas')
-      .select('minutos')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        const total = (data as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
-        setTotalCompensado(total);
-      });
+    fetchData(start, end);
   }, [user]);
 
   const days = useMemo(
@@ -464,17 +468,76 @@ const RelatorioPage: React.FC = () => {
     return lista;
   }, [days, profile]);
 
-  const handleGeneratePDF = () => {
+  const getDateRange = (options: ReportOptions): { start: string; end: string; label: string } => {
+    const now = new Date();
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+    switch (options.periodo) {
+      case 'hoje':
+        return { start: fmt(now), end: fmt(now), label: `Hoje — ${now.toLocaleDateString('pt-BR')}` };
+      case 'semana': {
+        const s = startOfWeek(now, { weekStartsOn: 1 });
+        const e = endOfWeek(now, { weekStartsOn: 1 });
+        return { start: fmt(s), end: fmt(e), label: `Semana ${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
+      }
+      case 'mes': {
+        const s = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { start: fmt(s), end: fmt(now), label: `${meses[now.getMonth()]} ${now.getFullYear()}` };
+      }
+      case 'personalizado': {
+        const s = options.dataInicio!;
+        const e = options.dataFim!;
+        return { start: fmt(s), end: fmt(e), label: `${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
+      }
+      case 'tudo':
+        return { start: '2000-01-01', end: fmt(now), label: 'Todo o histórico' };
+      default:
+        return { start: fmt(now), end: fmt(now), label: '' };
+    }
+  };
+
+  const handleOpenOptions = () => {
     if (!canExportPdf) {
       setShowPaywall(true);
       return;
     }
+    setShowOptionsModal(true);
+  };
+
+  const handleGeneratePDF = async (options: ReportOptions) => {
     setGenerating(true);
     try {
-      const now = new Date();
-      const periodoLabel = `${meses[now.getMonth()]} ${now.getFullYear()}`;
-      gerarExtratoPDF(days, profile, periodoLabel, bancoEntries, carga, salario, percentual, totalCompensado);
+      const { start, end, label } = getDateRange(options);
+
+      // Re-fetch data for the selected period
+      let query = supabase
+        .from('marcacoes_ponto')
+        .select('*')
+        .eq('user_id', user!.id)
+        .is('deleted_at', null)
+        .order('horario', { ascending: true });
+
+      if (start !== '2000-01-01') query = query.gte('data', start);
+      query = query.lte('data', end);
+
+      const { data } = await query;
+      const marcacoes = (data as Marcacao[]) || [];
+      const periodDays = buildDaySummaries(marcacoes, carga);
+
+      if (periodDays.length === 0) {
+        toast({ title: 'Sem dados', description: 'Nenhum registro encontrado no período selecionado.', variant: 'destructive' });
+        setGenerating(false);
+        return;
+      }
+
+      const bhEntries = options.incluirBancoHoras ? bancoEntries : [];
+
+      gerarExtratoPDF(
+        periodDays, profile, label, bhEntries, carga, salario, percentual, totalCompensado,
+        { tipo: options.tipo, incluirEventos: options.incluirEventos },
+      );
       toast({ title: 'PDF gerado!', description: 'Extrato salvo no seu dispositivo.' });
+      setShowOptionsModal(false);
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar PDF', variant: 'destructive' });
     }
