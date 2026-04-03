@@ -44,7 +44,6 @@ const OnboardingPage: React.FC = () => {
         onboarding_completo: true,
       } as any)
       .eq('id', user.id);
-      .eq('id', user.id);
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
