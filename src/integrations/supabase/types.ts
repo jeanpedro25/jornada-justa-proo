@@ -231,6 +231,7 @@ export type Database = {
           created_at: string | null
           data_admissao: string | null
           data_vencimento_ferias: string | null
+          descontos_fixos: number
           dias_trabalhados_semana: number
           empresa: string | null
           escala_dias_folga: number | null
@@ -267,6 +268,7 @@ export type Database = {
           created_at?: string | null
           data_admissao?: string | null
           data_vencimento_ferias?: string | null
+          descontos_fixos?: number
           dias_trabalhados_semana?: number
           empresa?: string | null
           escala_dias_folga?: number | null
@@ -303,6 +305,7 @@ export type Database = {
           created_at?: string | null
           data_admissao?: string | null
           data_vencimento_ferias?: string | null
+          descontos_fixos?: number
           dias_trabalhados_semana?: number
           empresa?: string | null
           escala_dias_folga?: number | null
