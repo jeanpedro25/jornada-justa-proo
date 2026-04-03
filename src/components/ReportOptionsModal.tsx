@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export type PeriodoTipo = 'hoje' | 'semana' | 'mes' | 'personalizado' | 'tudo';
+export type PeriodoTipo = 'hoje' | 'semana' | 'mes' | 'ciclo' | 'personalizado' | 'tudo';
 export type TipoRelatorio = 'resumido' | 'completo';
 
 export interface ReportOptions {
