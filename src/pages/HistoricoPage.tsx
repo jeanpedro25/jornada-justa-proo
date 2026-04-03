@@ -125,13 +125,12 @@ const HistoricoPage: React.FC = () => {
 
     const summaries: DaySummary[] = [];
     map.forEach((marcacoes, data) => {
-      const jornada = calcularJornada(marcacoes);
-      const extra = calcularHoraExtra(jornada.totalTrabalhado, carga);
+      const jornada = calcularJornada(marcacoes, carga * 60);
       summaries.push({
         data,
         marcacoes,
         totalMin: jornada.totalTrabalhado,
-        extraHours: extra,
+        extraHours: jornada.horaExtraMin / 60,
         intervaloMin: jornada.totalIntervalo,
         primeiraEntrada: jornada.primeiraEntrada,
         ultimaSaida: jornada.ultimaSaida,
