@@ -20,11 +20,13 @@ import {
   Clock, Calendar,
 } from 'lucide-react';
 import AvisoLegal from '@/components/AvisoLegal';
+import ReportOptionsModal, { type ReportOptions } from '@/components/ReportOptionsModal';
 import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -108,7 +110,10 @@ function gerarExtratoPDF(
   salario: number,
   percentual: number,
   totalCompensado: number,
+  opcoes?: { tipo?: 'resumido' | 'completo'; incluirEventos?: boolean },
 ) {
+  const isResumido = opcoes?.tipo === 'resumido';
+  const incluirEventos = opcoes?.incluirEventos !== false;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const largura = doc.internal.pageSize.getWidth();
   const margem = 14;
@@ -229,88 +234,92 @@ function gerarExtratoPDF(
     y += 3;
   }
 
-  // Detailed table using marcacoes_ponto data
-  y = checkPage(doc, y, 20);
-  y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
+  // Detailed table (only for 'completo')
+  if (!isResumido) {
+    y = checkPage(doc, y, 20);
+    y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
 
-  const tableBody = days.map(d => {
-    const dateObj = new Date(d.data + 'T12:00:00');
-    const hT = Math.floor(d.totalMin / 60);
-    const mT = Math.round(d.totalMin % 60);
-    const hE = Math.floor(d.extraMin / 60);
-    const mE = Math.round(d.extraMin % 60);
+    const tableBody = days.map(d => {
+      const dateObj = new Date(d.data + 'T12:00:00');
+      const hT = Math.floor(d.totalMin / 60);
+      const mT = Math.round(d.totalMin % 60);
+      const hE = Math.floor(d.extraMin / 60);
+      const mE = Math.round(d.extraMin % 60);
 
-    let tipo = 'Normal';
-    if (d.extraMin > 0) tipo = 'Hora extra';
-    else if (!d.ultimaSaida) tipo = 'Incompleto';
+      let tipo = 'Normal';
+      if (d.extraMin > 0) tipo = 'Hora extra';
+      else if (!d.ultimaSaida) tipo = 'Incompleto';
 
-    return [
-      dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      diasSemana[dateObj.getDay()],
-      d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
-      d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
-      d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
-      `${hT}h${mT}min`,
-      d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
-      tipo,
-    ];
-  });
-
-  autoTable(doc, {
-    startY: y,
-    head: [['Data', 'Dia', 'Entrada', 'Saída', 'Intervalo', 'Trabalhado', 'Extra', 'Tipo']],
-    body: tableBody,
-    theme: 'grid',
-    styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak', halign: 'center' },
-    headStyles: { fillColor: [26, 26, 46], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
-    alternateRowStyles: { fillColor: [248, 249, 255] },
-    margin: { left: margem, right: margem },
-    didParseCell: (data) => {
-      if (data.section === 'body') {
-        const extra = tableBody[data.row.index]?.[6];
-        const tipo = tableBody[data.row.index]?.[7];
-        if (data.column.index === 6 && extra !== '—') {
-          data.cell.styles.textColor = [231, 76, 60];
-        }
-        if (data.column.index === 7) {
-          if (tipo === 'Hora extra') data.cell.styles.textColor = [243, 156, 18];
-        }
-      }
-    },
-  });
-
-  y = (doc as any).lastAutoTable.finalY + 6;
-
-  // Events
-  y = checkPage(doc, y, 20);
-  y = addSectionTitle(doc, 'Eventos do Periodo', y, margem);
-
-  const eventos: { data: string; descricao: string }[] = [];
-  bancoEntries.forEach(e => {
-    const dl = new Date(e.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    if (e.tipo === 'compensacao') eventos.push({ data: dl, descricao: `Folga (compensacao banco de horas)${e.nota ? ' — ' + e.nota : ''}` });
-    if (e.tipo === 'acumulo') eventos.push({ data: dl, descricao: `Acumulo banco de horas: ${formatMinutosHoras(e.minutos)}` });
-  });
-
-  if (eventos.length === 0) {
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 140);
-    doc.text('Nenhum evento relevante no periodo.', margem, y);
-    y += 6;
-  } else {
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    eventos.forEach(ev => {
-      y = checkPage(doc, y, 5);
-      doc.setTextColor(78, 205, 196);
-      doc.text(ev.data, margem, y);
-      doc.setTextColor(60, 60, 70);
-      doc.text(` — ${ev.descricao}`, margem + 14, y);
-      y += 4.5;
+      return [
+        dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        diasSemana[dateObj.getDay()],
+        d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
+        d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
+        d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
+        `${hT}h${mT}min`,
+        d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
+        tipo,
+      ];
     });
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Data', 'Dia', 'Entrada', 'Saída', 'Intervalo', 'Trabalhado', 'Extra', 'Tipo']],
+      body: tableBody,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak', halign: 'center' },
+      headStyles: { fillColor: [26, 26, 46], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+      alternateRowStyles: { fillColor: [248, 249, 255] },
+      margin: { left: margem, right: margem },
+      didParseCell: (data) => {
+        if (data.section === 'body') {
+          const extra = tableBody[data.row.index]?.[6];
+          const tipo = tableBody[data.row.index]?.[7];
+          if (data.column.index === 6 && extra !== '—') {
+            data.cell.styles.textColor = [231, 76, 60];
+          }
+          if (data.column.index === 7) {
+            if (tipo === 'Hora extra') data.cell.styles.textColor = [243, 156, 18];
+          }
+        }
+      },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 6;
   }
-  y += 3;
+
+  // Events (conditional)
+  if (incluirEventos) {
+    y = checkPage(doc, y, 20);
+    y = addSectionTitle(doc, 'Eventos do Periodo', y, margem);
+
+    const eventos: { data: string; descricao: string }[] = [];
+    bancoEntries.forEach(e => {
+      const dl = new Date(e.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      if (e.tipo === 'compensacao') eventos.push({ data: dl, descricao: `Folga (compensacao banco de horas)${e.nota ? ' — ' + e.nota : ''}` });
+      if (e.tipo === 'acumulo') eventos.push({ data: dl, descricao: `Acumulo banco de horas: ${formatMinutosHoras(e.minutos)}` });
+    });
+
+    if (eventos.length === 0) {
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 140);
+      doc.text('Nenhum evento relevante no periodo.', margem, y);
+      y += 6;
+    } else {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      eventos.forEach(ev => {
+        y = checkPage(doc, y, 5);
+        doc.setTextColor(78, 205, 196);
+        doc.text(ev.data, margem, y);
+        doc.setTextColor(60, 60, 70);
+        doc.text(` — ${ev.descricao}`, margem + 14, y);
+        y += 4.5;
+      });
+    }
+    y += 3;
+  }
 
   // Summary
   y = checkPage(doc, y, 25);
@@ -389,6 +398,7 @@ const RelatorioPage: React.FC = () => {
   const [bancoEntries, setBancoEntries] = useState<BancoHorasEntry[]>([]);
   const [totalCompensado, setTotalCompensado] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
   const { canExportPdf } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
 
@@ -401,34 +411,37 @@ const RelatorioPage: React.FC = () => {
   const salario = profile?.salario_base ?? 0;
   const percentual = profile?.hora_extra_percentual ?? 50;
 
+  const fetchData = async (startDate?: string, endDate?: string) => {
+    if (!user) return;
+    let query = supabase
+      .from('marcacoes_ponto')
+      .select('*')
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .order('horario', { ascending: true });
+
+    if (startDate) query = query.gte('data', startDate);
+    if (endDate) query = query.lte('data', endDate);
+
+    const { data } = await query;
+    setAllMarcacoes((data as Marcacao[]) || []);
+
+    await fetchBancoHorasEntries(user.id).then(setBancoEntries);
+
+    const { data: compData } = await supabase
+      .from('compensacoes_banco_horas')
+      .select('minutos')
+      .eq('user_id', user.id);
+    const total = (compData as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
+    setTotalCompensado(total);
+  };
+
   useEffect(() => {
     if (!user) return;
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const end = now.toISOString().split('T')[0];
-
-    // Fetch from marcacoes_ponto (the actual data source)
-    supabase
-      .from('marcacoes_ponto')
-      .select('*')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .gte('data', start)
-      .lte('data', end)
-      .order('horario', { ascending: true })
-      .then(({ data }) => setAllMarcacoes((data as Marcacao[]) || []));
-
-    fetchBancoHorasEntries(user.id).then(setBancoEntries);
-
-    // Fetch compensações from compensacoes_banco_horas table
-    supabase
-      .from('compensacoes_banco_horas')
-      .select('minutos')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        const total = (data as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
-        setTotalCompensado(total);
-      });
+    fetchData(start, end);
   }, [user]);
 
   const days = useMemo(
@@ -462,17 +475,76 @@ const RelatorioPage: React.FC = () => {
     return lista;
   }, [days, profile]);
 
-  const handleGeneratePDF = () => {
+  const getDateRange = (options: ReportOptions): { start: string; end: string; label: string } => {
+    const now = new Date();
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+    switch (options.periodo) {
+      case 'hoje':
+        return { start: fmt(now), end: fmt(now), label: `Hoje — ${now.toLocaleDateString('pt-BR')}` };
+      case 'semana': {
+        const s = startOfWeek(now, { weekStartsOn: 1 });
+        const e = endOfWeek(now, { weekStartsOn: 1 });
+        return { start: fmt(s), end: fmt(e), label: `Semana ${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
+      }
+      case 'mes': {
+        const s = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { start: fmt(s), end: fmt(now), label: `${meses[now.getMonth()]} ${now.getFullYear()}` };
+      }
+      case 'personalizado': {
+        const s = options.dataInicio!;
+        const e = options.dataFim!;
+        return { start: fmt(s), end: fmt(e), label: `${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
+      }
+      case 'tudo':
+        return { start: '2000-01-01', end: fmt(now), label: 'Todo o histórico' };
+      default:
+        return { start: fmt(now), end: fmt(now), label: '' };
+    }
+  };
+
+  const handleOpenOptions = () => {
     if (!canExportPdf) {
       setShowPaywall(true);
       return;
     }
+    setShowOptionsModal(true);
+  };
+
+  const handleGeneratePDF = async (options: ReportOptions) => {
     setGenerating(true);
     try {
-      const now = new Date();
-      const periodoLabel = `${meses[now.getMonth()]} ${now.getFullYear()}`;
-      gerarExtratoPDF(days, profile, periodoLabel, bancoEntries, carga, salario, percentual, totalCompensado);
+      const { start, end, label } = getDateRange(options);
+
+      // Re-fetch data for the selected period
+      let query = supabase
+        .from('marcacoes_ponto')
+        .select('*')
+        .eq('user_id', user!.id)
+        .is('deleted_at', null)
+        .order('horario', { ascending: true });
+
+      if (start !== '2000-01-01') query = query.gte('data', start);
+      query = query.lte('data', end);
+
+      const { data } = await query;
+      const marcacoes = (data as Marcacao[]) || [];
+      const periodDays = buildDaySummaries(marcacoes, carga);
+
+      if (periodDays.length === 0) {
+        toast({ title: 'Sem dados', description: 'Nenhum registro encontrado no período selecionado.', variant: 'destructive' });
+        setGenerating(false);
+        return;
+      }
+
+      const bhEntries = options.incluirBancoHoras ? bancoEntries : [];
+
+      gerarExtratoPDF(
+        periodDays, profile, label, bhEntries, carga, salario, percentual, totalCompensado,
+        { tipo: options.tipo, incluirEventos: options.incluirEventos },
+      );
       toast({ title: 'PDF gerado!', description: 'Extrato salvo no seu dispositivo.' });
+      setShowOptionsModal(false);
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Erro ao gerar PDF', variant: 'destructive' });
     }
@@ -548,21 +620,14 @@ const RelatorioPage: React.FC = () => {
 
         {/* Generate Button */}
         <Button
-          onClick={handleGeneratePDF}
-          disabled={generating || days.length === 0}
+          onClick={handleOpenOptions}
           className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl h-12 font-semibold gap-2"
         >
-          {generating ? (
-            <><Loader2 size={18} className="animate-spin" /> Gerando...</>
-          ) : (
-            <><Download size={18} /> Baixar Extrato PDF</>
-          )}
+          <Download size={18} /> Gerar Relatório PDF
         </Button>
-        {days.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center">Nenhum registro neste mês.</p>
-        )}
         <AvisoLegal />
       </div>
+      <ReportOptionsModal open={showOptionsModal} onOpenChange={setShowOptionsModal} onGenerate={handleGeneratePDF} generating={generating} />
       <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorTotal} trigger="pdf" />
       <BottomNav />
     </div>
