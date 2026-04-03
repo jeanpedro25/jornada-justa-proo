@@ -19,12 +19,12 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode; skipOnboardingCheck?: boolean }> = ({ children, skipOnboardingCheck }) => {
   const { session, profile, loading } = useAuth();
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
   if (!session) return <Navigate to="/auth" replace />;
   if (profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
-  if (profile && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
+  if (!skipOnboardingCheck && profile && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 };
 
@@ -59,7 +59,7 @@ const App = () => (
             <Route path="/aceite-termos" element={<TermsRoute><AceiteTermosPage /></TermsRoute>} />
             <Route path="/termos" element={<TermosUsoPage />} />
             <Route path="/privacidade-publica" element={<PrivacidadePublicaPage />} />
-            <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<ProtectedRoute skipOnboardingCheck><OnboardingPage /></ProtectedRoute>} />
             <Route path="/app" element={<ProtectedRoute><AppPage /></ProtectedRoute>} />
             <Route path="/historico" element={<ProtectedRoute><HistoricoPage /></ProtectedRoute>} />
             <Route path="/relatorio" element={<ProtectedRoute><RelatorioPage /></ProtectedRoute>} />
