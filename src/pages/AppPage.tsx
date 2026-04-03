@@ -4,7 +4,7 @@ import { formatCurrency, calcValorHoraExtra } from '@/lib/formatters';
 import { horaLocalAgora } from '@/lib/dataHora';
 import {
   buscarMarcacoesDia, calcularJornada, proximoTipoAvancado, registrarMarcacao,
-  getEstadoJornada, calcularHoraExtra, formatarDuracaoJornada, formatarHoraLocal,
+  getEstadoJornada, formatarDuracaoJornada, formatarHoraLocal,
   getCargaDiaria, isDiaTrabalhoEscala, hojeLocal, getMarcacaoVisual,
   validarProximaMarcacao,
   type Marcacao,
