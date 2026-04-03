@@ -6,6 +6,7 @@ import { calcularJornada, formatarDuracaoJornada, getCargaDiaria, type Marcacao 
 import { fetchBancoHorasEntries, summarizeBancoHoras, formatMinutosHoras } from '@/lib/banco-horas';
 import { getFeriadoComLocais } from '@/lib/feriados';
 import { calcularLiquido } from '@/lib/descontos';
+import { getCicloQuery } from '@/lib/ciclo-folha';
 import { usePaywall } from '@/hooks/usePaywall';
 import ProGate from '@/components/ProGate';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
