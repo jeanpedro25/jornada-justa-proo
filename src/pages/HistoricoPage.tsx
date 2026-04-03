@@ -162,6 +162,11 @@ const HistoricoPage: React.FC = () => {
       const compensacao = compensacoes.get(dataStr) || null;
       const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
 
+      // CLT: feriados, férias e FDS não têm carga obrigatória
+      // Qualquer trabalho nesses dias = hora extra, nunca "devendo"
+      const ehDiaLivre = !!feriado || !!feriasInfo || ehFds;
+      const cargaDoDia = ehDiaLivre ? 0 : carga * 60;
+
       let status: DayStatus;
       if (feriado && marcacoes.length === 0) {
         status = 'feriado';
@@ -172,17 +177,17 @@ const HistoricoPage: React.FC = () => {
       } else if (ehFds && marcacoes.length === 0) {
         status = 'fimdesemana';
       } else if (marcacoes.length > 0) {
-        const jornada = calcularJornada(marcacoes, carga * 60);
+        const jornada = calcularJornada(marcacoes, cargaDoDia);
         if (jornada.emAndamento && ehHoje) {
           status = 'em_andamento';
         } else {
-          status = 'registrado';
+          status = feriado ? 'feriado' : 'registrado';
         }
       } else {
         status = 'pendente';
       }
 
-      const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, carga * 60) : null;
+      const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
 
       summaries.push({
         data: dataStr,
