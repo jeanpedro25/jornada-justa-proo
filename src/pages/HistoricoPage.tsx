@@ -128,6 +128,7 @@ const HistoricoPage: React.FC = () => {
       compMap.set(c.data, { data: c.data, minutos: c.minutos, observacao: c.observacao });
     });
     setCompensacoes(compMap);
+    setFeriadosLocais((feriadosLocaisRes.data as any[]) || []);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
