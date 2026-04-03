@@ -60,25 +60,13 @@ const AuthPage: React.FC = () => {
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
-
       if (result.error) {
-        toast({
-          title: 'Erro',
-          description: 'Não foi possível entrar com Google.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Erro', description: 'Não foi possível entrar com Google.', variant: 'destructive' });
         return;
       }
-
-      if (result.redirected) {
-        return;
-      }
+      if (result.redirected) return;
     } catch (error: any) {
-      toast({
-        title: 'Erro',
-        description: error.message || 'Algo deu errado.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: error.message || 'Algo deu errado.', variant: 'destructive' });
     } finally {
       setGoogleLoading(false);
     }
@@ -87,18 +75,20 @@ const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center px-4">
       {/* Logo + Nome + Slogan */}
-      <div className="flex flex-col items-center mb-10">
-        <HoraJustaLogo size={80} className="mb-3" />
-        <h1 className="text-primary-foreground text-3xl font-extrabold tracking-tight">
-          Hora Justa
-        </h1>
-        <p className="text-primary-foreground/60 text-sm mt-1">
-          Seu ponto, sua prova.
-        </p>
+      <div className="flex items-center gap-3 mb-2">
+        <HoraJustaLogo size={48} />
+        <div className="flex flex-col">
+          <span className="text-primary-foreground text-2xl font-bold leading-tight">
+            Hora Justa
+          </span>
+          <span className="text-primary-foreground/50 text-xs leading-tight">
+            Controle suas horas. Conheça seu valor.
+          </span>
+        </div>
       </div>
 
-      {/* Card de login */}
-      <div className="bg-card rounded-2xl p-7 w-full max-w-[400px] shadow-2xl">
+      {/* Card */}
+      <div className="bg-card rounded-2xl p-7 w-full max-w-[400px] shadow-2xl mt-4">
         {/* Tabs */}
         <div className="flex mb-5 bg-secondary rounded-lg p-1">
           <button
@@ -119,13 +109,61 @@ const AuthPage: React.FC = () => {
           </button>
         </div>
 
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Email</label>
+            <Input
+              type="email"
+              placeholder="nome@exemplo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="rounded-xl h-12"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-foreground">Senha</label>
+              {tab === 'login' && (
+                <button type="button" className="text-xs text-accent hover:underline">
+                  Esqueceu a senha?
+                </button>
+              )}
+            </div>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="rounded-xl h-12"
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl h-12 text-base font-semibold uppercase tracking-wide"
+          >
+            {loading ? 'Aguarde...' : tab === 'login' ? 'Entrar' : 'Criar conta'}
+          </Button>
+        </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground">Ou</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
         {/* Google */}
         <Button
           type="button"
           variant="outline"
           disabled={googleLoading}
           onClick={handleGoogleLogin}
-          className="w-full h-12 rounded-xl text-sm font-medium mb-4 flex items-center justify-center gap-2.5 border-border"
+          className="w-full h-12 rounded-xl text-sm font-medium flex items-center justify-center gap-3 border-border"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -135,41 +173,6 @@ const AuthPage: React.FC = () => {
           </svg>
           {googleLoading ? 'Aguarde...' : 'Entrar com Google'}
         </Button>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted-foreground">ou</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          <Input
-            type="email"
-            placeholder="Seu email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="rounded-xl h-12"
-          />
-          <Input
-            type="password"
-            placeholder="Sua senha"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            className="rounded-xl h-12"
-          />
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground rounded-xl h-12 text-base font-semibold"
-          >
-            {loading ? 'Aguarde...' : tab === 'login' ? 'Entrar' : 'Criar conta'}
-          </Button>
-        </form>
       </div>
 
       <p className="text-primary-foreground/40 text-xs text-center mt-6 max-w-[300px]">
