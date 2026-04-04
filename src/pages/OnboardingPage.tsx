@@ -30,6 +30,26 @@ const OnboardingPage: React.FC = () => {
 
   // Step 6 - import config
   const [dataAdmissao, setDataAdmissao] = useState('');
+  const [admDia, setAdmDia] = useState('');
+  const [admMes, setAdmMes] = useState('');
+  const [admAno, setAdmAno] = useState('');
+
+  // Sync separate fields → dataAdmissao
+  const updateDataAdmissao = (dia: string, mes: string, ano: string) => {
+    setAdmDia(dia);
+    setAdmMes(mes);
+    setAdmAno(ano);
+    if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
+      const d = parseInt(dia), m = parseInt(mes), a = parseInt(ano);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && a >= 1900 && a <= 2100) {
+        setDataAdmissao(`${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`);
+      } else {
+        setDataAdmissao('');
+      }
+    } else {
+      setDataAdmissao('');
+    }
+  };
   const [entradaHora, setEntradaHora] = useState('08:00');
   const [saidaHora, setSaidaHora] = useState('17:00');
   const [intervaloMin, setIntervaloMin] = useState('60');
@@ -365,13 +385,53 @@ const OnboardingPage: React.FC = () => {
             {/* Período */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de admissão</label>
-              <Input
-                type="date"
-                value={dataAdmissao}
-                onChange={(e) => setDataAdmissao(e.target.value)}
-                className="rounded-xl h-12 text-base"
-                max={hoje}
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">Dia</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="DD"
+                    value={admDia}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      updateDataAdmissao(v, admMes, admAno);
+                    }}
+                    className="rounded-xl h-12 text-base text-center"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">Mês</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="MM"
+                    value={admMes}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      updateDataAdmissao(admDia, v, admAno);
+                    }}
+                    className="rounded-xl h-12 text-base text-center"
+                  />
+                </div>
+                <div className="flex-[1.5]">
+                  <label className="text-xs text-muted-foreground">Ano</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="AAAA"
+                    value={admAno}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      updateDataAdmissao(admDia, admMes, v);
+                    }}
+                    className="rounded-xl h-12 text-base text-center"
+                  />
+                </div>
+              </div>
               {dataAdmissao && dataAdmissao < hoje && (
                 <p className="text-xs text-muted-foreground">
                   → {mesesHistorico} meses · ~{diasUteisEstimados} dias úteis
