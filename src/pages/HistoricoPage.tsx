@@ -493,7 +493,7 @@ const HistoricoPage: React.FC = () => {
                           Atestado médico
                         </span>
                       )}
-                      {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana' || day.status === 'atestado') && (
+                      {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana') && (
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${style.badge}`}>
                           {style.label}
                         </span>
