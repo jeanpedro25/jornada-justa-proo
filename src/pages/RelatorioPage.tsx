@@ -486,7 +486,7 @@ function gerarExtratoPDF(
       seenDates.add(d.data);
       return true;
     });
-    filteredDays.sort((a, b) => a.data.localeCompare(b.data));
+    filteredDays.sort((a, b) => b.data.localeCompare(a.data));
 
     const tableBody = filteredDays.map(d => {
       const dateObj = new Date(d.data + 'T12:00:00');
