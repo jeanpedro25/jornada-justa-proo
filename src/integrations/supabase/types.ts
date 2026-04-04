@@ -242,6 +242,8 @@ export type Database = {
           escala_dias_trabalho: number | null
           escala_inicio: string | null
           escala_tipo: string | null
+          historico_importado: boolean | null
+          historico_inicio: string | null
           hora_extra_percentual: number | null
           hora_extra_percentual_feriado: number | null
           horario_entrada_padrao: string | null
@@ -287,6 +289,8 @@ export type Database = {
           escala_dias_trabalho?: number | null
           escala_inicio?: string | null
           escala_tipo?: string | null
+          historico_importado?: boolean | null
+          historico_inicio?: string | null
           hora_extra_percentual?: number | null
           hora_extra_percentual_feriado?: number | null
           horario_entrada_padrao?: string | null
@@ -332,6 +336,8 @@ export type Database = {
           escala_dias_trabalho?: number | null
           escala_inicio?: string | null
           escala_tipo?: string | null
+          historico_importado?: boolean | null
+          historico_inicio?: string | null
           hora_extra_percentual?: number | null
           hora_extra_percentual_feriado?: number | null
           horario_entrada_padrao?: string | null
