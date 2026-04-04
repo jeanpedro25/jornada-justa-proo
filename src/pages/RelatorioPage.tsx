@@ -351,10 +351,14 @@ function gerarExtratoPDF(
     const horasAutoMin = daysReconstituidos.reduce((s, d) => s + d.extraMin, 0);
     const horasReaisMin = daysReais.reduce((s, d) => s + d.extraMin, 0);
 
-    const bhItems = [
-      { label: 'Saldo anterior (informado no cadastro)', valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
-      { label: 'Horas geradas (registros reais)', valor: formatMinutosHoras(horasReaisMin) },
-      { label: 'Horas geradas (reconstituidos)', valor: formatMinutosHoras(horasAutoMin) },
+    const saldoInicialData = perfil?.banco_horas_saldo_inicial_data
+      ? new Date(perfil.banco_horas_saldo_inicial_data + 'T12:00:00').toLocaleDateString('pt-BR')
+      : '';
+
+    const bhItems: { label: string; valor: string; bold?: boolean }[] = [
+      { label: `Saldo anterior (informado no cadastro${saldoInicialData ? ' em ' + saldoInicialData : ''})`, valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
+      { label: 'Horas extras geradas (registros reais)', valor: formatMinutosHoras(horasReaisMin) },
+      { label: 'Horas extras (reconstituidos)', valor: formatMinutosHoras(horasAutoMin) },
       { label: 'Compensacoes utilizadas', valor: `-${fmtHM(bhSummary.aCompensar + totalCompensado)}` },
       { label: 'Horas vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h' },
       { label: 'SALDO TOTAL ATUAL', valor: formatMinutosHoras(saldoFinalPDF), bold: true },
@@ -363,7 +367,15 @@ function gerarExtratoPDF(
     if (saldoFinalPDF !== 0) {
       const eqDias = Math.floor(Math.abs(saldoFinalPDF) / (carga * 60));
       const eqH = Math.round(Math.abs(saldoFinalPDF) % (carga * 60) / 60);
-      bhItems.push({ label: 'Equivalente a', valor: `${eqDias} dias e ${eqH}h`, bold: false });
+      bhItems.push({ label: 'Equivalente a', valor: `${eqDias} dias e ${eqH}h` });
+    }
+
+    if (saldoInicial !== 0) {
+      y += 2;
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 140);
+      doc.text(`Este saldo de ${formatMinutosHoras(saldoInicial)} foi informado por voce como horas acumuladas antes de usar o Hora Justa.`, margem, y + (bhItems.length * 5) + 5);
     }
 
     bhItems.forEach((item: any) => {
