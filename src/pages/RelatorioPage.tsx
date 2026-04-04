@@ -230,6 +230,8 @@ function gerarExtratoPDF(
   // Summary calculations
   const totalMinTrab = daysForCalc.reduce((s, d) => s + d.totalMin, 0);
   const totalMinExtra = daysForCalc.reduce((s, d) => s + d.extraMin, 0);
+  const totalMinReais = daysReais.reduce((s, d) => s + d.totalMin, 0);
+  const totalMinReconst = daysReconstituidos.reduce((s, d) => s + d.totalMin, 0);
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
   const saldoFinalPDF = saldoInicial + bhSummary.saldo - totalCompensado;
