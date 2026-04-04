@@ -564,11 +564,10 @@ function gerarExtratoPDF(
     y = checkPage(doc, y, 20);
     y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
 
-    // Filter based on options - include feriados always
-    const daysFeriado = days.filter(d => d.origem === 'feriado');
-    let filteredDays = [...daysReais, ...daysFeriado];
-    if (incluirReconstituidos) filteredDays = filteredDays.concat(daysReconstituidos);
-    if (incluirAtestados) filteredDays = filteredDays.concat(daysAtestado);
+    // Show ALL days - filter only by user options
+    let filteredDays = [...days];
+    if (!incluirReconstituidos) filteredDays = filteredDays.filter(d => d.origem !== 'reconstituido');
+    if (!incluirAtestados) filteredDays = filteredDays.filter(d => d.origem !== 'atestado');
     // Remove duplicates by date
     const seenDates = new Set<string>();
     filteredDays = filteredDays.filter(d => {
