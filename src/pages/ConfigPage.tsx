@@ -20,6 +20,7 @@ const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [nome, setNome] = useState('');
   const [empresa, setEmpresa] = useState('');
   const [salario, setSalario] = useState('');
