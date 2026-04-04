@@ -55,6 +55,7 @@ async function salvarRegistroDia(
       .from('registros_ponto')
       .update(patch as any)
       .eq('id', existing.id)
+      .eq('user_id', userId)
       .select('*')
       .single();
 

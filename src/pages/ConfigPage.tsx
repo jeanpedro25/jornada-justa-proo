@@ -488,8 +488,9 @@ const ConfigPage: React.FC = () => {
             try {
               const { error } = await supabase.rpc('delete_my_account' as never);
               if (error) throw error;
+              setShowDeleteModal(false);
               await signOut();
-              navigate('/auth');
+              window.location.replace('/');
             } catch (e: any) {
               toast({ title: 'Erro', description: e.message, variant: 'destructive' });
               setDeleting(false);
