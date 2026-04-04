@@ -479,7 +479,7 @@ function gerarExtratoPDF(
     const reconItems = [
       `Total de dias reconstituidos: ${daysReconstituidos.length} dias`,
       `Periodo: ${fmtData(primeiroReconst)} a ${fmtData(ultimoReconst)}`,
-      `Horario declarado: ${perfil?.horario_entrada_padrao || '08:00'} - ${perfil?.horario_saida_padrao || '17:00'} · Intervalo: ${perfil?.intervalo_almoco ?? 60}min`,
+      `Horario declarado: ${(perfil?.horario_entrada_padrao || '08:00').substring(0, 5)} - ${(perfil?.horario_saida_padrao || '17:00').substring(0, 5)} · Intervalo: ${perfil?.intervalo_almoco ?? 60}min`,
     ];
     reconItems.forEach(item => {
       doc.text(item, margem, y);
