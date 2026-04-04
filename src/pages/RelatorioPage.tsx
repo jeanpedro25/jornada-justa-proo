@@ -157,7 +157,7 @@ function buildDaySummaries(
     });
   }
 
-  return summaries.sort((a, b) => a.data.localeCompare(b.data));
+  return summaries.sort((a, b) => b.data.localeCompare(a.data));
 }
 
 const fmtHM = (min: number) => {
