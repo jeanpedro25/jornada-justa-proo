@@ -447,7 +447,12 @@ const HistoricoPage: React.FC = () => {
                         </p>
                       )}
 
-                      {day.status === 'fimdesemana' && (
+                      {day.status === 'atestado' && (
+                        <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                          🏥 Atestado médico {day.atestadoPeriodo === 'integral' ? '(integral)' : day.atestadoPeriodo === 'manha' ? '(manhã)' : day.atestadoPeriodo === 'tarde' ? '(tarde)' : ''}
+                        </p>
+                      )}
+
                         <p className="text-[10px] text-muted-foreground">Fim de semana</p>
                       )}
 
