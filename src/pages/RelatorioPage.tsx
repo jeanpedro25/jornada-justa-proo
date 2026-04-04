@@ -289,21 +289,22 @@ function gerarExtratoPDF(
 
     const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    const linhas = [
+    interface FinLine { label: string; valor: string; bold: boolean; separator?: boolean; color?: [number, number, number] }
+    const linhas: FinLine[] = [
       { label: 'Salario base', valor: fmtBRL(salario), bold: false },
       { label: `Horas extras (${fmtHM(totalMinExtra)} no periodo)`, valor: fmtBRL(valorExtras), bold: false },
       { label: 'SALARIO BRUTO', valor: fmtBRL(salarioBruto), bold: true, separator: true },
-      { label: '(-) INSS (tabela progressiva 2025)', valor: `-${fmtBRL(inss)}`, bold: false, color: [231, 76, 60] as [number, number, number] },
-      { label: '(-) IRRF (apos deducao INSS)', valor: `-${fmtBRL(irrf)}`, bold: false, color: [231, 76, 60] as [number, number, number] },
+      { label: '(-) INSS (tabela progressiva 2025)', valor: `-${fmtBRL(inss)}`, bold: false, color: [231, 76, 60] },
+      { label: '(-) IRRF (apos deducao INSS)', valor: `-${fmtBRL(irrf)}`, bold: false, color: [231, 76, 60] },
     ];
 
     if (totalDescontosExtra > 0) {
-      linhas.push({ label: '(-) Outros descontos informados', valor: `-${fmtBRL(totalDescontosExtra)}`, bold: false, color: [231, 76, 60] as [number, number, number] });
+      linhas.push({ label: '(-) Outros descontos informados', valor: `-${fmtBRL(totalDescontosExtra)}`, bold: false, color: [231, 76, 60] });
     }
 
     linhas.push(
-      { label: 'TOTAL DE DESCONTOS', valor: `-${fmtBRL(totalDescontos)}`, bold: true, separator: true, color: [231, 76, 60] as [number, number, number] },
-      { label: 'SALARIO LIQUIDO ESTIMADO', valor: fmtBRL(salarioLiquido), bold: true, color: [39, 174, 96] as [number, number, number] },
+      { label: 'TOTAL DE DESCONTOS', valor: `-${fmtBRL(totalDescontos)}`, bold: true, separator: true, color: [231, 76, 60] },
+      { label: 'SALARIO LIQUIDO ESTIMADO', valor: fmtBRL(salarioLiquido), bold: true, color: [39, 174, 96] },
     );
 
     doc.setFillColor(248, 249, 255);
