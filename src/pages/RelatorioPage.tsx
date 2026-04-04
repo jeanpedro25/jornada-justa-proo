@@ -906,6 +906,10 @@ const RelatorioPage: React.FC = () => {
   const salario = profile?.salario_base ?? 0;
   const percentual = profile?.hora_extra_percentual ?? 50;
 
+  const [registrosPonto, setRegistrosPonto] = useState<any[]>([]);
+  const [feriasPeriodo, setFeriasPeriodo] = useState<any[]>([]);
+  const [compPeriodo, setCompPeriodo] = useState<any[]>([]);
+
   const fetchData = async (startDate?: string, endDate?: string) => {
     if (!user) return;
     let query = supabase
@@ -918,31 +922,34 @@ const RelatorioPage: React.FC = () => {
     if (startDate) query = query.gte('data', startDate);
     if (endDate) query = query.lte('data', endDate);
 
-    const { data } = await query;
-    setAllMarcacoes((data as Marcacao[]) || []);
+    const [marcRes, bhRes, compRes, regRes, feriasRes, compPRes] = await Promise.all([
+      query,
+      fetchBancoHorasEntries(user.id),
+      supabase.from('compensacoes_banco_horas').select('minutos').eq('user_id', user.id),
+      supabase.from('registros_ponto').select('data, atestado_periodo')
+        .eq('user_id', user.id).is('deleted_at', null)
+        .not('atestado_periodo', 'is', null)
+        ...(startDate ? [supabase.from('registros_ponto').select('data, atestado_periodo')
+          .eq('user_id', user.id).is('deleted_at', null)
+          .not('atestado_periodo', 'is', null)
+          .gte('data', startDate).lte('data', endDate!)] : [Promise.resolve({ data: [] })])[0] || supabase.from('registros_ponto').select('data, atestado_periodo')
+          .eq('user_id', user.id).is('deleted_at', null)
+          .not('atestado_periodo', 'is', null),
+      supabase.from('ferias').select('*').eq('user_id', user.id)
+        .in('status', ['ativa', 'agendada', 'concluida']),
+      supabase.from('compensacoes_banco_horas').select('*').eq('user_id', user.id)
+        ...(startDate ? [supabase.from('compensacoes_banco_horas').select('*').eq('user_id', user.id)
+          .gte('data', startDate).lte('data', endDate!)] : [Promise.resolve({ data: [] })])[0] || supabase.from('compensacoes_banco_horas').select('*').eq('user_id', user.id),
+    ]);
 
-    await fetchBancoHorasEntries(user.id).then(setBancoEntries);
-
-    const { data: compData } = await supabase
-      .from('compensacoes_banco_horas')
-      .select('minutos')
-      .eq('user_id', user.id);
-    const total = (compData as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
+    setAllMarcacoes((marcRes.data as Marcacao[]) || []);
+    setBancoEntries(bhRes);
+    const total = (compRes.data as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
     setTotalCompensado(total);
+    setRegistrosPonto(regRes.data || []);
+    setFeriasPeriodo(feriasRes.data || []);
+    setCompPeriodo(compPRes.data || []);
   };
-
-  const diaFechamento = (p?.dia_fechamento_folha as number) ?? 0;
-
-  useEffect(() => {
-    if (!user) return;
-    const { start, end } = getCicloQuery(diaFechamento);
-    fetchData(start, end);
-  }, [user, diaFechamento]);
-
-  const days = useMemo(
-    () => buildDaySummaries(allMarcacoes, carga, [], undefined, undefined, undefined, [], [], p),
-    [allMarcacoes, carga, p],
-  );
 
   const totalHoras = days.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = days.reduce((s, d) => s + d.extraMin / 60, 0);
