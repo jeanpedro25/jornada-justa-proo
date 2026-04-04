@@ -273,6 +273,7 @@ const HistoricoPage: React.FC = () => {
     if (quickFilter === 'pendentes') return days.filter(d => d.status === 'pendente');
     if (quickFilter === 'ferias') return days.filter(d => d.status === 'ferias' || d.status === 'feriado');
     if (quickFilter === 'extras') return days.filter(d => d.extraHours > 0);
+    if (quickFilter === 'atestados') return days.filter(d => d.status === 'atestado' || d.atestadoPeriodo);
     return days;
   }, [daySummaries, quickFilter, showWeekends]);
 
