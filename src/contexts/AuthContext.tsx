@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
+  const initialLoadDone = React.useRef(false);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -69,14 +69,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setLoading(false);
-      setInitialLoad(false);
+      initialLoadDone.current = true;
     });
 
     // Then, listen for subsequent auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
       // Skip if we're still doing initial load (getSession handles that)
-      if (initialLoad) return;
+      if (!initialLoadDone.current) return;
 
       setSession(session);
       setUser(session?.user ?? null);
@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [initialLoad]);
+  }, []);
 
   const signOut = async () => {
     localStorage.removeItem('hj_entrada_ts');
