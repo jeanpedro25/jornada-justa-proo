@@ -46,6 +46,7 @@ interface DaySummary {
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
   origem: 'real' | 'reconstituido' | 'manual' | 'atestado' | 'feriado' | 'ferias' | 'pendente' | 'fds' | 'folga';
+  registroOrigem: 'real' | 'reconstituido' | 'manual' | null;
   atestadoPeriodo?: string | null;
   feriadoNome?: string | null;
 }
@@ -159,6 +160,7 @@ function buildDaySummaries(
     while (current <= endD) {
       const dataStr = current.toISOString().split('T')[0];
       const marks = map.get(dataStr) || [];
+      const registroOrigem = marks.length > 0 ? classifyOrigin(marks) : null;
       const atestado = atestadoMap.get(dataStr);
       const feriado = feriadosMap?.get(dataStr);
       const ehFerias = feriasSet.has(dataStr);
@@ -176,14 +178,14 @@ function buildDaySummaries(
             totalMin: j.totalTrabalhado, extraMin: j.horaExtraMin,
             intervaloMin: j.totalIntervalo,
             primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
-            origem: 'atestado', atestadoPeriodo: atestado,
+            origem: 'atestado', registroOrigem, atestadoPeriodo: atestado,
           });
         } else {
           summaries.push({
             data: dataStr, marcacoes: [],
             totalMin: 0, extraMin: 0, intervaloMin: 0,
             primeiraEntrada: null, ultimaSaida: null,
-            origem: 'atestado', atestadoPeriodo: atestado,
+            origem: 'atestado', registroOrigem: null, atestadoPeriodo: atestado,
           });
         }
       } else if (feriado) {
@@ -196,14 +198,14 @@ function buildDaySummaries(
             totalMin: j.totalTrabalhado, extraMin: j.totalTrabalhado, // all extra on feriado
             intervaloMin: j.totalIntervalo,
             primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
-            origem: 'feriado', feriadoNome: feriado,
+            origem: 'feriado', registroOrigem, feriadoNome: feriado,
           });
         } else {
           summaries.push({
             data: dataStr, marcacoes: [],
             totalMin: 0, extraMin: 0, intervaloMin: 0,
             primeiraEntrada: null, ultimaSaida: null,
-            origem: 'feriado', feriadoNome: feriado,
+            origem: 'feriado', registroOrigem: null, feriadoNome: feriado,
           });
         }
       } else if (ehFerias) {
@@ -211,14 +213,14 @@ function buildDaySummaries(
           data: dataStr, marcacoes: [],
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
-          origem: 'ferias',
+          origem: 'ferias', registroOrigem: null,
         });
       } else if (ehComp) {
         summaries.push({
           data: dataStr, marcacoes: [],
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
-          origem: 'ferias', // reuse ferias label for folga
+          origem: 'ferias', registroOrigem: null, // reuse ferias label for folga
           feriadoNome: 'Folga compensada',
         });
       } else if (marks.length > 0) {
@@ -229,14 +231,14 @@ function buildDaySummaries(
           totalMin: j.totalTrabalhado, extraMin: !ehDiaTrabalho ? j.totalTrabalhado : j.horaExtraMin,
           intervaloMin: j.totalIntervalo,
           primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
-          origem: classifyOrigin(marks),
+          origem: registroOrigem || 'manual', registroOrigem,
         });
       } else if (!ehDiaTrabalho) {
         summaries.push({
           data: dataStr, marcacoes: [],
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
-          origem: dow === 0 || dow === 6 ? 'fds' : 'folga',
+          origem: dow === 0 || dow === 6 ? 'fds' : 'folga', registroOrigem: null,
           feriadoNome: getOffDayLabel(dataStr, profileConfig),
         });
       } else {
@@ -244,7 +246,7 @@ function buildDaySummaries(
           data: dataStr, marcacoes: [],
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
-          origem: 'pendente',
+          origem: 'pendente', registroOrigem: null,
           feriadoNome: 'Sem registro',
         });
       }
@@ -264,6 +266,7 @@ function buildDaySummaries(
         intervaloMin: j.totalIntervalo,
         primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
         origem: atestado ? 'atestado' : feriado ? 'feriado' : classifyOrigin(marks),
+        registroOrigem: classifyOrigin(marks),
         atestadoPeriodo: atestado, feriadoNome: feriado,
       });
     });
@@ -275,7 +278,7 @@ function buildDaySummaries(
           data, marcacoes: [],
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
-          origem: 'atestado', atestadoPeriodo: periodo,
+          origem: 'atestado', registroOrigem: null, atestadoPeriodo: periodo,
         });
       }
     });
@@ -392,15 +395,14 @@ function gerarExtratoPDF(
   let y = 0;
 
   // Separate days by origin
-  const daysReais = days.filter(d => d.origem === 'real' || d.origem === 'manual');
-  const daysReconstituidos = days.filter(d => d.origem === 'reconstituido');
+  const daysReais = days.filter(d => d.registroOrigem === 'real' || d.registroOrigem === 'manual');
+  const daysReconstituidos = days.filter(d => d.registroOrigem === 'reconstituido');
   const daysAtestado = days.filter(d => d.origem === 'atestado');
   const daysFeriado = days.filter(d => d.origem === 'feriado');
   const daysFerias = days.filter(d => d.origem === 'ferias');
   const daysPendentes = days.filter(d => d.origem === 'pendente');
   // Only include days with actual work in hour calculations
-  const daysForCalc = (incluirReconstituidos ? days : daysReais.concat(daysAtestado))
-    .filter(d => !['feriado', 'ferias', 'pendente', 'fds', 'folga'].includes(d.origem) && d.totalMin > 0);
+  const daysForCalc = days.filter(d => d.totalMin > 0 && (incluirReconstituidos || d.registroOrigem !== 'reconstituido'));
 
   // Header
   doc.setFillColor(26, 26, 46);
@@ -611,7 +613,7 @@ function gerarExtratoPDF(
 
     // Show ALL days - filter only by user options
     let filteredDays = [...days];
-    if (!incluirReconstituidos) filteredDays = filteredDays.filter(d => d.origem !== 'reconstituido');
+    if (!incluirReconstituidos) filteredDays = filteredDays.filter(d => d.registroOrigem !== 'reconstituido');
     if (!incluirAtestados) filteredDays = filteredDays.filter(d => d.origem !== 'atestado');
     // Remove duplicates by date
     const seenDates = new Set<string>();
@@ -637,7 +639,7 @@ function gerarExtratoPDF(
         : d.totalMin === 0 && d.marcacoes.length === 0 ? (d.feriadoNome || '—')
         : `${hT}h${mT}min`;
 
-      const tipoLabel = origemLabel[d.origem] || 'Manual';
+      const tipoLabel = origemLabel[d.registroOrigem || d.origem] || 'Manual';
 
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -710,9 +712,9 @@ function gerarExtratoPDF(
     y = checkPage(doc, y, 30);
     y = addSectionTitle(doc, 'Registros Reconstituidos', y, margem);
 
-    const sortedReconst = [...daysReconstituidos].sort((a, b) => a.data.localeCompare(b.data));
-    const primeiroReconst = sortedReconst[0]?.data;
-    const ultimoReconst = sortedReconst[sortedReconst.length - 1]?.data;
+    const sortedReconst = [...daysReconstituidos].sort((a, b) => b.data.localeCompare(a.data));
+    const primeiroReconst = sortedReconst[sortedReconst.length - 1]?.data;
+    const ultimoReconst = sortedReconst[0]?.data;
     const fmtData = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
 
     doc.setFontSize(9);
