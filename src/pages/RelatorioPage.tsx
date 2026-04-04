@@ -549,6 +549,7 @@ function gerarExtratoPDF(
       { label: 'Reconstituido — gerado automaticamente', cor: origemColor.reconstituido },
       { label: 'Manual — inserido manualmente', cor: origemColor.manual },
       { label: 'Atestado — coberto por atestado medico', cor: origemColor.atestado },
+      { label: 'Feriado — feriado nacional/local', cor: origemColor.feriado },
     ];
     legendItems.forEach(l => {
       doc.setFillColor(l.cor[0], l.cor[1], l.cor[2]);
