@@ -472,10 +472,18 @@ function gerarExtratoPDF(
     y = checkPage(doc, y, 20);
     y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
 
-    // Filter based on options
-    let filteredDays = [...daysReais];
+    // Filter based on options - include feriados always
+    const daysFeriado = days.filter(d => d.origem === 'feriado');
+    let filteredDays = [...daysReais, ...daysFeriado];
     if (incluirReconstituidos) filteredDays = filteredDays.concat(daysReconstituidos);
     if (incluirAtestados) filteredDays = filteredDays.concat(daysAtestado);
+    // Remove duplicates by date
+    const seenDates = new Set<string>();
+    filteredDays = filteredDays.filter(d => {
+      if (seenDates.has(d.data)) return false;
+      seenDates.add(d.data);
+      return true;
+    });
     filteredDays.sort((a, b) => a.data.localeCompare(b.data));
 
     const tableBody = filteredDays.map(d => {
@@ -485,13 +493,17 @@ function gerarExtratoPDF(
       const hE = Math.floor(d.extraMin / 60);
       const mE = Math.round(d.extraMin % 60);
 
+      const trabLabel = d.origem === 'atestado' ? 'Atestado'
+        : d.origem === 'feriado' ? (d.feriadoNome || 'Feriado')
+        : `${hT}h${mT}min`;
+
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
         diasSemana[dateObj.getDay()],
         d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
         d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
         d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
-        d.origem === 'atestado' ? 'Atestado' : `${hT}h${mT}min`,
+        trabLabel,
         d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
         origemLabel[d.origem] || 'Manual',
       ];
