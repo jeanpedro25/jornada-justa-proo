@@ -832,7 +832,7 @@ const RelatorioPage: React.FC = () => {
       const bhEntries = options.incluirBancoHoras ? bancoEntries : [];
 
       gerarExtratoPDF(
-        periodDays, profile, label, bhEntries, carga, salario, percentual, totalCompensado,
+        periodDays, perfilAtual, label, bhEntries, carga, salario, percentual, totalCompensado,
         {
           tipo: options.tipo,
           incluirEventos: options.incluirEventos,
