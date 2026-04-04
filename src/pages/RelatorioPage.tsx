@@ -15,6 +15,7 @@ import {
   formatarDuracaoJornada, getCargaDiaria, hojeLocal,
   type Marcacao,
 } from '@/lib/jornada';
+import { calcularINSS, calcularIRRF } from '@/lib/descontos';
 import { Button } from '@/components/ui/button';
 import {
   FileText, Shield, TrendingUp, Download, Loader2, AlertTriangle,
@@ -27,7 +28,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
-import { startOfWeek, endOfWeek } from 'date-fns';
+import { startOfWeek, endOfWeek, subMonths } from 'date-fns';
 
 const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -43,11 +44,21 @@ interface DaySummary {
   intervaloMin: number;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
+  origem: 'real' | 'reconstituido' | 'manual' | 'atestado';
+  atestadoPeriodo?: string | null;
+}
+
+function classifyOrigin(marks: Marcacao[]): 'real' | 'reconstituido' | 'manual' {
+  const origens = marks.map(m => (m as any).origem || 'manual');
+  if (origens.every(o => o === 'importacao_automatica')) return 'reconstituido';
+  if (origens.some(o => o === 'botao')) return 'real';
+  return 'manual';
 }
 
 function buildDaySummaries(
   marcacoes: Marcacao[],
   cargaHoras: number,
+  registrosPonto?: any[],
 ): DaySummary[] {
   const map = new Map<string, Marcacao[]>();
   marcacoes.forEach(m => {
@@ -55,10 +66,19 @@ function buildDaySummaries(
     map.get(m.data)!.push(m);
   });
 
+  // Build atestado map from registros_ponto
+  const atestadoMap = new Map<string, string | null>();
+  (registrosPonto || []).forEach((r: any) => {
+    if (r.atestado_periodo) {
+      atestadoMap.set(r.data, r.atestado_periodo);
+    }
+  });
+
   const summaries: DaySummary[] = [];
   map.forEach((marks, data) => {
     const cargaMin = cargaHoras * 60;
     const j = calcularJornada(marks, cargaMin);
+    const atestado = atestadoMap.get(data);
     summaries.push({
       data,
       marcacoes: marks,
@@ -67,6 +87,8 @@ function buildDaySummaries(
       intervaloMin: j.totalIntervalo,
       primeiraEntrada: j.primeiraEntrada,
       ultimaSaida: j.ultimaSaida,
+      origem: atestado ? 'atestado' : classifyOrigin(marks),
+      atestadoPeriodo: atestado,
     });
   });
 
@@ -100,8 +122,6 @@ function checkPage(doc: jsPDF, y: number, need: number): number {
   return y;
 }
 
-// ── PDF generator ──
-
 function addWatermark(doc: jsPDF) {
   const totalPages = doc.getNumberOfPages();
   const largura = doc.internal.pageSize.getWidth();
@@ -113,15 +133,38 @@ function addWatermark(doc: jsPDF) {
     doc.setFontSize(28);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(120, 120, 120);
-    // Diagonal watermark
     const text = 'EXTRATO PARA CONFERENCIA PESSOAL - SEM VALOR OFICIAL';
     const centerX = largura / 2;
     const centerY = altura / 2;
     (doc as any).text(text, centerX, centerY, { align: 'center', angle: 35 });
-    // Second watermark lower
     (doc as any).text(text, centerX, centerY + 80, { align: 'center', angle: 35 });
     doc.restoreGraphicsState();
   }
+}
+
+const origemLabel: Record<string, string> = {
+  real: 'Real',
+  reconstituido: 'Reconstituido',
+  manual: 'Manual',
+  atestado: 'Atestado',
+};
+
+const origemColor: Record<string, [number, number, number]> = {
+  real: [39, 174, 96],
+  reconstituido: [52, 152, 219],
+  manual: [243, 156, 18],
+  atestado: [155, 89, 182],
+};
+
+// ── PDF generator ──
+
+interface PDFOptions {
+  tipo?: 'resumido' | 'completo';
+  incluirEventos?: boolean;
+  incluirReconstituidos?: boolean;
+  incluirAtestados?: boolean;
+  incluirFinanceiro?: boolean;
+  incluirBancoHoras?: boolean;
 }
 
 function gerarExtratoPDF(
@@ -133,15 +176,28 @@ function gerarExtratoPDF(
   salario: number,
   percentual: number,
   totalCompensado: number,
-  opcoes?: { tipo?: 'resumido' | 'completo'; incluirEventos?: boolean },
+  opcoes?: PDFOptions,
 ) {
   const isResumido = opcoes?.tipo === 'resumido';
   const incluirEventos = opcoes?.incluirEventos !== false;
+  const incluirFinanceiro = opcoes?.incluirFinanceiro !== false;
+  const incluirBH = opcoes?.incluirBancoHoras !== false;
+  const incluirReconstituidos = opcoes?.incluirReconstituidos !== false;
+  const incluirAtestados = opcoes?.incluirAtestados !== false;
+
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const largura = doc.internal.pageSize.getWidth();
   const margem = 14;
   const contentW = largura - margem * 2;
   let y = 0;
+
+  // Separate days by origin
+  const daysReais = days.filter(d => d.origem === 'real' || d.origem === 'manual');
+  const daysReconstituidos = days.filter(d => d.origem === 'reconstituido');
+  const daysAtestado = days.filter(d => d.origem === 'atestado');
+
+  // Only include reconstituídos in totals if option is on
+  const daysForCalc = incluirReconstituidos ? days : daysReais.concat(daysAtestado);
 
   // Header
   doc.setFillColor(26, 26, 46);
@@ -161,14 +217,10 @@ function gerarExtratoPDF(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(200, 215, 225);
-  doc.text(`Usuario do Sistema: ${perfil?.nome || 'Trabalhador'}`, margem, 30);
+  doc.text(`Usuario: ${perfil?.nome || 'Trabalhador'}`, margem, 30);
   if (perfil?.empresa) {
-    doc.text(`Empresa Informada pelo Usuario: ${perfil.empresa}`, margem, 35);
-    doc.setFontSize(6.5);
-    doc.setTextColor(150, 170, 180);
-    doc.text('Dado informado pelo usuario para fins de organizacao pessoal', margem, 39);
+    doc.text(`Empresa: ${perfil.empresa}`, margem, 35);
   }
-  doc.setFontSize(9);
   doc.setTextColor(200, 215, 225);
   doc.text(`Periodo: ${periodoLabel}`, largura - margem, 30, { align: 'right' });
   doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, largura - margem, 35, { align: 'right' });
@@ -176,15 +228,15 @@ function gerarExtratoPDF(
   y = 52;
 
   // Summary calculations
-  const totalMinTrab = days.reduce((s, d) => s + d.totalMin, 0);
-  const totalMinExtra = days.reduce((s, d) => s + d.extraMin, 0);
+  const totalMinTrab = daysForCalc.reduce((s, d) => s + d.totalMin, 0);
+  const totalMinExtra = daysForCalc.reduce((s, d) => s + d.extraMin, 0);
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
   const saldoFinalPDF = saldoInicial + bhSummary.saldo - totalCompensado;
 
-  const valorHN = salario / 220;
+  const valorHN = salario > 0 ? salario / 220 : 0;
   const valorHE = valorHN * (1 + percentual / 100);
-  const valorTotal = (totalMinExtra / 60) * valorHE;
+  const valorExtras = (totalMinExtra / 60) * valorHE;
 
   // Summary cards
   y = addSectionTitle(doc, 'Resumo Geral', y, margem);
@@ -193,9 +245,9 @@ function gerarExtratoPDF(
     { label: 'Total Trabalhado', valor: fmtHM(totalMinTrab), cor: [39, 174, 96] as const },
     { label: 'Horas Extras', valor: totalMinExtra > 0 ? `+${fmtHM(totalMinExtra)}` : '0h', cor: [78, 205, 196] as const },
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
-    { label: 'Horas Compensadas', valor: fmtHM(bhSummary.aCompensar + totalCompensado), cor: [52, 152, 219] as const },
-    { label: 'Horas Vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h', cor: [243, 156, 18] as const },
-    { label: 'Ganho adicional em\nhoras extras (estimado)', valor: valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), cor: [26, 26, 46] as const },
+    { label: 'Registros Reais', valor: `${daysReais.length} dias`, cor: [39, 174, 96] as const },
+    { label: 'Reconstituidos', valor: `${daysReconstituidos.length} dias`, cor: [52, 152, 219] as const },
+    { label: 'Atestados', valor: `${daysAtestado.length} dias`, cor: [155, 89, 182] as const },
   ];
 
   const cardW = (contentW - 6) / 3;
@@ -211,13 +263,7 @@ function gerarExtratoPDF(
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(120, 120, 140);
-    const labelLines = c.label.split('\n');
-    if (labelLines.length > 1) {
-      doc.text(labelLines[0], x + cardW / 2, cy + 5, { align: 'center' });
-      doc.text(labelLines[1], x + cardW / 2, cy + 8.5, { align: 'center' });
-    } else {
-      doc.text(c.label, x + cardW / 2, cy + 7, { align: 'center' });
-    }
+    doc.text(c.label, x + cardW / 2, cy + 7, { align: 'center' });
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(c.cor[0], c.cor[1], c.cor[2]);
@@ -225,85 +271,136 @@ function gerarExtratoPDF(
   });
   y += (cardH + 3) * 2 + 4;
 
-  // Financial breakdown when salary is set
-  if (salario > 0) {
-    doc.setFontSize(8);
+  // ── DEMONSTRATIVO FINANCEIRO ──
+  if (incluirFinanceiro && salario > 0) {
+    y = checkPage(doc, y, 65);
+    y = addSectionTitle(doc, 'Demonstrativo Financeiro Estimado', y, margem);
+
+    const salarioBruto = salario + valorExtras;
+    const inss = calcularINSS(salarioBruto);
+    const irrf = calcularIRRF(salarioBruto, inss);
+    const descontosFixos = Number(perfil?.descontos_fixos ?? 0);
+    const planoSaude = Number(perfil?.plano_saude ?? 0);
+    const adiantamentos = Number(perfil?.adiantamentos ?? 0);
+    const outrosDesc = Number(perfil?.outros_descontos_detalhados ?? 0);
+    const totalDescontosExtra = planoSaude + adiantamentos + outrosDesc + descontosFixos;
+    const totalDescontos = inss + irrf + totalDescontosExtra;
+    const salarioLiquido = Math.max(0, salarioBruto - totalDescontos);
+
+    const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    interface FinLine { label: string; valor: string; bold: boolean; separator?: boolean; color?: [number, number, number] }
+    const linhas: FinLine[] = [
+      { label: 'Salario base', valor: fmtBRL(salario), bold: false },
+      { label: `Horas extras (${fmtHM(totalMinExtra)} no periodo)`, valor: fmtBRL(valorExtras), bold: false },
+      { label: 'SALARIO BRUTO', valor: fmtBRL(salarioBruto), bold: true, separator: true },
+      { label: '(-) INSS (tabela progressiva 2025)', valor: `-${fmtBRL(inss)}`, bold: false, color: [231, 76, 60] },
+      { label: '(-) IRRF (apos deducao INSS)', valor: `-${fmtBRL(irrf)}`, bold: false, color: [231, 76, 60] },
+    ];
+
+    if (totalDescontosExtra > 0) {
+      linhas.push({ label: '(-) Outros descontos informados', valor: `-${fmtBRL(totalDescontosExtra)}`, bold: false, color: [231, 76, 60] });
+    }
+
+    linhas.push(
+      { label: 'TOTAL DE DESCONTOS', valor: `-${fmtBRL(totalDescontos)}`, bold: true, separator: true, color: [231, 76, 60] },
+      { label: 'SALARIO LIQUIDO ESTIMADO', valor: fmtBRL(salarioLiquido), bold: true, color: [39, 174, 96] },
+    );
+
+    doc.setFillColor(248, 249, 255);
+    doc.setDrawColor(220, 220, 230);
+    const boxH = linhas.length * 5.5 + 18;
+    doc.roundedRect(margem, y, contentW, boxH, 2, 2, 'FD');
+    y += 4;
+
+    linhas.forEach((l: any) => {
+      if (l.separator) {
+        doc.setDrawColor(200, 200, 210);
+        doc.line(margem + 3, y - 1, margem + contentW - 3, y - 1);
+      }
+      doc.setFontSize(8);
+      doc.setFont('helvetica', l.bold ? 'bold' : 'normal');
+      doc.setTextColor(80, 80, 90);
+      doc.text(l.label, margem + 4, y + 3);
+      if (l.color) doc.setTextColor(l.color[0], l.color[1], l.color[2]);
+      else doc.setTextColor(26, 26, 46);
+      doc.setFont('helvetica', 'bold');
+      doc.text(l.valor, margem + contentW - 4, y + 3, { align: 'right' });
+      y += 5.5;
+    });
+
+    y += 4;
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 90);
-    doc.text('Salario base:', margem, y);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(26, 26, 46);
-    doc.text(salario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), margem + 45, y);
-    y += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 90);
-    doc.text('Extras no periodo:', margem, y);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(totalMinExtra > 0 ? 243 : 26, totalMinExtra > 0 ? 156 : 26, totalMinExtra > 0 ? 18 : 46);
-    doc.text(valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), margem + 45, y);
-    y += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 90);
-    doc.text('Total estimado:', margem, y);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(39, 174, 96);
-    doc.text((salario + valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), margem + 45, y);
+    doc.setTextColor(120, 120, 140);
+    doc.text(`Valor hora normal: ${fmtBRL(valorHN)}  |  Valor hora extra (${percentual}%): ${fmtBRL(valorHE)}`, margem + 4, y);
+    y += 4;
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(150, 150, 160);
+    doc.text('* Calculo baseado nas tabelas INSS/IRRF 2025. Confira com o holerite oficial.', margem, y);
     y += 6;
   }
 
-  doc.setFontSize(6.5);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(150, 150, 160);
-  doc.text('* Estimativa baseada nos dados informados pelo usuario.', margem, y);
-  y += 6;
+  // ── BANCO DE HORAS ──
+  if (incluirBH) {
+    y = checkPage(doc, y, 45);
+    y = addSectionTitle(doc, 'Banco de Horas', y, margem);
 
-  // Banco de Horas section
-  y = checkPage(doc, y, 40);
-  y = addSectionTitle(doc, 'Banco de Horas', y, margem);
+    // Separate auto vs real banco entries
+    const horasAutoMin = daysReconstituidos.reduce((s, d) => s + d.extraMin, 0);
+    const horasReaisMin = daysReais.reduce((s, d) => s + d.extraMin, 0);
 
-  if (bancoEntries.length === 0 && saldoInicial === 0) {
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 140);
-    doc.text('Nenhum banco de horas registrado no periodo.', margem, y);
-    y += 8;
-  } else {
     const bhItems = [
-      { label: 'Saldo inicial', valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
-      { label: 'Saldo do período', valor: formatMinutosHoras(bhSummary.saldo) },
-      { label: 'Saldo total', valor: formatMinutosHoras(saldoFinalPDF) },
-      { label: 'Total compensado', valor: fmtHM(bhSummary.aCompensar + totalCompensado) },
+      { label: 'Saldo anterior (informado no cadastro)', valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
+      { label: 'Horas geradas (registros reais)', valor: formatMinutosHoras(horasReaisMin) },
+      { label: 'Horas geradas (reconstituidos)', valor: formatMinutosHoras(horasAutoMin) },
+      { label: 'Compensacoes utilizadas', valor: `-${fmtHM(bhSummary.aCompensar + totalCompensado)}` },
       { label: 'Horas vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h' },
-      { label: 'Expirando em 10 dias', valor: bhSummary.expirandoEm10Dias > 0 ? fmtHM(bhSummary.expirandoEm10Dias) : '0h' },
+      { label: 'SALDO TOTAL ATUAL', valor: formatMinutosHoras(saldoFinalPDF), bold: true },
     ];
-    bhItems.forEach(item => {
+
+    if (saldoFinalPDF !== 0) {
+      const eqDias = Math.floor(Math.abs(saldoFinalPDF) / (carga * 60));
+      const eqH = Math.round(Math.abs(saldoFinalPDF) % (carga * 60) / 60);
+      bhItems.push({ label: 'Equivalente a', valor: `${eqDias} dias e ${eqH}h`, bold: false });
+    }
+
+    bhItems.forEach((item: any) => {
+      y = checkPage(doc, y, 6);
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
       doc.setTextColor(80, 80, 90);
       doc.text(`${item.label}:`, margem, y);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(26, 26, 46);
-      doc.text(item.valor, margem + 55, y);
+      if (item.bold) {
+        doc.setTextColor(saldoFinalPDF >= 0 ? 39 : 231, saldoFinalPDF >= 0 ? 174 : 76, saldoFinalPDF >= 0 ? 96 : 60);
+      } else {
+        doc.setTextColor(26, 26, 46);
+      }
+      doc.text(item.valor, margem + 80, y);
       y += 5;
     });
     y += 3;
   }
 
-  // Detailed table (only for 'completo')
+  // ── REGISTROS DETALHADOS ──
   if (!isResumido) {
     y = checkPage(doc, y, 20);
     y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
 
-    const tableBody = days.map(d => {
+    // Filter based on options
+    let filteredDays = [...daysReais];
+    if (incluirReconstituidos) filteredDays = filteredDays.concat(daysReconstituidos);
+    if (incluirAtestados) filteredDays = filteredDays.concat(daysAtestado);
+    filteredDays.sort((a, b) => a.data.localeCompare(b.data));
+
+    const tableBody = filteredDays.map(d => {
       const dateObj = new Date(d.data + 'T12:00:00');
       const hT = Math.floor(d.totalMin / 60);
       const mT = Math.round(d.totalMin % 60);
       const hE = Math.floor(d.extraMin / 60);
       const mE = Math.round(d.extraMin % 60);
-
-      let tipo = 'Normal';
-      if (d.extraMin > 0) tipo = 'Hora extra';
-      else if (!d.ultimaSaida) tipo = 'Incompleto';
 
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -311,39 +408,130 @@ function gerarExtratoPDF(
         d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
         d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
         d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
-        `${hT}h${mT}min`,
+        d.origem === 'atestado' ? 'Atestado' : `${hT}h${mT}min`,
         d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
-        tipo,
+        origemLabel[d.origem] || 'Manual',
+      ];
+    });
+
+    if (tableBody.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        head: [['Data', 'Dia', 'Entrada', 'Saida', 'Interv.', 'Trabalhado', 'Extra', 'Tipo']],
+        body: tableBody,
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak', halign: 'center' },
+        headStyles: { fillColor: [26, 26, 46], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
+        alternateRowStyles: { fillColor: [248, 249, 255] },
+        margin: { left: margem, right: margem },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 7) {
+            const tipo = tableBody[data.row.index]?.[7];
+            const cor = origemColor[Object.keys(origemLabel).find(k => origemLabel[k] === tipo) || 'manual'] || [80, 80, 90];
+            data.cell.styles.textColor = cor;
+            data.cell.styles.fontStyle = 'bold';
+          }
+          if (data.section === 'body' && data.column.index === 6) {
+            const extra = tableBody[data.row.index]?.[6];
+            if (extra !== '—') data.cell.styles.textColor = [231, 76, 60];
+          }
+        },
+      });
+      y = (doc as any).lastAutoTable.finalY + 4;
+    }
+
+    // Legend
+    y = checkPage(doc, y, 15);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 80, 90);
+    doc.text('Legenda:', margem, y);
+    y += 3.5;
+    const legendItems = [
+      { label: 'Real — registrado em tempo real', cor: origemColor.real },
+      { label: 'Reconstituido — gerado automaticamente', cor: origemColor.reconstituido },
+      { label: 'Manual — inserido manualmente', cor: origemColor.manual },
+      { label: 'Atestado — coberto por atestado medico', cor: origemColor.atestado },
+    ];
+    legendItems.forEach(l => {
+      doc.setFillColor(l.cor[0], l.cor[1], l.cor[2]);
+      doc.circle(margem + 1.5, y - 1, 1.2, 'F');
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 90);
+      doc.text(l.label, margem + 5, y);
+      y += 3.5;
+    });
+    y += 3;
+  }
+
+  // ── REGISTROS RECONSTITUIDOS (seção separada) ──
+  if (!isResumido && incluirReconstituidos && daysReconstituidos.length > 0) {
+    y = checkPage(doc, y, 30);
+    y = addSectionTitle(doc, 'Registros Reconstituidos', y, margem);
+
+    const primeiroReconst = daysReconstituidos[0]?.data;
+    const ultimoReconst = daysReconstituidos[daysReconstituidos.length - 1]?.data;
+    const fmtData = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 90);
+    const reconItems = [
+      `Total de dias reconstituidos: ${daysReconstituidos.length} dias`,
+      `Periodo: ${fmtData(primeiroReconst)} a ${fmtData(ultimoReconst)}`,
+      `Horario declarado: ${perfil?.horario_entrada_padrao || '08:00'} - ${perfil?.horario_saida_padrao || '17:00'} · Intervalo: ${perfil?.intervalo_almoco ?? 60}min`,
+    ];
+    reconItems.forEach(item => {
+      doc.text(item, margem, y);
+      y += 4.5;
+    });
+
+    y += 2;
+    doc.setFillColor(255, 248, 225);
+    doc.setDrawColor(243, 156, 18);
+    const avisoRecon = 'Estes registros foram gerados automaticamente com base na declaracao do trabalhador no momento do cadastro. Representam a jornada habitual declarada.';
+    const avisoLines = doc.splitTextToSize(avisoRecon, contentW - 8);
+    const avisoH = avisoLines.length * 3.5 + 8;
+    doc.roundedRect(margem, y, contentW, avisoH, 2, 2, 'FD');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 60, 0);
+    doc.text(avisoLines, margem + 4, y + 5);
+    y += avisoH + 4;
+  }
+
+  // ── ATESTADOS ──
+  if (!isResumido && incluirAtestados && daysAtestado.length > 0) {
+    y = checkPage(doc, y, 25);
+    y = addSectionTitle(doc, 'Atestados e Documentos', y, margem);
+
+    const atestBody = daysAtestado.map(d => {
+      const dateObj = new Date(d.data + 'T12:00:00');
+      return [
+        dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+        d.atestadoPeriodo === 'manha' ? 'Manha' : d.atestadoPeriodo === 'tarde' ? 'Tarde' : 'Dia inteiro',
       ];
     });
 
     autoTable(doc, {
       startY: y,
-      head: [['Data', 'Dia', 'Entrada', 'Saída', 'Intervalo', 'Trabalhado', 'Extra', 'Tipo']],
-      body: tableBody,
+      head: [['Data', 'Periodo coberto']],
+      body: atestBody,
       theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 1.5, overflow: 'linebreak', halign: 'center' },
-      headStyles: { fillColor: [26, 26, 46], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7 },
-      alternateRowStyles: { fillColor: [248, 249, 255] },
+      styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+      headStyles: { fillColor: [155, 89, 182], textColor: [255, 255, 255], fontStyle: 'bold' },
       margin: { left: margem, right: margem },
-      didParseCell: (data) => {
-        if (data.section === 'body') {
-          const extra = tableBody[data.row.index]?.[6];
-          const tipo = tableBody[data.row.index]?.[7];
-          if (data.column.index === 6 && extra !== '—') {
-            data.cell.styles.textColor = [231, 76, 60];
-          }
-          if (data.column.index === 7) {
-            if (tipo === 'Hora extra') data.cell.styles.textColor = [243, 156, 18];
-          }
-        }
-      },
     });
+    y = (doc as any).lastAutoTable.finalY + 3;
 
-    y = (doc as any).lastAutoTable.finalY + 6;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 90);
+    doc.text(`Total de dias com atestado: ${daysAtestado.length}`, margem, y);
+    y += 6;
   }
 
-  // Events (conditional)
+  // Events
   if (incluirEventos) {
     y = checkPage(doc, y, 20);
     y = addSectionTitle(doc, 'Eventos do Periodo', y, margem);
@@ -376,13 +564,13 @@ function gerarExtratoPDF(
     y += 3;
   }
 
-  // Summary
+  // Resumo Final
   y = checkPage(doc, y, 25);
   y = addSectionTitle(doc, 'Resumo Final', y, margem);
 
-  const mediaPorDia = days.length > 0 ? totalMinTrab / days.length : 0;
+  const mediaPorDia = daysForCalc.length > 0 ? totalMinTrab / daysForCalc.length : 0;
   const resumoFinal = [
-    { label: 'Total de dias trabalhados', valor: `${days.length}` },
+    { label: 'Total de dias trabalhados', valor: `${daysForCalc.length}` },
     { label: 'Media de horas por dia', valor: fmtHM(mediaPorDia) },
     { label: 'Saldo banco de horas', valor: formatMinutosHoras(saldoFinalPDF) },
   ];
@@ -404,7 +592,7 @@ function gerarExtratoPDF(
   doc.setFillColor(255, 248, 225);
   doc.setDrawColor(243, 156, 18);
   const avisoTexto =
-    'Este documento é um extrato matematico privado para organizacao pessoal. ' +
+    'Este documento e um extrato matematico privado para organizacao pessoal. ' +
     'Nao possui valor de laudo pericial, nao substitui cartoes de ponto oficiais e nao constitui prova legal absoluta. ' +
     'O nome da empresa e demais dados sao informados pelo proprio usuario para fins de controle pessoal. ' +
     'O desenvolvedor isenta-se de responsabilidade por decisoes judiciais ou administrativas tomadas com base nestas estimativas. ' +
@@ -415,7 +603,7 @@ function gerarExtratoPDF(
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(100, 60, 0);
-  doc.text('⚠ AVISO LEGAL — ISENCAO DE RESPONSABILIDADE:', margem + 3, y + 5);
+  doc.text('AVISO LEGAL — ISENCAO DE RESPONSABILIDADE:', margem + 3, y + 5);
   doc.setFont('helvetica', 'normal');
   doc.text(avisoLines, margem + 3, y + 10);
 
@@ -434,7 +622,6 @@ function gerarExtratoPDF(
     doc.text(`Pagina ${p} de ${totalPaginas}`, largura - margem, pH - 6, { align: 'right' });
   }
 
-  // Add watermark to all pages
   addWatermark(doc);
 
   doc.save(`extrato-jornada-${new Date().toISOString().slice(0, 7)}.pdf`);
@@ -550,9 +737,15 @@ const RelatorioPage: React.FC = () => {
         const s = new Date(now.getFullYear(), now.getMonth(), 1);
         return { start: fmt(s), end: fmt(now), label: `${meses[now.getMonth()]} ${now.getFullYear()}` };
       }
+      case 'mes_anterior': {
+        const prev = subMonths(now, 1);
+        const s = new Date(prev.getFullYear(), prev.getMonth(), 1);
+        const e = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+        return { start: fmt(s), end: fmt(e), label: `${meses[prev.getMonth()]} ${prev.getFullYear()}` };
+      }
       case 'ciclo': {
         const ciclo = getCicloQuery(diaFechamento, now);
-        return { start: ciclo.start, end: ciclo.end, label: `Ciclo de Apuração: ${ciclo.label}` };
+        return { start: ciclo.start, end: ciclo.end, label: `Ciclo de Apuracao: ${ciclo.label}` };
       }
       case 'personalizado': {
         const s = options.dataInicio!;
@@ -560,7 +753,7 @@ const RelatorioPage: React.FC = () => {
         return { start: fmt(s), end: fmt(e), label: `${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
       }
       case 'tudo':
-        return { start: '2000-01-01', end: fmt(now), label: 'Todo o histórico' };
+        return { start: '2000-01-01', end: fmt(now), label: 'Todo o historico' };
       default:
         return { start: fmt(now), end: fmt(now), label: '' };
     }
@@ -579,13 +772,12 @@ const RelatorioPage: React.FC = () => {
     try {
       const { start, end, label } = getDateRange(options);
 
-      // Re-fetch data for the selected period
+      // Fetch marcacoes for the period (include all origins)
       let query = supabase
         .from('marcacoes_ponto')
         .select('*')
         .eq('user_id', user!.id)
         .is('deleted_at', null)
-        .neq('origem', 'importacao_automatica')
         .order('horario', { ascending: true });
 
       if (start !== '2000-01-01') query = query.gte('data', start);
@@ -593,7 +785,21 @@ const RelatorioPage: React.FC = () => {
 
       const { data } = await query;
       const marcacoes = (data as Marcacao[]) || [];
-      const periodDays = buildDaySummaries(marcacoes, carga);
+
+      // Fetch registros_ponto for atestado info
+      let regQuery = supabase
+        .from('registros_ponto')
+        .select('data, atestado_periodo')
+        .eq('user_id', user!.id)
+        .is('deleted_at', null)
+        .not('atestado_periodo', 'is', null);
+
+      if (start !== '2000-01-01') regQuery = regQuery.gte('data', start);
+      regQuery = regQuery.lte('data', end);
+
+      const { data: registrosPonto } = await regQuery;
+
+      const periodDays = buildDaySummaries(marcacoes, carga, registrosPonto || []);
 
       if (periodDays.length === 0) {
         toast({ title: 'Sem dados', description: 'Nenhum registro encontrado no período selecionado.', variant: 'destructive' });
@@ -605,7 +811,14 @@ const RelatorioPage: React.FC = () => {
 
       gerarExtratoPDF(
         periodDays, profile, label, bhEntries, carga, salario, percentual, totalCompensado,
-        { tipo: options.tipo, incluirEventos: options.incluirEventos },
+        {
+          tipo: options.tipo,
+          incluirEventos: options.incluirEventos,
+          incluirReconstituidos: options.incluirReconstituidos,
+          incluirAtestados: options.incluirAtestados,
+          incluirFinanceiro: options.incluirFinanceiro,
+          incluirBancoHoras: options.incluirBancoHoras,
+        },
       );
       toast({ title: 'PDF gerado!', description: 'Extrato salvo no seu dispositivo.' });
       setShowOptionsModal(false);
@@ -675,10 +888,10 @@ const RelatorioPage: React.FC = () => {
           <p className="font-bold mb-3 text-sm">O extrato completo inclui:</p>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-center gap-2"><Clock size={14} className="text-accent shrink-0" />Resumo geral com totais e estimativas</li>
-            <li className="flex items-center gap-2"><TrendingUp size={14} className="text-accent shrink-0" />Seção completa de banco de horas</li>
-            <li className="flex items-center gap-2"><Calendar size={14} className="text-accent shrink-0" />Tabela detalhada por dia com marcações</li>
-            <li className="flex items-center gap-2"><FileText size={14} className="text-accent shrink-0" />Eventos e compensações do período</li>
-            <li className="flex items-center gap-2"><Shield size={14} className="text-accent shrink-0" />Resumo final e aviso legal completo</li>
+            <li className="flex items-center gap-2"><TrendingUp size={14} className="text-accent shrink-0" />Demonstrativo financeiro com INSS/IRRF</li>
+            <li className="flex items-center gap-2"><Calendar size={14} className="text-accent shrink-0" />Tabela detalhada com tipo de registro</li>
+            <li className="flex items-center gap-2"><FileText size={14} className="text-accent shrink-0" />Seção de atestados e reconstituídos</li>
+            <li className="flex items-center gap-2"><Shield size={14} className="text-accent shrink-0" />Banco de horas detalhado e aviso legal</li>
           </ul>
         </div>
 
