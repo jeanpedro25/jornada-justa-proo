@@ -159,62 +159,59 @@ const HistoricoPage: React.FC = () => {
       .filter((dataStr) => dataStr >= start && dataStr <= end)
       .sort()
       .forEach((dataStr) => {
-      const diaSemana = d.getDay();
-      const ehFds = diaSemana === 0 || diaSemana === 6;
-      const ehHoje = dataStr === hojeStr;
-      const marcacoes = marcMap.get(dataStr) || [];
-      const feriasInfo = feriasDias.get(dataStr) || null;
-      const compensacao = compensacoes.get(dataStr) || null;
-      const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
-      const d = new Date(dataStr + 'T12:00:00');
-      const diaSemana = d.getDay();
-      const ehFds = diaSemana === 0 || diaSemana === 6;
-      const ehHoje = dataStr === hojeStr;
+        const d = new Date(dataStr + 'T12:00:00');
+        const diaSemana = d.getDay();
+        const ehFds = diaSemana === 0 || diaSemana === 6;
+        const ehHoje = dataStr === hojeStr;
+        const marcacoes = marcMap.get(dataStr) || [];
+        const feriasInfo = feriasDias.get(dataStr) || null;
+        const compensacao = compensacoes.get(dataStr) || null;
+        const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
 
-      // CLT: feriados, férias e FDS não têm carga obrigatória
-      // Qualquer trabalho nesses dias = hora extra, nunca "devendo"
-      const ehDiaLivre = !!feriado || !!feriasInfo || ehFds;
-      const cargaDoDia = ehDiaLivre ? 0 : carga * 60;
+        // CLT: feriados, férias e FDS não têm carga obrigatória
+        // Qualquer trabalho nesses dias = hora extra, nunca "devendo"
+        const ehDiaLivre = !!feriado || !!feriasInfo || ehFds;
+        const cargaDoDia = ehDiaLivre ? 0 : carga * 60;
 
-      let status: DayStatus;
-      if (feriado && marcacoes.length === 0) {
-        status = 'feriado';
-      } else if (feriasInfo && marcacoes.length === 0) {
-        status = 'ferias';
-      } else if (compensacao) {
-        status = 'compensado';
-      } else if (ehFds && marcacoes.length === 0) {
-        status = 'fimdesemana';
-      } else if (marcacoes.length > 0) {
-        const jornada = calcularJornada(marcacoes, cargaDoDia);
-        if (jornada.emAndamento && ehHoje) {
-          status = 'em_andamento';
+        let status: DayStatus;
+        if (feriado && marcacoes.length === 0) {
+          status = 'feriado';
+        } else if (feriasInfo && marcacoes.length === 0) {
+          status = 'ferias';
+        } else if (compensacao) {
+          status = 'compensado';
+        } else if (ehFds && marcacoes.length === 0) {
+          status = 'fimdesemana';
+        } else if (marcacoes.length > 0) {
+          const jornada = calcularJornada(marcacoes, cargaDoDia);
+          if (jornada.emAndamento && ehHoje) {
+            status = 'em_andamento';
+          } else {
+            status = feriado ? 'feriado' : 'registrado';
+          }
         } else {
-          status = feriado ? 'feriado' : 'registrado';
+          return;
         }
-      } else {
-        return;
-      }
 
-      const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
+        const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
 
-      summaries.push({
-        data: dataStr,
-        diaSemana,
-        status,
-        marcacoes,
-        totalMin: jornada?.totalTrabalhado ?? 0,
-        extraHours: (jornada?.horaExtraMin ?? 0) / 60,
-        devendoMin: jornada?.devendoMin ?? 0,
-        intervaloMin: jornada?.totalIntervalo ?? 0,
-        primeiraEntrada: jornada?.primeiraEntrada ?? null,
-        ultimaSaida: jornada?.ultimaSaida ?? null,
-        feriasInfo,
-        compensacao,
-        feriadoNome: feriado?.nome ?? null,
-        ehHoje,
+        summaries.push({
+          data: dataStr,
+          diaSemana,
+          status,
+          marcacoes,
+          totalMin: jornada?.totalTrabalhado ?? 0,
+          extraHours: (jornada?.horaExtraMin ?? 0) / 60,
+          devendoMin: jornada?.devendoMin ?? 0,
+          intervaloMin: jornada?.totalIntervalo ?? 0,
+          primeiraEntrada: jornada?.primeiraEntrada ?? null,
+          ultimaSaida: jornada?.ultimaSaida ?? null,
+          feriasInfo,
+          compensacao,
+          feriadoNome: feriado?.nome ?? null,
+          ehHoje,
+        });
       });
-    });
 
     return summaries.reverse();
   }, [allMarcacoes, carga, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
@@ -236,7 +233,7 @@ const HistoricoPage: React.FC = () => {
   const totalHoras = diasComRegistro.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = diasComRegistro.reduce((s, d) => s + d.extraHours, 0);
   const diasTrabalhados = diasComRegistro.length;
-  const diasPendentes = 0;
+  const diasPendentes: number = 0;
 
   const getStatusStyle = (day: DaySummary) => {
     switch (day.status) {
