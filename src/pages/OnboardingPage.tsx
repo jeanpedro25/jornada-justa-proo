@@ -385,13 +385,53 @@ const OnboardingPage: React.FC = () => {
             {/* Período */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Data de admissão</label>
-              <Input
-                type="date"
-                value={dataAdmissao}
-                onChange={(e) => setDataAdmissao(e.target.value)}
-                className="rounded-xl h-12 text-base"
-                max={hoje}
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">Dia</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="DD"
+                    value={admDia}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      updateDataAdmissao(v, admMes, admAno);
+                    }}
+                    className="rounded-xl h-12 text-base text-center"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">Mês</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
+                    placeholder="MM"
+                    value={admMes}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      updateDataAdmissao(admDia, v, admAno);
+                    }}
+                    className="rounded-xl h-12 text-base text-center"
+                  />
+                </div>
+                <div className="flex-[1.5]">
+                  <label className="text-xs text-muted-foreground">Ano</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="AAAA"
+                    value={admAno}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      updateDataAdmissao(admDia, admMes, v);
+                    }}
+                    className="rounded-xl h-12 text-base text-center"
+                  />
+                </div>
+              </div>
               {dataAdmissao && dataAdmissao < hoje && (
                 <p className="text-xs text-muted-foreground">
                   → {mesesHistorico} meses · ~{diasUteisEstimados} dias úteis
