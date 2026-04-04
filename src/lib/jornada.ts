@@ -73,6 +73,7 @@ export async function buscarMarcacoesDia(userId: string, data: string): Promise<
     .eq('user_id', userId)
     .eq('data', data)
     .is('deleted_at', null)
+    .neq('origem', 'importacao_automatica')
     .order('horario', { ascending: true });
   return (marcacoes as Marcacao[]) || [];
 }
