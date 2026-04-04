@@ -196,7 +196,24 @@ const AppPage: React.FC = () => {
           </p>
         )}
 
-        {/* Escala rest day notice */}
+        {/* Config incomplete warning */}
+        {configIncompleta && (
+          <button
+            onClick={() => navigate('/configuracoes')}
+            className="w-full bg-warning/10 rounded-xl p-4 border border-warning/30 animate-slide-up text-left"
+          >
+            <div className="flex items-start gap-3">
+              <Settings size={18} className="text-warning mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-warning">Complete sua configuração</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Configure seu salário, horários e tipo de jornada para que os cálculos fiquem corretos.
+                </p>
+              </div>
+            </div>
+          </button>
+        )}
+
         {isDiaFolga && (
           <div className="bg-accent/10 rounded-xl p-4 text-center border border-accent/20 animate-slide-up">
             <p className="text-sm font-semibold text-accent">📅 Hoje é dia de folga na sua escala</p>
