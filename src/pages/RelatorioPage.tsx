@@ -413,6 +413,7 @@ function gerarExtratoPDF(
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
     { label: 'Atestados', valor: `${daysAtestado.length} dias`, cor: [155, 89, 182] as const },
     { label: 'Feriados', valor: `${daysFeriado.length} dias`, cor: [231, 76, 60] as const },
+    ...(daysFerias.length > 0 ? [{ label: 'Ferias/Folgas', valor: `${daysFerias.length} dias`, cor: [52, 152, 219] as const }] : []),
   ];
 
   const cardW = (contentW - 6) / 3;
