@@ -217,7 +217,7 @@ function gerarExtratoPDF(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(200, 215, 225);
-  doc.text(`Usuario: ${perfil?.nome || 'Trabalhador'}`, margem, 30);
+  doc.text(`Usuario: ${perfil?.nome?.trim() || 'Trabalhador'}`, margem, 30);
   if (perfil?.empresa) {
     doc.text(`Empresa: ${perfil.empresa}`, margem, 35);
   }
