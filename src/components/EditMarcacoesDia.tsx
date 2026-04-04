@@ -175,7 +175,8 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     const { error } = await supabase
       .from('marcacoes_ponto')
       .update({ horario: horarioTs, origem: 'correcao' } as any)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
@@ -192,7 +193,11 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     if (!user || !data) return;
     if (!confirm('Remover esta marcação?')) return;
     setLoading(true);
-    const { error } = await supabase.from('marcacoes_ponto').update({ deleted_at: new Date().toISOString() } as any).eq('id', id);
+    const { error } = await supabase
+      .from('marcacoes_ponto')
+      .update({ deleted_at: new Date().toISOString() } as any)
+      .eq('id', id)
+      .eq('user_id', user.id);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
       setLoading(false);

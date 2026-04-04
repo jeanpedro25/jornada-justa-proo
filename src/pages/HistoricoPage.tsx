@@ -149,11 +149,16 @@ const HistoricoPage: React.FC = () => {
     });
 
     const summaries: DaySummary[] = [];
-    let d = new Date(start + 'T12:00:00');
-    const endDate = new Date(end + 'T12:00:00');
+    const datasReais = new Set<string>([
+      ...Array.from(marcMap.keys()),
+      ...Array.from(feriasDias.keys()),
+      ...Array.from(compensacoes.keys()),
+    ]);
 
-    while (d <= endDate) {
-      const dataStr = d.toISOString().split('T')[0];
+    Array.from(datasReais)
+      .filter((dataStr) => dataStr >= start && dataStr <= end)
+      .sort()
+      .forEach((dataStr) => {
       const diaSemana = d.getDay();
       const ehFds = diaSemana === 0 || diaSemana === 6;
       const ehHoje = dataStr === hojeStr;
@@ -161,6 +166,10 @@ const HistoricoPage: React.FC = () => {
       const feriasInfo = feriasDias.get(dataStr) || null;
       const compensacao = compensacoes.get(dataStr) || null;
       const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
+      const d = new Date(dataStr + 'T12:00:00');
+      const diaSemana = d.getDay();
+      const ehFds = diaSemana === 0 || diaSemana === 6;
+      const ehHoje = dataStr === hojeStr;
 
       // CLT: feriados, férias e FDS não têm carga obrigatória
       // Qualquer trabalho nesses dias = hora extra, nunca "devendo"
@@ -184,7 +193,7 @@ const HistoricoPage: React.FC = () => {
           status = feriado ? 'feriado' : 'registrado';
         }
       } else {
-        status = 'pendente';
+        return;
       }
 
       const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
@@ -205,9 +214,7 @@ const HistoricoPage: React.FC = () => {
         feriadoNome: feriado?.nome ?? null,
         ehHoje,
       });
-
-      d.setDate(d.getDate() + 1);
-    }
+    });
 
     return summaries.reverse();
   }, [allMarcacoes, carga, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
@@ -229,7 +236,7 @@ const HistoricoPage: React.FC = () => {
   const totalHoras = diasComRegistro.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = diasComRegistro.reduce((s, d) => s + d.extraHours, 0);
   const diasTrabalhados = diasComRegistro.length;
-  const diasPendentes = daySummaries.filter(d => d.status === 'pendente').length;
+  const diasPendentes = 0;
 
   const getStatusStyle = (day: DaySummary) => {
     switch (day.status) {
