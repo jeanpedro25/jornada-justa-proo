@@ -650,6 +650,9 @@ function gerarExtratoPDF(
       { label: 'Manual — inserido manualmente', cor: origemColor.manual },
       { label: 'Atestado — coberto por atestado medico', cor: origemColor.atestado },
       { label: 'Feriado — feriado nacional/local', cor: origemColor.feriado },
+      { label: 'FDS — fim de semana', cor: [149, 165, 166] as [number, number, number] },
+      { label: 'Pendente — dia util sem registro', cor: [243, 156, 18] as [number, number, number] },
+      { label: 'Ferias/Folga — ferias ou folga compensada', cor: origemColor.ferias },
     ];
     legendItems.forEach(l => {
       doc.setFillColor(l.cor[0], l.cor[1], l.cor[2]);
