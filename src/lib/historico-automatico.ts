@@ -68,68 +68,87 @@ export async function gerarHistoricoAutomatico(
   config: HistoricoConfig,
   onProgress?: (pct: number, msg: string) => void
 ): Promise<{ totalDias: number; totalMarcacoes: number }> {
+  // Delegate to multi-period version with a single period
+  return gerarHistoricoMultiPeriodo(
+    userId,
+    [{
+      dataInicio: config.dataInicio,
+      dataFim: config.dataFim,
+      entradaHora: config.entradaHora,
+      saidaHora: config.saidaHora,
+      intervaloMin: config.intervaloMin,
+      diasSemana: config.diasSemana,
+    }],
+    config.saldoBancoMin,
+    onProgress,
+  );
+}
+
+export async function gerarHistoricoMultiPeriodo(
+  userId: string,
+  periodos: PeriodoTrabalho[],
+  saldoBancoMin: number,
+  onProgress?: (pct: number, msg: string) => void
+): Promise<{ totalDias: number; totalMarcacoes: number }> {
   const BATCH_SIZE = 200;
   const marcacoes: any[] = [];
 
-  const anoInicio = parseInt(config.dataInicio.substring(0, 4));
-  const anoFim = parseInt(config.dataFim.substring(0, 4));
+  // Sort periods by start date
+  const sorted = [...periodos].sort((a, b) => a.dataInicio.localeCompare(b.dataInicio));
+  const globalStart = sorted[0].dataInicio;
+  const globalEnd = sorted[sorted.length - 1].dataFim;
+
+  const anoInicio = parseInt(globalStart.substring(0, 4));
+  const anoFim = parseInt(globalEnd.substring(0, 4));
   const feriados = getFeriadosDatas(anoInicio, anoFim);
 
-  const { saidaIntervalo, voltaIntervalo } = calcularHorarioIntervalo(
-    config.entradaHora,
-    config.saidaHora,
-    config.intervaloMin
-  );
-
-  let dataAtual = new Date(config.dataInicio + 'T12:00:00');
-  const dataFim = new Date(config.dataFim + 'T12:00:00');
   let totalDias = 0;
 
-  // Count total working days first for progress
-  const tempDate = new Date(dataAtual);
-  let totalDiasUteis = 0;
-  while (tempDate <= dataFim) {
-    const ds = tempDate.toISOString().split('T')[0];
-    if (config.diasSemana.includes(tempDate.getDay()) && !feriados.has(ds)) {
-      totalDiasUteis++;
-    }
-    tempDate.setDate(tempDate.getDate() + 1);
-  }
+  // For each period, generate marcações with that period's schedule
+  for (const periodo of sorted) {
+    const { saidaIntervalo, voltaIntervalo } = calcularHorarioIntervalo(
+      periodo.entradaHora,
+      periodo.saidaHora,
+      periodo.intervaloMin
+    );
 
-  while (dataAtual <= dataFim) {
-    const diaSemana = dataAtual.getDay();
-    const dataStr = dataAtual.toISOString().split('T')[0];
+    let dataAtual = new Date(periodo.dataInicio + 'T12:00:00');
+    const dataFim = new Date(periodo.dataFim + 'T12:00:00');
 
-    if (config.diasSemana.includes(diaSemana) && !feriados.has(dataStr)) {
-      totalDias++;
+    while (dataAtual <= dataFim) {
+      const diaSemana = dataAtual.getDay();
+      const dataStr = dataAtual.toISOString().split('T')[0];
 
-      const makeMarcacao = (tipo: TipoMarcacaoHistorico, hora: string) => {
-        // Convert local time to UTC - create a Date in local timezone and get ISO
-        const [h, m] = hora.split(':').map(Number);
-        const localDate = new Date(
-          parseInt(dataStr.substring(0, 4)),
-          parseInt(dataStr.substring(5, 7)) - 1,
-          parseInt(dataStr.substring(8, 10)),
-          h, m, 0
-        );
-        return {
-          user_id: userId,
-          data: dataStr,
-          tipo,
-          horario: localDate.toISOString(),
-          origem: 'importacao_automatica',
+      if (periodo.diasSemana.includes(diaSemana) && !feriados.has(dataStr)) {
+        totalDias++;
+
+        const makeMarcacao = (tipo: TipoMarcacaoHistorico, hora: string) => {
+          const [h, m] = hora.split(':').map(Number);
+          const localDate = new Date(
+            parseInt(dataStr.substring(0, 4)),
+            parseInt(dataStr.substring(5, 7)) - 1,
+            parseInt(dataStr.substring(8, 10)),
+            h, m, 0
+          );
+          return {
+            user_id: userId,
+            data: dataStr,
+            tipo,
+            horario: localDate.toISOString(),
+            origem: 'importacao_automatica',
+          };
         };
-      };
 
-      marcacoes.push(
-        makeMarcacao('entrada', config.entradaHora),
-        makeMarcacao('saida_intervalo', saidaIntervalo),
-        makeMarcacao('volta_intervalo', voltaIntervalo),
-        makeMarcacao('saida_final', config.saidaHora)
-      );
+        marcacoes.push(
+          makeMarcacao('entrada', periodo.entradaHora),
+          makeMarcacao('saida_intervalo', saidaIntervalo),
+          makeMarcacao('volta_intervalo', voltaIntervalo),
+          makeMarcacao('saida_final', periodo.saidaHora)
+        );
+      }
+
+      dataAtual.setDate(dataAtual.getDate() + 1);
     }
-
-    dataAtual.setDate(dataAtual.getDate() + 1);
   }
 
   // Insert in batches
@@ -148,12 +167,12 @@ export async function gerarHistoricoAutomatico(
   // Save banco de horas initial balance
   const updateData: any = {
     historico_importado: true,
-    historico_inicio: config.dataInicio,
+    historico_inicio: globalStart,
   };
 
-  if (config.saldoBancoMin > 0) {
-    updateData.banco_horas_saldo_inicial = config.saldoBancoMin;
-    updateData.banco_horas_saldo_inicial_data = config.dataInicio;
+  if (saldoBancoMin > 0) {
+    updateData.banco_horas_saldo_inicial = saldoBancoMin;
+    updateData.banco_horas_saldo_inicial_data = globalStart;
   }
 
   const { error: profileError } = await supabase
