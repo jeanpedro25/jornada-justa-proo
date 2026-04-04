@@ -28,32 +28,41 @@ const OnboardingPage: React.FC = () => {
   // Step 5 - history choice
   const [escolhaHistorico, setEscolhaHistorico] = useState<'zero' | 'importar' | null>(null);
 
-  // Step 6 - import config
+  // Step 6 - import config with multiple periods
   const [dataAdmissao, setDataAdmissao] = useState('');
   const [admDia, setAdmDia] = useState('');
   const [admMes, setAdmMes] = useState('');
   const [admAno, setAdmAno] = useState('');
 
-  // Sync separate fields → dataAdmissao
-  const updateDataAdmissao = (dia: string, mes: string, ano: string) => {
-    setAdmDia(dia);
-    setAdmMes(mes);
-    setAdmAno(ano);
-    if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
-      const d = parseInt(dia), m = parseInt(mes), a = parseInt(ano);
-      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && a >= 1900 && a <= 2100) {
-        setDataAdmissao(`${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`);
-      } else {
-        setDataAdmissao('');
-      }
-    } else {
-      setDataAdmissao('');
-    }
-  };
-  const [entradaHora, setEntradaHora] = useState('08:00');
-  const [saidaHora, setSaidaHora] = useState('17:00');
-  const [intervaloMin, setIntervaloMin] = useState('60');
-  const [diasSemana, setDiasSemana] = useState<number[]>([1, 2, 3, 4, 5]);
+  // Multiple work periods
+  interface PeriodoUI {
+    id: number;
+    entradaHora: string;
+    saidaHora: string;
+    intervaloMin: string;
+    diasSemana: number[];
+    dataInicio: string; // YYYY-MM-DD — auto-calculated from sequence
+    dataFim: string;    // YYYY-MM-DD — auto-calculated
+    dataFimDia: string;
+    dataFimMes: string;
+    dataFimAno: string;
+  }
+
+  const [periodos, setPeriodos] = useState<PeriodoUI[]>([
+    {
+      id: 1,
+      entradaHora: '08:00',
+      saidaHora: '17:00',
+      intervaloMin: '60',
+      diasSemana: [1, 2, 3, 4, 5],
+      dataInicio: '',
+      dataFim: '',
+      dataFimDia: '',
+      dataFimMes: '',
+      dataFimAno: '',
+    },
+  ]);
+
   const [sabeSaldo, setSabeSaldo] = useState(false);
   const [saldoHoras, setSaldoHoras] = useState('0');
   const [saldoMinutos, setSaldoMinutos] = useState('0');
