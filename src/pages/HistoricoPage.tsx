@@ -89,7 +89,12 @@ const HistoricoPage: React.FC = () => {
     const now = new Date();
     if (period === 'custom' && dataInicio && dataFim) return { start: dataInicio, end: dataFim };
     if (period === 'week') {
-      const start = new Date(now); start.setDate(now.getDate() - now.getDay()); start.setHours(0, 0, 0, 0);
+      const start = new Date(now);
+      // Start from Monday (weekStartsOn=1)
+      const dayOfWeek = now.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      start.setDate(now.getDate() - diff);
+      start.setHours(0, 0, 0, 0);
       return { start: start.toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
     }
     if (period === 'month') {
