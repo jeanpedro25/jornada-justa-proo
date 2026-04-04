@@ -239,7 +239,7 @@ const HistoricoPage: React.FC = () => {
   const totalHoras = diasComRegistro.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = diasComRegistro.reduce((s, d) => s + d.extraHours, 0);
   const diasTrabalhados = diasComRegistro.length;
-  const diasPendentes: number = 0;
+  const diasPendentes = daySummaries.filter(d => d.status === 'pendente').length;
 
   const getStatusStyle = (day: DaySummary) => {
     switch (day.status) {
