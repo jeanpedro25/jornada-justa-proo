@@ -14,11 +14,13 @@ import JornadaConfig from '@/components/JornadaConfig';
 import FeriasConfig from '@/components/FeriasConfig';
 import FeriadosLocaisConfig from '@/components/FeriadosLocaisConfig';
 import AvisoLegal from '@/components/AvisoLegal';
+import DeleteAccountModal from '@/components/DeleteAccountModal';
 
 const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [nome, setNome] = useState('');
   const [empresa, setEmpresa] = useState('');
   const [salario, setSalario] = useState('');
@@ -468,8 +470,20 @@ const ConfigPage: React.FC = () => {
 
         {/* Delete account */}
         <Button
-          onClick={async () => {
-            if (!confirm('Tem certeza? Isso vai deletar TODOS os seus dados permanentemente. Essa ação não pode ser desfeita.')) return;
+          onClick={() => setShowDeleteModal(true)}
+          disabled={deleting}
+          variant="ghost"
+          className="w-full rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 text-xs"
+        >
+          <Trash2 size={14} />
+          Deletar minha conta e todos os dados
+        </Button>
+
+        <DeleteAccountModal
+          open={showDeleteModal}
+          onOpenChange={setShowDeleteModal}
+          deleting={deleting}
+          onConfirm={async () => {
             setDeleting(true);
             try {
               const { error } = await supabase.rpc('delete_my_account' as never);
@@ -481,13 +495,7 @@ const ConfigPage: React.FC = () => {
               setDeleting(false);
             }
           }}
-          disabled={deleting}
-          variant="ghost"
-          className="w-full rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 text-xs"
-        >
-          <Trash2 size={14} />
-          {deleting ? 'Deletando...' : 'Deletar minha conta e todos os dados'}
-        </Button>
+        />
       </div>
       <BottomNav />
     </div>
