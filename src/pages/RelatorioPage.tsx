@@ -587,7 +587,16 @@ function gerarExtratoPDF(
 
       const trabLabel = d.origem === 'atestado' ? 'Atestado'
         : d.origem === 'feriado' ? (d.feriadoNome || 'Feriado')
+        : d.origem === 'ferias' ? (d.feriadoNome || 'Férias')
+        : d.totalMin === 0 && d.marcacoes.length === 0 ? (d.feriadoNome || '—')
         : `${hT}h${mT}min`;
+
+      const tipoLabel = d.origem === 'feriado' && d.marcacoes.length === 0 && !d.feriadoNome?.includes('Domingo') && !d.feriadoNome?.includes('Sábado')
+        ? 'Feriado'
+        : d.feriadoNome === 'Sem registro' ? 'Pendente'
+        : d.feriadoNome === 'Domingo' || d.feriadoNome === 'Sábado' ? 'FDS'
+        : d.feriadoNome === 'Folga compensada' ? 'Folga'
+        : origemLabel[d.origem] || 'Manual';
 
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -597,7 +606,7 @@ function gerarExtratoPDF(
         d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
         trabLabel,
         d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
-        origemLabel[d.origem] || 'Manual',
+        tipoLabel,
       ];
     });
 
