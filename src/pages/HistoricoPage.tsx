@@ -487,7 +487,7 @@ const HistoricoPage: React.FC = () => {
                     </div>
 
                     {/* Right badge */}
-                    {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana') && (
+                    {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana' || day.status === 'atestado') && (
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${style.badge}`}>
                         {style.label}
                       </span>
