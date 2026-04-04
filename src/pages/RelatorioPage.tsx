@@ -905,7 +905,8 @@ const RelatorioPage: React.FC = () => {
 
       const { data: registrosPonto } = await regQuery;
 
-      const periodDays = buildDaySummaries(marcacoes, carga, registrosPonto || []);
+      const feriadosMap = getFeriadosNoPeriodo(start, end);
+      const periodDays = buildDaySummaries(marcacoes, carga, registrosPonto || [], feriadosMap);
 
       if (periodDays.length === 0) {
         toast({ title: 'Sem dados', description: 'Nenhum registro encontrado no período selecionado.', variant: 'destructive' });
