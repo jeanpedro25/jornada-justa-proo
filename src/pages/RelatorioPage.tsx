@@ -31,7 +31,12 @@ import PaywallModal from '@/components/PaywallModal';
 import { startOfWeek, endOfWeek, subMonths } from 'date-fns';
 import { getFeriadosDoAno, type Feriado } from '@/lib/feriados';
 
-const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+const diasSemana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
+
+// Map JS getDay() (0=Sun..6=Sat) to our array index (0=Mon..6=Sun)
+function getDiaSemanaIdx(jsDay: number): number {
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
 const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
