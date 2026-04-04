@@ -11,6 +11,8 @@ export interface HistoricoConfig {
   saldoBancoMin: number;    // saldo em minutos
 }
 
+type TipoMarcacaoHistorico = 'entrada' | 'saida_intervalo' | 'volta_intervalo' | 'saida_final';
+
 function calcularMinutosTrabalhados(entrada: string, saida: string, intervalo: number): number {
   const [eh, em] = entrada.split(':').map(Number);
   const [sh, sm] = saida.split(':').map(Number);
@@ -92,7 +94,7 @@ export async function gerarHistoricoAutomatico(
     if (config.diasSemana.includes(diaSemana) && !feriados.has(dataStr)) {
       totalDias++;
 
-      const makeMarcacao = (tipo: string, hora: string) => ({
+      const makeMarcacao = (tipo: TipoMarcacaoHistorico, hora: string) => ({
         user_id: userId,
         data: dataStr,
         tipo,
@@ -104,7 +106,7 @@ export async function gerarHistoricoAutomatico(
         makeMarcacao('entrada', config.entradaHora),
         makeMarcacao('saida_intervalo', saidaIntervalo),
         makeMarcacao('volta_intervalo', voltaIntervalo),
-        makeMarcacao('saida', config.saidaHora)
+        makeMarcacao('saida_final', config.saidaHora)
       );
     }
 
