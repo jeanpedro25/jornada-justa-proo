@@ -264,9 +264,10 @@ function gerarExtratoPDF(
   const daysReais = days.filter(d => d.origem === 'real' || d.origem === 'manual');
   const daysReconstituidos = days.filter(d => d.origem === 'reconstituido');
   const daysAtestado = days.filter(d => d.origem === 'atestado');
+  const daysFeriado = days.filter(d => d.origem === 'feriado');
 
-  // Only include reconstituídos in totals if option is on
-  const daysForCalc = incluirReconstituidos ? days : daysReais.concat(daysAtestado);
+  // Only include reconstituídos in totals if option is on (exclude feriados from hour calc)
+  const daysForCalc = (incluirReconstituidos ? days : daysReais.concat(daysAtestado)).filter(d => d.origem !== 'feriado');
 
   // Header
   doc.setFillColor(26, 26, 46);
