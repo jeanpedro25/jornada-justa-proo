@@ -320,6 +320,7 @@ function gerarExtratoPDF(
     { label: 'Horas Extras', valor: totalMinExtra > 0 ? `+${fmtHM(totalMinExtra)}` : '0h', cor: [78, 205, 196] as const },
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
     { label: 'Atestados', valor: `${daysAtestado.length} dias`, cor: [155, 89, 182] as const },
+    { label: 'Feriados', valor: `${daysFeriado.length} dias`, cor: [231, 76, 60] as const },
   ];
 
   const cardW = (contentW - 6) / 3;
