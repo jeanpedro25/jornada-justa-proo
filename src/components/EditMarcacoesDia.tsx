@@ -273,6 +273,7 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     await syncDay();
     setAtestadoUrl(path);
     setUploading(false);
+    onSaved();
     toast({ title: '🏥 Atestado anexado!' });
   };
 
@@ -286,6 +287,7 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     });
     await syncDay();
     setAtestadoPeriodo(periodo);
+    onSaved();
   };
 
   const handleRemoveAtestado = async () => {
@@ -303,6 +305,7 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
     await syncDay();
     setAtestadoUrl(null);
     setAtestadoPeriodo(null);
+    onSaved();
   };
 
   const startEdit = (m: Marcacao) => {
