@@ -102,7 +102,7 @@ const HistoricoPage: React.FC = () => {
   const fetchData = useCallback(async () => {
     if (!user) return;
     const { start, end } = getDateRange(filter);
-    const [marcRes, feriasRes, compRes, feriadosLocaisRes] = await Promise.all([
+    const [marcRes, feriasRes, compRes, feriadosLocaisRes, atestadoRes] = await Promise.all([
       supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
         .is('deleted_at', null).neq('origem', 'importacao_automatica')
         .gte('data', start).lte('data', end)
@@ -113,6 +113,10 @@ const HistoricoPage: React.FC = () => {
         .eq('user_id', user.id).gte('data', start).lte('data', end),
       supabase.from('feriados_locais').select('data, nome, recorrente')
         .eq('user_id', user.id),
+      supabase.from('registros_ponto').select('data, atestado_periodo, anexo_url')
+        .eq('user_id', user.id).gte('data', start).lte('data', end)
+        .is('deleted_at', null)
+        .not('anexo_url', 'is', null),
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
