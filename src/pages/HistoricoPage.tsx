@@ -16,8 +16,8 @@ import {
 } from '@/lib/jornada';
 
 type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
-type DayStatus = 'registrado' | 'pendente' | 'ferias' | 'compensado' | 'fimdesemana' | 'feriado' | 'em_andamento';
-type QuickFilter = 'todos' | 'pendentes' | 'ferias' | 'extras';
+type DayStatus = 'registrado' | 'pendente' | 'ferias' | 'compensado' | 'fimdesemana' | 'feriado' | 'em_andamento' | 'atestado';
+type QuickFilter = 'todos' | 'pendentes' | 'ferias' | 'extras' | 'atestados';
 
 interface FeriasInfo {
   data_inicio: string;
@@ -47,6 +47,7 @@ interface DaySummary {
   compensacao: CompensacaoInfo | null;
   feriadoNome: string | null;
   ehHoje: boolean;
+  atestadoPeriodo: string | null;
 }
 
 const HistoricoPage: React.FC = () => {
@@ -233,9 +234,11 @@ const HistoricoPage: React.FC = () => {
         } else if (atestadoPeriodo === 'manha' || atestadoPeriodo === 'tarde') {
           devendoFinal = Math.max(0, devendoFinal - Math.floor(cargaDoDia / 2));
         }
-        // Day with atestado integral and no marcacoes should not be "pendente"
-        if (status === 'pendente' && atestadoPeriodo === 'integral') {
-          status = 'registrado';
+        // Day with atestado should show as 'atestado' status
+        if (atestadoPeriodo === 'integral' && (status === 'pendente' || status === 'registrado')) {
+          status = 'atestado';
+        } else if ((atestadoPeriodo === 'manha' || atestadoPeriodo === 'tarde') && status === 'pendente') {
+          status = 'atestado';
         }
       }
 
@@ -254,6 +257,7 @@ const HistoricoPage: React.FC = () => {
         compensacao,
         feriadoNome: feriado?.nome ?? null,
         ehHoje,
+        atestadoPeriodo: atestadoPeriodo || null,
       });
     });
 
@@ -269,6 +273,7 @@ const HistoricoPage: React.FC = () => {
     if (quickFilter === 'pendentes') return days.filter(d => d.status === 'pendente');
     if (quickFilter === 'ferias') return days.filter(d => d.status === 'ferias' || d.status === 'feriado');
     if (quickFilter === 'extras') return days.filter(d => d.extraHours > 0);
+    if (quickFilter === 'atestados') return days.filter(d => d.status === 'atestado' || d.atestadoPeriodo);
     return days;
   }, [daySummaries, quickFilter, showWeekends]);
 
@@ -286,6 +291,7 @@ const HistoricoPage: React.FC = () => {
       case 'compensado': return { bg: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', label: 'Compensado' };
       case 'fimdesemana': return { bg: 'bg-muted/50 border-border', badge: 'bg-muted text-muted-foreground', label: 'Fim de semana' };
       case 'pendente': return { bg: 'bg-amber-50 border-amber-300 dark:bg-amber-950/20 dark:border-amber-700', badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', label: 'Pendente' };
+      case 'atestado': return { bg: 'bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300', label: 'Atestado' };
       case 'em_andamento': return { bg: 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', label: 'Em andamento' };
       default: {
         if (day.extraHours > 0) return { bg: 'bg-card border-border', badge: 'bg-warning/20 text-warning', label: '' };
@@ -366,7 +372,7 @@ const HistoricoPage: React.FC = () => {
 
         {/* Quick filters + weekend toggle */}
         <div className="flex items-center gap-2 flex-wrap">
-          {([['todos', 'Todos'], ['pendentes', 'Pendentes'], ['ferias', 'Férias'], ['extras', 'Com extra']] as const).map(([key, label]) => (
+          {([['todos', 'Todos'], ['pendentes', 'Pendentes'], ['ferias', 'Férias'], ['extras', 'Com extra'], ['atestados', 'Atestados']] as const).map(([key, label]) => (
             <button key={key} onClick={() => setQuickFilter(key)}
               className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${quickFilter === key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
               {label}
@@ -403,7 +409,7 @@ const HistoricoPage: React.FC = () => {
                   <div className="flex items-start gap-3">
                     {/* Day badge */}
                     <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg min-w-[36px] text-center shrink-0 ${style.badge}`}>
-                      {day.status === 'ferias' ? '🏖' : day.status === 'feriado' ? '🎉' : day.status === 'compensado' ? '💤' : day.status === 'fimdesemana' ? '📅' : diaSemanaAbrev(date)}
+                      {day.status === 'ferias' ? '🏖' : day.status === 'feriado' ? '🎉' : day.status === 'compensado' ? '💤' : day.status === 'fimdesemana' ? '📅' : day.status === 'atestado' ? '🏥' : diaSemanaAbrev(date)}
                     </div>
 
                     {/* Content */}
@@ -441,6 +447,12 @@ const HistoricoPage: React.FC = () => {
                         </p>
                       )}
 
+                      {day.status === 'atestado' && (
+                        <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                          🏥 Atestado médico {day.atestadoPeriodo === 'integral' ? '(integral)' : day.atestadoPeriodo === 'manha' ? '(manhã)' : day.atestadoPeriodo === 'tarde' ? '(tarde)' : ''}
+                        </p>
+                      )}
+
                       {day.status === 'fimdesemana' && (
                         <p className="text-[10px] text-muted-foreground">Fim de semana</p>
                       )}
@@ -475,7 +487,7 @@ const HistoricoPage: React.FC = () => {
                     </div>
 
                     {/* Right badge */}
-                    {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana') && (
+                    {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana' || day.status === 'atestado') && (
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${style.badge}`}>
                         {style.label}
                       </span>
