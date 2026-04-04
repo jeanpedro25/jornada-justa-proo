@@ -31,8 +31,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const initialLoadDone = React.useRef(false);
+  const profileRequestId = React.useRef(0);
 
-  const fetchProfile = async (userId: string) => {
+  const ensureProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -45,50 +46,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return null;
     }
 
-    setProfile(data ?? null);
-    return data ?? null;
+    if (data) {
+      setProfile(data);
+      return data;
+    }
+
+    const { error: createError } = await supabase
+      .from('profiles')
+      .upsert({ id: userId } as never, { onConflict: 'id' });
+
+    if (createError) {
+      console.error('Erro ao criar perfil automaticamente', createError);
+      setProfile(null);
+      return null;
+    }
+
+    const { data: createdProfile, error: reloadError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (reloadError) {
+      console.error('Erro ao recarregar perfil criado', reloadError);
+      setProfile(null);
+      return null;
+    }
+
+    setProfile(createdProfile ?? null);
+    return createdProfile ?? null;
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) await ensureProfile(user.id);
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // First, restore session from storage
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const syncAuthState = (nextSession: Session | null) => {
       if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
 
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (!nextSession?.user) {
         setProfile(null);
-      }
-
-      setLoading(false);
-      initialLoadDone.current = true;
-    });
-
-    // Then, listen for subsequent auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-      // Skip if we're still doing initial load (getSession handles that)
-      if (!initialLoadDone.current) return;
-
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        setLoading(true);
-        await fetchProfile(session.user.id);
         setLoading(false);
-      } else {
-        setProfile(null);
+        return;
       }
+
+      const requestId = ++profileRequestId.current;
+      setLoading(true);
+
+      void ensureProfile(nextSession.user.id).finally(() => {
+        if (!mounted) return;
+        if (profileRequestId.current === requestId) {
+          setLoading(false);
+        }
+      });
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mounted) return;
+      if (!initialLoadDone.current && event === 'INITIAL_SESSION') return;
+      syncAuthState(nextSession);
     });
+
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (!mounted) return;
+        initialLoadDone.current = true;
+        syncAuthState(session);
+      })
+      .catch((error) => {
+        console.error('Erro ao restaurar sessão', error);
+        if (!mounted) return;
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        initialLoadDone.current = true;
+      });
 
     return () => {
       mounted = false;

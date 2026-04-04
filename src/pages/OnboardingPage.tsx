@@ -96,21 +96,27 @@ const OnboardingPage: React.FC = () => {
     return false;
   };
 
-  const saveProfile = async (extra: Record<string, any> = {}) => {
+  const saveProfile = async (
+    extra: Record<string, any> = {},
+    options: { completeOnboarding?: boolean } = {}
+  ) => {
     if (!user) return false;
+    const { completeOnboarding = true } = options;
     const cargaFinal = carga || Number(cargaCustom);
+    const payload = {
+      id: user.id,
+      nome: nome.trim(),
+      salario_base: Number(salario),
+      carga_horaria_diaria: cargaFinal,
+      hora_extra_percentual: Number(percentual),
+      hora_extra_percentual_feriado: Number(percentualFeriado),
+      ...extra,
+      ...(completeOnboarding ? { onboarding_completo: true } : {}),
+    };
+
     const { error } = await supabase
       .from('profiles')
-      .update({
-        nome: nome.trim(),
-        salario_base: Number(salario),
-        carga_horaria_diaria: cargaFinal,
-        hora_extra_percentual: Number(percentual),
-        hora_extra_percentual_feriado: Number(percentualFeriado),
-        onboarding_completo: true,
-        ...extra,
-      } as any)
-      .eq('id', user.id);
+      .upsert(payload as any, { onConflict: 'id' });
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -138,7 +144,10 @@ const OnboardingPage: React.FC = () => {
 
     try {
       // Save profile first
-      const ok = await saveProfile({ data_admissao: dataAdmissao });
+      const ok = await saveProfile(
+        { data_admissao: dataAdmissao, onboarding_completo: false },
+        { completeOnboarding: false }
+      );
       if (!ok) {
         setProcessando(false);
         setStep(6);
@@ -166,6 +175,11 @@ const OnboardingPage: React.FC = () => {
 
       setProgresso(100);
       setProgressoMsg(`${result.totalDias} dias criados!`);
+
+      const finalized = await saveProfile({ data_admissao: dataAdmissao });
+      if (!finalized) {
+        throw new Error('Não foi possível concluir seu onboarding.');
+      }
 
       await refreshProfile();
       toast({

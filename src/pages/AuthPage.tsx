@@ -38,7 +38,7 @@ const AuthPage: React.FC = () => {
           .eq('id', data.user.id)
           .maybeSingle();
 
-        if (profile && !profile.aceite_termos) {
+        if (!profile || !profile.aceite_termos) {
           navigate('/aceite-termos');
         } else if (profile?.onboarding_completo) {
           navigate('/app');

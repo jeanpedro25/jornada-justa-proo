@@ -30,7 +30,7 @@ const HomeRoute: React.FC = () => {
 
   if (loading) return <FullScreenLoader />;
   if (!session) return <LandingPage />;
-  if (profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
+  if (!profile || !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
   if (profile?.onboarding_completo) return <Navigate to="/app" replace />;
   return <Navigate to="/onboarding" replace />;
 };
@@ -39,15 +39,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; skipOnboardingCheck?
   const { session, profile, loading } = useAuth();
   if (loading) return <FullScreenLoader />;
   if (!session) return <Navigate to="/auth" replace />;
-  if (profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
-  if (!skipOnboardingCheck && profile && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
+  if (!profile || !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
+  if (!skipOnboardingCheck && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 };
 
 const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, profile, loading } = useAuth();
   if (loading) return <FullScreenLoader />;
-  if (session && profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
+  if (session && (!profile || !(profile as any).aceite_termos)) return <Navigate to="/aceite-termos" replace />;
   if (session && profile?.onboarding_completo) return <Navigate to="/app" replace />;
   if (session && !profile?.onboarding_completo) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
