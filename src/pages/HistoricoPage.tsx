@@ -224,6 +224,21 @@ const HistoricoPage: React.FC = () => {
 
       const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
 
+      // Atestado médico reduz/zera o "devendo"
+      const atestadoPeriodo = atestados.get(dataStr);
+      let devendoFinal = jornada?.devendoMin ?? 0;
+      if (atestadoPeriodo) {
+        if (atestadoPeriodo === 'integral') {
+          devendoFinal = 0;
+        } else if (atestadoPeriodo === 'manha' || atestadoPeriodo === 'tarde') {
+          devendoFinal = Math.max(0, devendoFinal - Math.floor(cargaDoDia / 2));
+        }
+        // Day with atestado integral and no marcacoes should not be "pendente"
+        if (status === 'pendente' && atestadoPeriodo === 'integral') {
+          status = 'registrado';
+        }
+      }
+
       summaries.push({
         data: dataStr,
         diaSemana,
@@ -231,7 +246,7 @@ const HistoricoPage: React.FC = () => {
         marcacoes,
         totalMin: jornada?.totalTrabalhado ?? 0,
         extraHours: (jornada?.horaExtraMin ?? 0) / 60,
-        devendoMin: jornada?.devendoMin ?? 0,
+        devendoMin: devendoFinal,
         intervaloMin: jornada?.totalIntervalo ?? 0,
         primeiraEntrada: jornada?.primeiraEntrada ?? null,
         ultimaSaida: jornada?.ultimaSaida ?? null,
