@@ -372,7 +372,7 @@ const HistoricoPage: React.FC = () => {
 
         {/* Quick filters + weekend toggle */}
         <div className="flex items-center gap-2 flex-wrap">
-          {([['todos', 'Todos'], ['pendentes', 'Pendentes'], ['ferias', 'Férias'], ['extras', 'Com extra']] as const).map(([key, label]) => (
+          {([['todos', 'Todos'], ['pendentes', 'Pendentes'], ['ferias', 'Férias'], ['extras', 'Com extra'], ['atestados', 'Atestados']] as const).map(([key, label]) => (
             <button key={key} onClick={() => setQuickFilter(key)}
               className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${quickFilter === key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
               {label}
