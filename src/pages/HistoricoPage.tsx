@@ -63,6 +63,7 @@ const HistoricoPage: React.FC = () => {
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
   const [feriasDias, setFeriasDias] = useState<Map<string, FeriasInfo>>(new Map());
   const [compensacoes, setCompensacoes] = useState<Map<string, CompensacaoInfo>>(new Map());
+  const [atestados, setAtestados] = useState<Map<string, string>>(new Map());
   const [filter, setFilter] = useState<FilterPeriod>('month');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('todos');
   const [showWeekends, setShowWeekends] = useState(false);
@@ -101,7 +102,7 @@ const HistoricoPage: React.FC = () => {
   const fetchData = useCallback(async () => {
     if (!user) return;
     const { start, end } = getDateRange(filter);
-    const [marcRes, feriasRes, compRes, feriadosLocaisRes] = await Promise.all([
+    const [marcRes, feriasRes, compRes, feriadosLocaisRes, atestadoRes] = await Promise.all([
       supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
         .is('deleted_at', null).neq('origem', 'importacao_automatica')
         .gte('data', start).lte('data', end)
@@ -112,6 +113,10 @@ const HistoricoPage: React.FC = () => {
         .eq('user_id', user.id).gte('data', start).lte('data', end),
       supabase.from('feriados_locais').select('data, nome, recorrente')
         .eq('user_id', user.id),
+      supabase.from('registros_ponto').select('data, atestado_periodo, anexo_url')
+        .eq('user_id', user.id).gte('data', start).lte('data', end)
+        .is('deleted_at', null)
+        .not('anexo_url', 'is', null),
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
@@ -141,6 +146,12 @@ const HistoricoPage: React.FC = () => {
     });
     setCompensacoes(compMap);
     setFeriadosLocais((feriadosLocaisRes.data as any[]) || []);
+
+    const atestMap = new Map<string, string>();
+    (atestadoRes.data || []).forEach((a: any) => {
+      if (a.anexo_url) atestMap.set(a.data, a.atestado_periodo || 'integral');
+    });
+    setAtestados(atestMap);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
@@ -213,6 +224,21 @@ const HistoricoPage: React.FC = () => {
 
       const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
 
+      // Atestado médico reduz/zera o "devendo"
+      const atestadoPeriodo = atestados.get(dataStr);
+      let devendoFinal = jornada?.devendoMin ?? 0;
+      if (atestadoPeriodo) {
+        if (atestadoPeriodo === 'integral') {
+          devendoFinal = 0;
+        } else if (atestadoPeriodo === 'manha' || atestadoPeriodo === 'tarde') {
+          devendoFinal = Math.max(0, devendoFinal - Math.floor(cargaDoDia / 2));
+        }
+        // Day with atestado integral and no marcacoes should not be "pendente"
+        if (status === 'pendente' && atestadoPeriodo === 'integral') {
+          status = 'registrado';
+        }
+      }
+
       summaries.push({
         data: dataStr,
         diaSemana,
@@ -220,7 +246,7 @@ const HistoricoPage: React.FC = () => {
         marcacoes,
         totalMin: jornada?.totalTrabalhado ?? 0,
         extraHours: (jornada?.horaExtraMin ?? 0) / 60,
-        devendoMin: jornada?.devendoMin ?? 0,
+        devendoMin: devendoFinal,
         intervaloMin: jornada?.totalIntervalo ?? 0,
         primeiraEntrada: jornada?.primeiraEntrada ?? null,
         ultimaSaida: jornada?.ultimaSaida ?? null,
@@ -232,7 +258,7 @@ const HistoricoPage: React.FC = () => {
     });
 
     return summaries.reverse();
-  }, [allMarcacoes, carga, dataCriacaoContaStr, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
+  }, [allMarcacoes, carga, dataCriacaoContaStr, feriasDias, compensacoes, atestados, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
 
   // Apply quick filter
   const filteredDays = useMemo(() => {

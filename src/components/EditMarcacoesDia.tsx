@@ -107,7 +107,19 @@ const EditMarcacoesDia: React.FC<EditMarcacoesDiaProps> = ({ open, onClose, data
   };
 
   const cargaMin = carga * 60;
-  const jornada = calcularJornada(marcacoes, cargaMin);
+  const jornadaRaw = calcularJornada(marcacoes, cargaMin);
+
+  // Atestado reduz/zera o "devendo"
+  const jornada = useMemo(() => {
+    if (!atestadoUrl || !atestadoPeriodo) return jornadaRaw;
+    if (atestadoPeriodo === 'integral') {
+      return { ...jornadaRaw, devendoMin: 0 };
+    }
+    if (atestadoPeriodo === 'manha' || atestadoPeriodo === 'tarde') {
+      return { ...jornadaRaw, devendoMin: Math.max(0, jornadaRaw.devendoMin - Math.floor(cargaMin / 2)) };
+    }
+    return jornadaRaw;
+  }, [jornadaRaw, atestadoUrl, atestadoPeriodo, cargaMin]);
 
   const avisos = useMemo(() => {
     const list: { tipo: 'warning' | 'info'; msg: string }[] = [];
