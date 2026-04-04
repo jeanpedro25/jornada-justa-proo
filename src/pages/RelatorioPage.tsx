@@ -157,7 +157,7 @@ function buildDaySummaries(
     });
   }
 
-  return summaries.sort((a, b) => a.data.localeCompare(b.data));
+  return summaries.sort((a, b) => b.data.localeCompare(a.data));
 }
 
 const fmtHM = (min: number) => {
@@ -486,7 +486,7 @@ function gerarExtratoPDF(
       seenDates.add(d.data);
       return true;
     });
-    filteredDays.sort((a, b) => a.data.localeCompare(b.data));
+    filteredDays.sort((a, b) => b.data.localeCompare(a.data));
 
     const tableBody = filteredDays.map(d => {
       const dateObj = new Date(d.data + 'T12:00:00');
@@ -567,8 +567,9 @@ function gerarExtratoPDF(
     y = checkPage(doc, y, 30);
     y = addSectionTitle(doc, 'Registros Reconstituidos', y, margem);
 
-    const primeiroReconst = daysReconstituidos[0]?.data;
-    const ultimoReconst = daysReconstituidos[daysReconstituidos.length - 1]?.data;
+    const sortedReconst = [...daysReconstituidos].sort((a, b) => a.data.localeCompare(b.data));
+    const primeiroReconst = sortedReconst[0]?.data;
+    const ultimoReconst = sortedReconst[sortedReconst.length - 1]?.data;
     const fmtData = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
 
     doc.setFontSize(9);
@@ -850,8 +851,13 @@ const RelatorioPage: React.FC = () => {
         const e = options.dataFim!;
         return { start: fmt(s), end: fmt(e), label: `${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
       }
-      case 'tudo':
-        return { start: '2000-01-01', end: fmt(now), label: 'Todo o historico' };
+      case 'tudo': {
+        // Use profile creation date or data_admissao as start, not year 2000
+        const admissao = (profile as any)?.data_admissao || (profile as any)?.historico_inicio;
+        const createdAt = (profile as any)?.created_at ? new Date((profile as any).created_at).toISOString().split('T')[0] : null;
+        const startTudo = admissao || createdAt || `${now.getFullYear()}-01-01`;
+        return { start: startTudo, end: fmt(now), label: 'Todo o historico' };
+      }
       default:
         return { start: fmt(now), end: fmt(now), label: '' };
     }
