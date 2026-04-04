@@ -304,7 +304,16 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
-  const diasLabel = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  // Ordem: Seg(1) a Dom(0) — padrão brasileiro
+  const diasOrdenados = [
+    { label: 'Seg', idx: 1 },
+    { label: 'Ter', idx: 2 },
+    { label: 'Qua', idx: 3 },
+    { label: 'Qui', idx: 4 },
+    { label: 'Sex', idx: 5 },
+    { label: 'Sáb', idx: 6 },
+    { label: 'Dom', idx: 0 },
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -640,12 +649,12 @@ const OnboardingPage: React.FC = () => {
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Dias trabalhados</label>
                     <div className="flex gap-1.5 flex-wrap">
-                      {diasLabel.map((label, didx) => (
+                      {diasOrdenados.map(({ label, idx }) => (
                         <button
-                          key={didx}
-                          onClick={() => toggleDia(periodo.id, didx)}
+                          key={idx}
+                          onClick={() => toggleDia(periodo.id, idx)}
                           className={`px-2.5 py-1.5 rounded-lg border-2 text-xs font-semibold transition-colors ${
-                            periodo.diasSemana.includes(didx)
+                            periodo.diasSemana.includes(idx)
                               ? 'border-accent bg-accent/10 text-accent'
                               : 'border-border text-muted-foreground'
                           }`}
