@@ -76,6 +76,10 @@ function buildDaySummaries(
   cargaHoras: number,
   registrosPonto?: any[],
   feriadosMap?: Map<string, string>,
+  startDate?: string,
+  endDate?: string,
+  feriasList?: any[],
+  compensacoesList?: any[],
 ): DaySummary[] {
   const map = new Map<string, Marcacao[]>();
   marcacoes.forEach(m => {
@@ -91,68 +95,153 @@ function buildDaySummaries(
     }
   });
 
-  const summaries: DaySummary[] = [];
-  const processedDates = new Set<string>();
-
-  map.forEach((marks, data) => {
-    processedDates.add(data);
-    const cargaMin = cargaHoras * 60;
-    const j = calcularJornada(marks, cargaMin);
-    const atestado = atestadoMap.get(data);
-    const feriado = feriadosMap?.get(data);
-    summaries.push({
-      data,
-      marcacoes: marks,
-      totalMin: j.totalTrabalhado,
-      extraMin: j.horaExtraMin,
-      intervaloMin: j.totalIntervalo,
-      primeiraEntrada: j.primeiraEntrada,
-      ultimaSaida: j.ultimaSaida,
-      origem: atestado ? 'atestado' : feriado ? 'feriado' : classifyOrigin(marks),
-      atestadoPeriodo: atestado,
-      feriadoNome: feriado,
-    });
-  });
-
-  // Add atestado-only days (no marcações)
-  atestadoMap.forEach((periodo, data) => {
-    if (!processedDates.has(data)) {
-      processedDates.add(data);
-      summaries.push({
-        data,
-        marcacoes: [],
-        totalMin: 0,
-        extraMin: 0,
-        intervaloMin: 0,
-        primeiraEntrada: null,
-        ultimaSaida: null,
-        origem: 'atestado',
-        atestadoPeriodo: periodo,
-      });
+  // Build férias set
+  const feriasSet = new Set<string>();
+  (feriasList || []).forEach((f: any) => {
+    let d = new Date(f.data_inicio + 'T12:00:00');
+    const end = new Date(f.data_fim + 'T12:00:00');
+    while (d <= end) {
+      feriasSet.add(d.toISOString().split('T')[0]);
+      d.setDate(d.getDate() + 1);
     }
   });
 
-  // Add feriado days that don't have marcações (weekdays only)
-  if (feriadosMap) {
-    feriadosMap.forEach((nome, data) => {
-      if (!processedDates.has(data)) {
-        const dateObj = new Date(data + 'T12:00:00');
-        const dow = dateObj.getDay();
-        // Only add feriados on weekdays (not weekends)
-        if (dow >= 1 && dow <= 5) {
-          processedDates.add(data);
+  // Build compensações set
+  const compSet = new Set<string>();
+  (compensacoesList || []).forEach((c: any) => {
+    compSet.add(c.data);
+  });
+
+  const summaries: DaySummary[] = [];
+
+  // If we have start/end dates, iterate ALL days
+  if (startDate && endDate) {
+    let current = new Date(startDate + 'T12:00:00');
+    const endD = new Date(endDate + 'T12:00:00');
+
+    while (current <= endD) {
+      const dataStr = current.toISOString().split('T')[0];
+      const marks = map.get(dataStr) || [];
+      const atestado = atestadoMap.get(dataStr);
+      const feriado = feriadosMap?.get(dataStr);
+      const ehFerias = feriasSet.has(dataStr);
+      const ehComp = compSet.has(dataStr);
+      const dow = current.getDay();
+      const ehFds = dow === 0 || dow === 6;
+
+      if (atestado) {
+        // Atestado day
+        const cargaMin = cargaHoras * 60;
+        if (marks.length > 0) {
+          const j = calcularJornada(marks, cargaMin);
           summaries.push({
-            data,
-            marcacoes: [],
-            totalMin: 0,
-            extraMin: 0,
-            intervaloMin: 0,
-            primeiraEntrada: null,
-            ultimaSaida: null,
-            origem: 'feriado',
-            feriadoNome: nome,
+            data: dataStr, marcacoes: marks,
+            totalMin: j.totalTrabalhado, extraMin: j.horaExtraMin,
+            intervaloMin: j.totalIntervalo,
+            primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
+            origem: 'atestado', atestadoPeriodo: atestado,
+          });
+        } else {
+          summaries.push({
+            data: dataStr, marcacoes: [],
+            totalMin: 0, extraMin: 0, intervaloMin: 0,
+            primeiraEntrada: null, ultimaSaida: null,
+            origem: 'atestado', atestadoPeriodo: atestado,
           });
         }
+      } else if (feriado) {
+        // Feriado
+        if (marks.length > 0) {
+          const cargaMin = cargaHoras * 60;
+          const j = calcularJornada(marks, cargaMin);
+          summaries.push({
+            data: dataStr, marcacoes: marks,
+            totalMin: j.totalTrabalhado, extraMin: j.totalTrabalhado, // all extra on feriado
+            intervaloMin: j.totalIntervalo,
+            primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
+            origem: 'feriado', feriadoNome: feriado,
+          });
+        } else {
+          summaries.push({
+            data: dataStr, marcacoes: [],
+            totalMin: 0, extraMin: 0, intervaloMin: 0,
+            primeiraEntrada: null, ultimaSaida: null,
+            origem: 'feriado', feriadoNome: feriado,
+          });
+        }
+      } else if (ehFerias) {
+        summaries.push({
+          data: dataStr, marcacoes: [],
+          totalMin: 0, extraMin: 0, intervaloMin: 0,
+          primeiraEntrada: null, ultimaSaida: null,
+          origem: 'ferias',
+        });
+      } else if (ehComp) {
+        summaries.push({
+          data: dataStr, marcacoes: [],
+          totalMin: 0, extraMin: 0, intervaloMin: 0,
+          primeiraEntrada: null, ultimaSaida: null,
+          origem: 'ferias', // reuse ferias label for folga
+          feriadoNome: 'Folga compensada',
+        });
+      } else if (marks.length > 0) {
+        const cargaMin = cargaHoras * 60;
+        const j = calcularJornada(marks, cargaMin);
+        summaries.push({
+          data: dataStr, marcacoes: marks,
+          totalMin: j.totalTrabalhado, extraMin: ehFds ? j.totalTrabalhado : j.horaExtraMin,
+          intervaloMin: j.totalIntervalo,
+          primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
+          origem: classifyOrigin(marks),
+        });
+      } else if (ehFds) {
+        // Weekend without work - still show
+        summaries.push({
+          data: dataStr, marcacoes: [],
+          totalMin: 0, extraMin: 0, intervaloMin: 0,
+          primeiraEntrada: null, ultimaSaida: null,
+          origem: 'feriado', // reuse for display
+          feriadoNome: dow === 0 ? 'Domingo' : 'Sábado',
+        });
+      } else {
+        // Weekday without any record
+        summaries.push({
+          data: dataStr, marcacoes: [],
+          totalMin: 0, extraMin: 0, intervaloMin: 0,
+          primeiraEntrada: null, ultimaSaida: null,
+          origem: 'manual', // "Pendente"
+          feriadoNome: 'Sem registro',
+        });
+      }
+
+      current.setDate(current.getDate() + 1);
+    }
+  } else {
+    // Legacy: no date range, just use marcações
+    map.forEach((marks, data) => {
+      const cargaMin = cargaHoras * 60;
+      const j = calcularJornada(marks, cargaMin);
+      const atestado = atestadoMap.get(data);
+      const feriado = feriadosMap?.get(data);
+      summaries.push({
+        data, marcacoes: marks,
+        totalMin: j.totalTrabalhado, extraMin: j.horaExtraMin,
+        intervaloMin: j.totalIntervalo,
+        primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
+        origem: atestado ? 'atestado' : feriado ? 'feriado' : classifyOrigin(marks),
+        atestadoPeriodo: atestado, feriadoNome: feriado,
+      });
+    });
+
+    // Add atestado-only days
+    atestadoMap.forEach((periodo, data) => {
+      if (!map.has(data)) {
+        summaries.push({
+          data, marcacoes: [],
+          totalMin: 0, extraMin: 0, intervaloMin: 0,
+          primeiraEntrada: null, ultimaSaida: null,
+          origem: 'atestado', atestadoPeriodo: periodo,
+        });
       }
     });
   }
