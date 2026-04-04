@@ -291,6 +291,7 @@ const HistoricoPage: React.FC = () => {
       case 'compensado': return { bg: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', label: 'Compensado' };
       case 'fimdesemana': return { bg: 'bg-muted/50 border-border', badge: 'bg-muted text-muted-foreground', label: 'Fim de semana' };
       case 'pendente': return { bg: 'bg-amber-50 border-amber-300 dark:bg-amber-950/20 dark:border-amber-700', badge: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', label: 'Pendente' };
+      case 'atestado': return { bg: 'bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800', badge: 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300', label: 'Atestado' };
       case 'em_andamento': return { bg: 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', label: 'Em andamento' };
       default: {
         if (day.extraHours > 0) return { bg: 'bg-card border-border', badge: 'bg-warning/20 text-warning', label: '' };
