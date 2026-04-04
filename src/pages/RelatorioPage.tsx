@@ -342,7 +342,7 @@ function gerarExtratoPDF(
     doc.setTextColor(c.cor[0], c.cor[1], c.cor[2]);
     doc.text(c.valor, x + cardW / 2, cy + 15, { align: 'center' });
   });
-  y += (cardH + 3) * 2 + 4;
+  y += (cardH + 3) * Math.ceil(cards.length / 3) + 4;
 
   // ── DEMONSTRATIVO FINANCEIRO ──
   if (incluirFinanceiro && salario > 0) {
