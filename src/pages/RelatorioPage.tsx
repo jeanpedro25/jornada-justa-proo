@@ -567,8 +567,9 @@ function gerarExtratoPDF(
     y = checkPage(doc, y, 30);
     y = addSectionTitle(doc, 'Registros Reconstituidos', y, margem);
 
-    const primeiroReconst = daysReconstituidos[0]?.data;
-    const ultimoReconst = daysReconstituidos[daysReconstituidos.length - 1]?.data;
+    const sortedReconst = [...daysReconstituidos].sort((a, b) => a.data.localeCompare(b.data));
+    const primeiroReconst = sortedReconst[0]?.data;
+    const ultimoReconst = sortedReconst[sortedReconst.length - 1]?.data;
     const fmtData = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR');
 
     doc.setFontSize(9);
