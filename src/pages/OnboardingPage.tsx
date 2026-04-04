@@ -649,12 +649,12 @@ const OnboardingPage: React.FC = () => {
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Dias trabalhados</label>
                     <div className="flex gap-1.5 flex-wrap">
-                      {diasLabel.map((label, didx) => (
+                      {diasOrdenados.map(({ label, idx }) => (
                         <button
-                          key={didx}
-                          onClick={() => toggleDia(periodo.id, didx)}
+                          key={idx}
+                          onClick={() => toggleDia(periodo.id, idx)}
                           className={`px-2.5 py-1.5 rounded-lg border-2 text-xs font-semibold transition-colors ${
-                            periodo.diasSemana.includes(didx)
+                            periodo.diasSemana.includes(idx)
                               ? 'border-accent bg-accent/10 text-accent'
                               : 'border-border text-muted-foreground'
                           }`}
