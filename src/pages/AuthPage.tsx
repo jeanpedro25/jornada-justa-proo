@@ -25,7 +25,7 @@ const AuthPage: React.FC = () => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: `${window.location.origin}/auth` },
         });
         if (error) throw error;
         toast({ title: 'Conta criada!', description: 'Verifique seu email para confirmar.' });
@@ -34,10 +34,13 @@ const AuthPage: React.FC = () => {
         if (error) throw error;
         const { data: profile } = await supabase
           .from('profiles')
-          .select('onboarding_completo')
+          .select('aceite_termos, onboarding_completo')
           .eq('id', data.user.id)
-          .single();
-        if (profile?.onboarding_completo) {
+          .maybeSingle();
+
+        if (profile && !profile.aceite_termos) {
+          navigate('/aceite-termos');
+        } else if (profile?.onboarding_completo) {
           navigate('/app');
         } else {
           navigate('/onboarding');
@@ -58,7 +61,7 @@ const AuthPage: React.FC = () => {
     setGoogleLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/auth`,
       });
       if (result.error) {
         toast({ title: 'Erro', description: 'Não foi possível entrar com Google.', variant: 'destructive' });
