@@ -74,10 +74,27 @@ const OnboardingPage: React.FC = () => {
 
   const hoje = dataHojeLocal();
 
+  // Sync separate fields → dataAdmissao
+  const updateDataAdmissao = (dia: string, mes: string, ano: string) => {
+    setAdmDia(dia);
+    setAdmMes(mes);
+    setAdmAno(ano);
+    if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
+      const d = parseInt(dia), m = parseInt(mes), a = parseInt(ano);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && a >= 1900 && a <= 2100) {
+        setDataAdmissao(`${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`);
+      } else {
+        setDataAdmissao('');
+      }
+    } else {
+      setDataAdmissao('');
+    }
+  };
+
   const diasUteisEstimados = useMemo(() => {
     if (!dataAdmissao || dataAdmissao >= hoje) return 0;
-    return contarDiasUteis(dataAdmissao, hoje, diasSemana);
-  }, [dataAdmissao, hoje, diasSemana]);
+    return contarDiasUteis(dataAdmissao, hoje, periodos[0].diasSemana);
+  }, [dataAdmissao, hoje, periodos]);
 
   const mesesHistorico = useMemo(() => {
     if (!dataAdmissao) return 0;
@@ -89,10 +106,57 @@ const OnboardingPage: React.FC = () => {
   const maxStep = escolhaHistorico === 'importar' ? 7 : 5;
   const progressValue = (Math.min(step, maxStep) / maxStep) * 100;
 
-  const toggleDia = (dia: number) => {
-    setDiasSemana(prev =>
-      prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia].sort()
-    );
+  const toggleDia = (periodoId: number, dia: number) => {
+    setPeriodos(prev => prev.map(p => {
+      if (p.id !== periodoId) return p;
+      const newDias = p.diasSemana.includes(dia)
+        ? p.diasSemana.filter(d => d !== dia)
+        : [...p.diasSemana, dia].sort();
+      return { ...p, diasSemana: newDias };
+    }));
+  };
+
+  const updatePeriodo = (id: number, field: string, value: any) => {
+    setPeriodos(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const updatePeriodoDataFim = (id: number, dia: string, mes: string, ano: string) => {
+    setPeriodos(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const updated = { ...p, dataFimDia: dia, dataFimMes: mes, dataFimAno: ano };
+      if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
+        const d = parseInt(dia), m = parseInt(mes), a = parseInt(ano);
+        if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && a >= 1900 && a <= 2100) {
+          updated.dataFim = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+        } else {
+          updated.dataFim = '';
+        }
+      } else {
+        updated.dataFim = '';
+      }
+      return updated;
+    }));
+  };
+
+  const addPeriodo = () => {
+    const lastPeriodo = periodos[periodos.length - 1];
+    setPeriodos(prev => [...prev, {
+      id: Date.now(),
+      entradaHora: lastPeriodo.entradaHora,
+      saidaHora: lastPeriodo.saidaHora,
+      intervaloMin: lastPeriodo.intervaloMin,
+      diasSemana: [...lastPeriodo.diasSemana],
+      dataInicio: '',
+      dataFim: '',
+      dataFimDia: '',
+      dataFimMes: '',
+      dataFimAno: '',
+    }]);
+  };
+
+  const removePeriodo = (id: number) => {
+    if (periodos.length <= 1) return;
+    setPeriodos(prev => prev.filter(p => p.id !== id));
   };
 
   const canAdvance = (): boolean => {
@@ -101,7 +165,16 @@ const OnboardingPage: React.FC = () => {
     if (step === 3) return carga !== null || (cargaCustom.trim().length > 0 && Number(cargaCustom) > 0);
     if (step === 4) return Number(percentual) > 0 && Number(percentualFeriado) > 0;
     if (step === 5) return escolhaHistorico !== null;
-    if (step === 6) return dataAdmissao.length > 0 && dataAdmissao < hoje && diasSemana.length > 0;
+    if (step === 6) {
+      if (!dataAdmissao || dataAdmissao >= hoje) return false;
+      // If multiple periods, each needs a dataFim (except the last which goes to today)
+      if (periodos.length > 1) {
+        for (let i = 0; i < periodos.length - 1; i++) {
+          if (!periodos[i].dataFim) return false;
+        }
+      }
+      return periodos.every(p => p.diasSemana.length > 0);
+    }
     return false;
   };
 
@@ -145,6 +218,24 @@ const OnboardingPage: React.FC = () => {
     setLoading(false);
   };
 
+  const buildPeriodos = (): PeriodoTrabalho[] => {
+    const result: PeriodoTrabalho[] = [];
+    for (let i = 0; i < periodos.length; i++) {
+      const p = periodos[i];
+      const inicio = i === 0 ? dataAdmissao : (periodos[i - 1].dataFim || dataAdmissao);
+      const fim = i === periodos.length - 1 ? hoje : (p.dataFim || hoje);
+      result.push({
+        dataInicio: inicio,
+        dataFim: fim,
+        entradaHora: p.entradaHora,
+        saidaHora: p.saidaHora,
+        intervaloMin: Number(p.intervaloMin),
+        diasSemana: p.diasSemana,
+      });
+    }
+    return result;
+  };
+
   const handleStartImport = async () => {
     if (!user) return;
     setStep(7);
@@ -152,7 +243,6 @@ const OnboardingPage: React.FC = () => {
     setProgresso(0);
 
     try {
-      // Save profile first
       const ok = await saveProfile(
         { data_admissao: dataAdmissao, onboarding_completo: false },
         { completeOnboarding: false }
@@ -164,18 +254,12 @@ const OnboardingPage: React.FC = () => {
       }
 
       const saldoTotal = (Number(saldoHoras) * 60) + Number(saldoMinutos);
+      const periodosConfig = buildPeriodos();
 
-      const result = await gerarHistoricoAutomatico(
+      const result = await gerarHistoricoMultiPeriodo(
         user.id,
-        {
-          dataInicio: dataAdmissao,
-          dataFim: hoje,
-          entradaHora,
-          saidaHora,
-          intervaloMin: Number(intervaloMin),
-          diasSemana,
-          saldoBancoMin: sabeSaldo ? saldoTotal : 0,
-        },
+        periodosConfig,
+        sabeSaldo ? saldoTotal : 0,
         (pct, msg) => {
           setProgresso(pct);
           setProgressoMsg(msg);
