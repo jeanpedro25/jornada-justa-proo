@@ -618,7 +618,7 @@ function gerarExtratoPDF(
     doc.setFontSize(7);
     doc.setTextColor(170, 170, 180);
     doc.setFont('helvetica', 'normal');
-    doc.text('Hora Justa · Controle de Jornada Inteligente · Extrato para conferencia pessoal', margem, pH - 6);
+    doc.text(`Hora Justa · Extrato pessoal · Pagina ${p} de ${totalPaginas}`, margem, pH - 6);
     doc.text(`Pagina ${p} de ${totalPaginas}`, largura - margem, pH - 6, { align: 'right' });
   }
 
