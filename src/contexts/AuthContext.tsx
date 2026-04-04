@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { clearAllClientState, clearTransientClientState } from '@/lib/client-state';
 
 type Profile = Tables<'profiles'>;
 
@@ -32,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const initialLoadDone = React.useRef(false);
   const profileRequestId = React.useRef(0);
+  const lastUserId = React.useRef<string | null>(null);
 
   const ensureProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -87,8 +89,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const syncAuthState = (nextSession: Session | null) => {
       if (!mounted) return;
 
+      const nextUserId = nextSession?.user?.id ?? null;
+      const previousUserId = lastUserId.current;
+
+      if (previousUserId && previousUserId !== nextUserId) {
+        void clearTransientClientState();
+      }
+
+      lastUserId.current = nextUserId;
+
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+
+      if (previousUserId !== nextUserId) {
+        setProfile(null);
+      }
 
       if (!nextSession?.user) {
         setProfile(null);
@@ -136,12 +151,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
-    localStorage.removeItem('hj_entrada_ts');
-    localStorage.removeItem('hj_registro_id');
-    await supabase.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setProfile(null);
+    profileRequestId.current += 1;
+
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Erro ao encerrar sessão', error);
+    } finally {
+      lastUserId.current = null;
+      await clearAllClientState();
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+    }
   };
 
   return (

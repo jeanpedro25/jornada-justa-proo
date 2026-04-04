@@ -61,7 +61,7 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroIds, currentUrl, curren
       await supabase.from('registros_ponto').update({
         anexo_url: path,
         atestado_periodo: periodo,
-      } as any).eq('id', id);
+      } as any).eq('id', id).eq('user_id', user.id);
     }
 
     toast({
@@ -86,7 +86,7 @@ const AttachFile: React.FC<AttachFileProps> = ({ registroIds, currentUrl, curren
       await supabase.from('registros_ponto').update({
         anexo_url: null,
         atestado_periodo: null,
-      } as any).eq('id', id);
+      } as any).eq('id', id).eq('user_id', user.id);
     }
 
     toast({ title: 'Atestado removido' });

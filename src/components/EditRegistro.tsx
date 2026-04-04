@@ -44,7 +44,8 @@ const EditRegistro: React.FC<EditRegistroProps> = ({ registroId, entrada, saida,
     const { error } = await supabase
       .from('registros_ponto')
       .update(updateData)
-      .eq('id', registroId);
+      .eq('id', registroId)
+      .eq('user_id', user.id);
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
