@@ -850,8 +850,13 @@ const RelatorioPage: React.FC = () => {
         const e = options.dataFim!;
         return { start: fmt(s), end: fmt(e), label: `${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
       }
-      case 'tudo':
-        return { start: '2000-01-01', end: fmt(now), label: 'Todo o historico' };
+      case 'tudo': {
+        // Use profile creation date or data_admissao as start, not year 2000
+        const admissao = (profile as any)?.data_admissao || (profile as any)?.historico_inicio;
+        const createdAt = (profile as any)?.created_at ? new Date((profile as any).created_at).toISOString().split('T')[0] : null;
+        const startTudo = admissao || createdAt || `${now.getFullYear()}-01-01`;
+        return { start: startTudo, end: fmt(now), label: 'Todo o historico' };
+      }
       default:
         return { start: fmt(now), end: fmt(now), label: '' };
     }
