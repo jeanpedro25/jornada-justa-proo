@@ -304,7 +304,16 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
-  const diasLabel = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  // Ordem: Seg(1) a Dom(0) — padrão brasileiro
+  const diasOrdenados = [
+    { label: 'Seg', idx: 1 },
+    { label: 'Ter', idx: 2 },
+    { label: 'Qua', idx: 3 },
+    { label: 'Qui', idx: 4 },
+    { label: 'Sex', idx: 5 },
+    { label: 'Sáb', idx: 6 },
+    { label: 'Dom', idx: 0 },
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
