@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export type PeriodoTipo = 'hoje' | 'semana' | 'mes' | 'ciclo' | 'personalizado' | 'tudo';
+export type PeriodoTipo = 'hoje' | 'semana' | 'mes' | 'mes_anterior' | 'ciclo' | 'personalizado' | 'tudo';
 export type TipoRelatorio = 'resumido' | 'completo';
 
 export interface ReportOptions {
@@ -24,6 +24,10 @@ export interface ReportOptions {
   incluirBancoHoras: boolean;
   incluirEventos: boolean;
   incluirAnexos: boolean;
+  incluirReconstituidos: boolean;
+  incluirAtestados: boolean;
+  incluirFerias: boolean;
+  incluirFinanceiro: boolean;
 }
 
 interface Props {
@@ -42,19 +46,19 @@ const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, g
   const [incluirBancoHoras, setIncluirBancoHoras] = useState(true);
   const [incluirEventos, setIncluirEventos] = useState(true);
   const [incluirAnexos, setIncluirAnexos] = useState(false);
+  const [incluirReconstituidos, setIncluirReconstituidos] = useState(true);
+  const [incluirAtestados, setIncluirAtestados] = useState(true);
+  const [incluirFerias, setIncluirFerias] = useState(true);
+  const [incluirFinanceiro, setIncluirFinanceiro] = useState(true);
 
   const canGenerate = periodo !== 'personalizado' || (dataInicio && dataFim);
 
   const handleGenerate = () => {
     if (!canGenerate) return;
     onGenerate({
-      periodo,
-      dataInicio,
-      dataFim,
-      tipo,
-      incluirBancoHoras,
-      incluirEventos,
-      incluirAnexos,
+      periodo, dataInicio, dataFim, tipo,
+      incluirBancoHoras, incluirEventos, incluirAnexos,
+      incluirReconstituidos, incluirAtestados, incluirFerias, incluirFinanceiro,
     });
   };
 
@@ -64,7 +68,7 @@ const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, g
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText size={20} className="text-accent" />
-            Gerar Relatório PDF
+            Gerar Relatório Profissional
           </DialogTitle>
           <DialogDescription>Configure as opções do seu relatório antes de gerar.</DialogDescription>
         </DialogHeader>
@@ -78,6 +82,7 @@ const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, g
                 { value: 'hoje', label: 'Hoje' },
                 { value: 'semana', label: 'Esta semana' },
                 { value: 'mes', label: 'Este mês' },
+                { value: 'mes_anterior', label: 'Mês anterior' },
                 ...(cicloLabel ? [{ value: 'ciclo', label: `📑 ${cicloLabel}` }] : []),
                 { value: 'personalizado', label: 'Personalizado' },
                 { value: 'tudo', label: 'Todo o histórico' },
@@ -124,27 +129,45 @@ const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, g
             <Label className="text-sm font-semibold">📋 Tipo de relatório</Label>
             <RadioGroup value={tipo} onValueChange={(v) => setTipo(v as TipoRelatorio)} className="space-y-1">
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="resumido" id="tipo-resumido" />
-                <Label htmlFor="tipo-resumido" className="cursor-pointer text-sm font-normal">Resumido</Label>
+                <RadioGroupItem value="completo" id="tipo-completo" />
+                <Label htmlFor="tipo-completo" className="cursor-pointer text-sm font-normal">
+                  Completo — histórico + banco + financeiro + atestados
+                </Label>
               </div>
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="completo" id="tipo-completo" />
-                <Label htmlFor="tipo-completo" className="cursor-pointer text-sm font-normal">Completo (detalhado)</Label>
+                <RadioGroupItem value="resumido" id="tipo-resumido" />
+                <Label htmlFor="tipo-resumido" className="cursor-pointer text-sm font-normal">Resumido — apenas totais e saldo</Label>
               </div>
             </RadioGroup>
           </div>
 
-          {/* Opções avançadas */}
+          {/* Incluir no relatório */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">⚙️ Opções avançadas</Label>
+            <Label className="text-sm font-semibold">📂 Incluir no relatório</Label>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
+                <Checkbox id="opt-reconstituidos" checked={incluirReconstituidos} onCheckedChange={(v) => setIncluirReconstituidos(!!v)} />
+                <Label htmlFor="opt-reconstituidos" className="cursor-pointer text-sm font-normal">Registros reconstituídos</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="opt-atestados" checked={incluirAtestados} onCheckedChange={(v) => setIncluirAtestados(!!v)} />
+                <Label htmlFor="opt-atestados" className="cursor-pointer text-sm font-normal">Dias com atestado</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="opt-ferias" checked={incluirFerias} onCheckedChange={(v) => setIncluirFerias(!!v)} />
+                <Label htmlFor="opt-ferias" className="cursor-pointer text-sm font-normal">Dias de férias</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="opt-financeiro" checked={incluirFinanceiro} onCheckedChange={(v) => setIncluirFinanceiro(!!v)} />
+                <Label htmlFor="opt-financeiro" className="cursor-pointer text-sm font-normal">Demonstrativo financeiro</Label>
+              </div>
+              <div className="flex items-center gap-2">
                 <Checkbox id="opt-banco" checked={incluirBancoHoras} onCheckedChange={(v) => setIncluirBancoHoras(!!v)} />
-                <Label htmlFor="opt-banco" className="cursor-pointer text-sm font-normal">Incluir banco de horas</Label>
+                <Label htmlFor="opt-banco" className="cursor-pointer text-sm font-normal">Banco de horas</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox id="opt-eventos" checked={incluirEventos} onCheckedChange={(v) => setIncluirEventos(!!v)} />
-                <Label htmlFor="opt-eventos" className="cursor-pointer text-sm font-normal">Incluir eventos</Label>
+                <Label htmlFor="opt-eventos" className="cursor-pointer text-sm font-normal">Eventos do período</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox id="opt-anexos" checked={incluirAnexos} onCheckedChange={(v) => setIncluirAnexos(!!v)} />
@@ -162,7 +185,7 @@ const ReportOptionsModal: React.FC<Props> = ({ open, onOpenChange, onGenerate, g
             {generating ? (
               <><Loader2 size={18} className="animate-spin" /> Gerando...</>
             ) : (
-              <><FileText size={18} /> Gerar relatório</>
+              <><FileText size={18} /> Gerar PDF</>
             )}
           </Button>
         </div>
