@@ -409,7 +409,7 @@ const HistoricoPage: React.FC = () => {
                   <div className="flex items-start gap-3">
                     {/* Day badge */}
                     <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg min-w-[36px] text-center shrink-0 ${style.badge}`}>
-                      {day.status === 'ferias' ? '🏖' : day.status === 'feriado' ? '🎉' : day.status === 'compensado' ? '💤' : day.status === 'fimdesemana' ? '📅' : diaSemanaAbrev(date)}
+                      {day.status === 'ferias' ? '🏖' : day.status === 'feriado' ? '🎉' : day.status === 'compensado' ? '💤' : day.status === 'fimdesemana' ? '📅' : day.status === 'atestado' ? '🏥' : diaSemanaAbrev(date)}
                     </div>
 
                     {/* Content */}
