@@ -238,7 +238,7 @@ const HistoricoPage: React.FC = () => {
   const filteredDays = useMemo(() => {
     let days = daySummaries;
     if (!showWeekends) {
-      days = days.filter(d => d.status !== 'fimdesemana');
+      days = days.filter(d => d.status !== 'fimdesemana' || d.ehHoje);
     }
     if (quickFilter === 'pendentes') return days.filter(d => d.status === 'pendente');
     if (quickFilter === 'ferias') return days.filter(d => d.status === 'ferias' || d.status === 'feriado');
