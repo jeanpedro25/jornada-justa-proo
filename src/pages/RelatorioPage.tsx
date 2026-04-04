@@ -258,21 +258,22 @@ const fmtHM = (min: number) => {
 // ── PDF helpers ──
 
 function addSectionTitle(doc: jsPDF, title: string, y: number, margem: number): number {
-  if (y > 260) { doc.addPage(); y = 20; }
+  if (y > 250) { doc.addPage(); y = 20; }
+  y += 8; // extra space before section
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(26, 26, 46);
   doc.text(title, margem, y);
-  y += 2;
+  y += 3;
   doc.setDrawColor(78, 205, 196);
   doc.setLineWidth(0.8);
   doc.line(margem, y, margem + 40, y);
   doc.setLineWidth(0.2);
-  return y + 5;
+  return y + 7;
 }
 
 function checkPage(doc: jsPDF, y: number, need: number): number {
-  if (y + need > 275) { doc.addPage(); return 20; }
+  if (y + need > 270) { doc.addPage(); return 20; }
   return y;
 }
 
