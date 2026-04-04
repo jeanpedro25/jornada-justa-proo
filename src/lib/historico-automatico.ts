@@ -11,6 +11,15 @@ export interface HistoricoConfig {
   saldoBancoMin: number;    // saldo em minutos
 }
 
+export interface PeriodoTrabalho {
+  dataInicio: string;       // 'YYYY-MM-DD'
+  dataFim: string;          // 'YYYY-MM-DD'
+  entradaHora: string;      // 'HH:MM'
+  saidaHora: string;        // 'HH:MM'
+  intervaloMin: number;
+  diasSemana: number[];
+}
+
 type TipoMarcacaoHistorico = 'entrada' | 'saida_intervalo' | 'volta_intervalo' | 'saida_final';
 
 function calcularMinutosTrabalhados(entrada: string, saida: string, intervalo: number): number {
