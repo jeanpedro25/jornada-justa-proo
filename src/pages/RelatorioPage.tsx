@@ -982,27 +982,42 @@ const RelatorioPage: React.FC = () => {
         .is('deleted_at', null)
         .order('horario', { ascending: true });
 
-      if (start !== '2000-01-01') query = query.gte('data', start);
-      query = query.lte('data', end);
+      query = query.gte('data', start).lte('data', end);
 
       const { data } = await query;
       const marcacoes = (data as Marcacao[]) || [];
 
       // Fetch registros_ponto for atestado info
-      let regQuery = supabase
+      const { data: registrosPonto } = await supabase
         .from('registros_ponto')
         .select('data, atestado_periodo')
         .eq('user_id', user!.id)
         .is('deleted_at', null)
-        .not('atestado_periodo', 'is', null);
+        .not('atestado_periodo', 'is', null)
+        .gte('data', start)
+        .lte('data', end);
 
-      if (start !== '2000-01-01') regQuery = regQuery.gte('data', start);
-      regQuery = regQuery.lte('data', end);
+      // Fetch férias for the period
+      const { data: feriasPeriodo } = await supabase
+        .from('ferias')
+        .select('*')
+        .eq('user_id', user!.id)
+        .lte('data_inicio', end)
+        .gte('data_fim', start);
 
-      const { data: registrosPonto } = await regQuery;
+      // Fetch compensações for the period
+      const { data: compPeriodo } = await supabase
+        .from('compensacoes_banco_horas')
+        .select('*')
+        .eq('user_id', user!.id)
+        .gte('data', start)
+        .lte('data', end);
 
       const feriadosMap = getFeriadosNoPeriodo(start, end);
-      const periodDays = buildDaySummaries(marcacoes, carga, registrosPonto || [], feriadosMap);
+      const periodDays = buildDaySummaries(
+        marcacoes, carga, registrosPonto || [], feriadosMap,
+        start, end, feriasPeriodo || [], compPeriodo || [],
+      );
 
       if (periodDays.length === 0) {
         toast({ title: 'Sem dados', description: 'Nenhum registro encontrado no período selecionado.', variant: 'destructive' });
