@@ -59,6 +59,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (createError) {
       console.error('Erro ao criar perfil automaticamente', createError);
+      // If FK constraint fails, the auth user no longer exists in DB — sign out
+      if (createError.code === '23503') {
+        console.warn('Sessão inválida detectada — encerrando sessão');
+        try { await supabase.auth.signOut(); } catch {}
+        setSession(null);
+        setUser(null);
+      }
       setProfile(null);
       return null;
     }
