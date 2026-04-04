@@ -18,8 +18,7 @@ const AceiteTermosPage: React.FC = () => {
     setLoading(true);
     const { error } = await supabase
       .from('profiles')
-      .update({ aceite_termos: true } as never)
-      .eq('id', user.id);
+      .upsert({ id: user.id, aceite_termos: true } as never, { onConflict: 'id' });
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
