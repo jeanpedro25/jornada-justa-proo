@@ -47,6 +47,7 @@ interface DaySummary {
   compensacao: CompensacaoInfo | null;
   feriadoNome: string | null;
   ehHoje: boolean;
+  atestadoPeriodo: string | null;
 }
 
 const HistoricoPage: React.FC = () => {
