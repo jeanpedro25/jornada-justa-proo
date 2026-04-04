@@ -784,6 +784,14 @@ const RelatorioPage: React.FC = () => {
   const handleGeneratePDF = async (options: ReportOptions) => {
     setGenerating(true);
     try {
+      // Always fetch fresh profile to get updated name
+      const { data: freshProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user!.id)
+        .single();
+      const perfilAtual = freshProfile || profile;
+
       const { start, end, label } = getDateRange(options);
 
       // Fetch marcacoes for the period (include all origins)
