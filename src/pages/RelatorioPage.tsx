@@ -217,7 +217,7 @@ function gerarExtratoPDF(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(200, 215, 225);
-  doc.text(`Usuario: ${perfil?.nome || 'Trabalhador'}`, margem, 30);
+  doc.text(`Usuario: ${perfil?.nome?.trim() || 'Trabalhador'}`, margem, 30);
   if (perfil?.empresa) {
     doc.text(`Empresa: ${perfil.empresa}`, margem, 35);
   }
@@ -230,6 +230,8 @@ function gerarExtratoPDF(
   // Summary calculations
   const totalMinTrab = daysForCalc.reduce((s, d) => s + d.totalMin, 0);
   const totalMinExtra = daysForCalc.reduce((s, d) => s + d.extraMin, 0);
+  const totalMinReais = daysReais.reduce((s, d) => s + d.totalMin, 0);
+  const totalMinReconst = daysReconstituidos.reduce((s, d) => s + d.totalMin, 0);
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
   const saldoFinalPDF = saldoInicial + bhSummary.saldo - totalCompensado;
@@ -242,11 +244,11 @@ function gerarExtratoPDF(
   y = addSectionTitle(doc, 'Resumo Geral', y, margem);
 
   const cards = [
-    { label: 'Total Trabalhado', valor: fmtHM(totalMinTrab), cor: [39, 174, 96] as const },
+    { label: 'Registros Reais', valor: `${daysReais.length} dias · ${fmtHM(totalMinReais)}`, cor: [39, 174, 96] as const },
+    { label: 'Reconstituidos', valor: `${daysReconstituidos.length} dias · ${fmtHM(totalMinReconst)}`, cor: [52, 152, 219] as const },
+    { label: 'Total Combinado', valor: `${daysForCalc.length} dias · ${fmtHM(totalMinTrab)}`, cor: [26, 26, 46] as const },
     { label: 'Horas Extras', valor: totalMinExtra > 0 ? `+${fmtHM(totalMinExtra)}` : '0h', cor: [78, 205, 196] as const },
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
-    { label: 'Registros Reais', valor: `${daysReais.length} dias`, cor: [39, 174, 96] as const },
-    { label: 'Reconstituidos', valor: `${daysReconstituidos.length} dias`, cor: [52, 152, 219] as const },
     { label: 'Atestados', valor: `${daysAtestado.length} dias`, cor: [155, 89, 182] as const },
   ];
 
@@ -351,10 +353,14 @@ function gerarExtratoPDF(
     const horasAutoMin = daysReconstituidos.reduce((s, d) => s + d.extraMin, 0);
     const horasReaisMin = daysReais.reduce((s, d) => s + d.extraMin, 0);
 
-    const bhItems = [
-      { label: 'Saldo anterior (informado no cadastro)', valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
-      { label: 'Horas geradas (registros reais)', valor: formatMinutosHoras(horasReaisMin) },
-      { label: 'Horas geradas (reconstituidos)', valor: formatMinutosHoras(horasAutoMin) },
+    const saldoInicialData = perfil?.banco_horas_saldo_inicial_data
+      ? new Date(perfil.banco_horas_saldo_inicial_data + 'T12:00:00').toLocaleDateString('pt-BR')
+      : '';
+
+    const bhItems: { label: string; valor: string; bold?: boolean }[] = [
+      { label: `Saldo anterior (informado no cadastro${saldoInicialData ? ' em ' + saldoInicialData : ''})`, valor: saldoInicial !== 0 ? formatMinutosHoras(saldoInicial) : '0h' },
+      { label: 'Horas extras geradas (registros reais)', valor: formatMinutosHoras(horasReaisMin) },
+      { label: 'Horas extras (reconstituidos)', valor: formatMinutosHoras(horasAutoMin) },
       { label: 'Compensacoes utilizadas', valor: `-${fmtHM(bhSummary.aCompensar + totalCompensado)}` },
       { label: 'Horas vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h' },
       { label: 'SALDO TOTAL ATUAL', valor: formatMinutosHoras(saldoFinalPDF), bold: true },
@@ -363,7 +369,15 @@ function gerarExtratoPDF(
     if (saldoFinalPDF !== 0) {
       const eqDias = Math.floor(Math.abs(saldoFinalPDF) / (carga * 60));
       const eqH = Math.round(Math.abs(saldoFinalPDF) % (carga * 60) / 60);
-      bhItems.push({ label: 'Equivalente a', valor: `${eqDias} dias e ${eqH}h`, bold: false });
+      bhItems.push({ label: 'Equivalente a', valor: `${eqDias} dias e ${eqH}h` });
+    }
+
+    if (saldoInicial !== 0) {
+      y += 2;
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 140);
+      doc.text(`Este saldo de ${formatMinutosHoras(saldoInicial)} foi informado por voce como horas acumuladas antes de usar o Hora Justa.`, margem, y + (bhItems.length * 5) + 5);
     }
 
     bhItems.forEach((item: any) => {
@@ -479,7 +493,7 @@ function gerarExtratoPDF(
     const reconItems = [
       `Total de dias reconstituidos: ${daysReconstituidos.length} dias`,
       `Periodo: ${fmtData(primeiroReconst)} a ${fmtData(ultimoReconst)}`,
-      `Horario declarado: ${perfil?.horario_entrada_padrao || '08:00'} - ${perfil?.horario_saida_padrao || '17:00'} · Intervalo: ${perfil?.intervalo_almoco ?? 60}min`,
+      `Horario declarado: ${(perfil?.horario_entrada_padrao || '08:00').substring(0, 5)} - ${(perfil?.horario_saida_padrao || '17:00').substring(0, 5)} · Intervalo: ${perfil?.intervalo_almoco ?? 60}min`,
     ];
     reconItems.forEach(item => {
       doc.text(item, margem, y);
@@ -618,7 +632,7 @@ function gerarExtratoPDF(
     doc.setFontSize(7);
     doc.setTextColor(170, 170, 180);
     doc.setFont('helvetica', 'normal');
-    doc.text('Hora Justa · Controle de Jornada Inteligente · Extrato para conferencia pessoal', margem, pH - 6);
+    doc.text(`Hora Justa · Extrato pessoal · Pagina ${p} de ${totalPaginas}`, margem, pH - 6);
     doc.text(`Pagina ${p} de ${totalPaginas}`, largura - margem, pH - 6, { align: 'right' });
   }
 
@@ -770,6 +784,14 @@ const RelatorioPage: React.FC = () => {
   const handleGeneratePDF = async (options: ReportOptions) => {
     setGenerating(true);
     try {
+      // Always fetch fresh profile to get updated name
+      const { data: freshProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user!.id)
+        .single();
+      const perfilAtual = freshProfile || profile;
+
       const { start, end, label } = getDateRange(options);
 
       // Fetch marcacoes for the period (include all origins)
@@ -810,7 +832,7 @@ const RelatorioPage: React.FC = () => {
       const bhEntries = options.incluirBancoHoras ? bancoEntries : [];
 
       gerarExtratoPDF(
-        periodDays, profile, label, bhEntries, carga, salario, percentual, totalCompensado,
+        periodDays, perfilAtual, label, bhEntries, carga, salario, percentual, totalCompensado,
         {
           tipo: options.tipo,
           incluirEventos: options.incluirEventos,

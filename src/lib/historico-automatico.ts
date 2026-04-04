@@ -94,13 +94,23 @@ export async function gerarHistoricoAutomatico(
     if (config.diasSemana.includes(diaSemana) && !feriados.has(dataStr)) {
       totalDias++;
 
-      const makeMarcacao = (tipo: TipoMarcacaoHistorico, hora: string) => ({
-        user_id: userId,
-        data: dataStr,
-        tipo,
-        horario: `${dataStr}T${hora}:00`,
-        origem: 'importacao_automatica',
-      });
+      const makeMarcacao = (tipo: TipoMarcacaoHistorico, hora: string) => {
+        // Convert local time to UTC - create a Date in local timezone and get ISO
+        const [h, m] = hora.split(':').map(Number);
+        const localDate = new Date(
+          parseInt(dataStr.substring(0, 4)),
+          parseInt(dataStr.substring(5, 7)) - 1,
+          parseInt(dataStr.substring(8, 10)),
+          h, m, 0
+        );
+        return {
+          user_id: userId,
+          data: dataStr,
+          tipo,
+          horario: localDate.toISOString(),
+          origem: 'importacao_automatica',
+        };
+      };
 
       marcacoes.push(
         makeMarcacao('entrada', config.entradaHora),
