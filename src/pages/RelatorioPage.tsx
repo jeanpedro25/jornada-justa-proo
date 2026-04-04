@@ -45,8 +45,9 @@ interface DaySummary {
   intervaloMin: number;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
-  origem: 'real' | 'reconstituido' | 'manual' | 'atestado';
+  origem: 'real' | 'reconstituido' | 'manual' | 'atestado' | 'feriado' | 'ferias';
   atestadoPeriodo?: string | null;
+  feriadoNome?: string | null;
 }
 
 function classifyOrigin(marks: Marcacao[]): 'real' | 'reconstituido' | 'manual' {
@@ -56,10 +57,25 @@ function classifyOrigin(marks: Marcacao[]): 'real' | 'reconstituido' | 'manual' 
   return 'manual';
 }
 
+function getFeriadosNoPeriodo(startDate: string, endDate: string): Map<string, string> {
+  const result = new Map<string, string>();
+  const anoInicio = parseInt(startDate.substring(0, 4));
+  const anoFim = parseInt(endDate.substring(0, 4));
+  for (let ano = anoInicio; ano <= anoFim; ano++) {
+    for (const f of getFeriadosDoAno(ano)) {
+      if (f.data >= startDate && f.data <= endDate) {
+        result.set(f.data, f.nome);
+      }
+    }
+  }
+  return result;
+}
+
 function buildDaySummaries(
   marcacoes: Marcacao[],
   cargaHoras: number,
   registrosPonto?: any[],
+  feriadosMap?: Map<string, string>,
 ): DaySummary[] {
   const map = new Map<string, Marcacao[]>();
   marcacoes.forEach(m => {
@@ -76,10 +92,14 @@ function buildDaySummaries(
   });
 
   const summaries: DaySummary[] = [];
+  const processedDates = new Set<string>();
+
   map.forEach((marks, data) => {
+    processedDates.add(data);
     const cargaMin = cargaHoras * 60;
     const j = calcularJornada(marks, cargaMin);
     const atestado = atestadoMap.get(data);
+    const feriado = feriadosMap?.get(data);
     summaries.push({
       data,
       marcacoes: marks,
@@ -88,10 +108,54 @@ function buildDaySummaries(
       intervaloMin: j.totalIntervalo,
       primeiraEntrada: j.primeiraEntrada,
       ultimaSaida: j.ultimaSaida,
-      origem: atestado ? 'atestado' : classifyOrigin(marks),
+      origem: atestado ? 'atestado' : feriado ? 'feriado' : classifyOrigin(marks),
       atestadoPeriodo: atestado,
+      feriadoNome: feriado,
     });
   });
+
+  // Add atestado-only days (no marcações)
+  atestadoMap.forEach((periodo, data) => {
+    if (!processedDates.has(data)) {
+      processedDates.add(data);
+      summaries.push({
+        data,
+        marcacoes: [],
+        totalMin: 0,
+        extraMin: 0,
+        intervaloMin: 0,
+        primeiraEntrada: null,
+        ultimaSaida: null,
+        origem: 'atestado',
+        atestadoPeriodo: periodo,
+      });
+    }
+  });
+
+  // Add feriado days that don't have marcações (weekdays only)
+  if (feriadosMap) {
+    feriadosMap.forEach((nome, data) => {
+      if (!processedDates.has(data)) {
+        const dateObj = new Date(data + 'T12:00:00');
+        const dow = dateObj.getDay();
+        // Only add feriados on weekdays (not weekends)
+        if (dow >= 1 && dow <= 5) {
+          processedDates.add(data);
+          summaries.push({
+            data,
+            marcacoes: [],
+            totalMin: 0,
+            extraMin: 0,
+            intervaloMin: 0,
+            primeiraEntrada: null,
+            ultimaSaida: null,
+            origem: 'feriado',
+            feriadoNome: nome,
+          });
+        }
+      }
+    });
+  }
 
   return summaries.sort((a, b) => a.data.localeCompare(b.data));
 }
