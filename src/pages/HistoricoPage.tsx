@@ -89,7 +89,12 @@ const HistoricoPage: React.FC = () => {
     const now = new Date();
     if (period === 'custom' && dataInicio && dataFim) return { start: dataInicio, end: dataFim };
     if (period === 'week') {
-      const start = new Date(now); start.setDate(now.getDate() - now.getDay()); start.setHours(0, 0, 0, 0);
+      const start = new Date(now);
+      // Start from Monday (weekStartsOn=1)
+      const dayOfWeek = now.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      start.setDate(now.getDate() - diff);
+      start.setHours(0, 0, 0, 0);
       return { start: start.toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
     }
     if (period === 'month') {
@@ -277,11 +282,16 @@ const HistoricoPage: React.FC = () => {
     return days;
   }, [daySummaries, quickFilter, showWeekends]);
 
-  // Stats
-  const diasComRegistro = daySummaries.filter(d => d.marcacoes.length > 0);
-  const totalHoras = diasComRegistro.reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = diasComRegistro.reduce((s, d) => s + d.extraHours, 0);
-  const diasTrabalhados = diasComRegistro.length;
+  // Stats — only count REAL records (exclude importacao_automatica)
+  const diasComRegistroReal = daySummaries.filter(d => {
+    if (d.marcacoes.length === 0) return false;
+    // Exclude days where ALL marcacoes are reconstructed
+    const origens = d.marcacoes.map((m: any) => m.origem || 'manual');
+    return !origens.every((o: string) => o === 'importacao_automatica');
+  });
+  const totalHoras = diasComRegistroReal.reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = diasComRegistroReal.reduce((s, d) => s + d.extraHours, 0);
+  const diasTrabalhados = diasComRegistroReal.length;
   const diasPendentes = daySummaries.filter(d => d.status === 'pendente').length;
 
   const getStatusStyle = (day: DaySummary) => {

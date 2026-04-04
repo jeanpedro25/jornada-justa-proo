@@ -31,7 +31,12 @@ import PaywallModal from '@/components/PaywallModal';
 import { startOfWeek, endOfWeek, subMonths } from 'date-fns';
 import { getFeriadosDoAno, type Feriado } from '@/lib/feriados';
 
-const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+const diasSemana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
+
+// Map JS getDay() (0=Sun..6=Sat) to our array index (0=Mon..6=Sun)
+function getDiaSemanaIdx(jsDay: number): number {
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
 const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
@@ -643,7 +648,7 @@ function gerarExtratoPDF(
 
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-        diasSemana[dateObj.getDay()],
+        diasSemana[getDiaSemanaIdx(dateObj.getDay())],
         d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
         d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
         d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
@@ -901,6 +906,10 @@ const RelatorioPage: React.FC = () => {
   const salario = profile?.salario_base ?? 0;
   const percentual = profile?.hora_extra_percentual ?? 50;
 
+  const [registrosPonto, setRegistrosPonto] = useState<any[]>([]);
+  const [feriasPeriodo, setFeriasPeriodo] = useState<any[]>([]);
+  const [compPeriodo, setCompPeriodo] = useState<any[]>([]);
+
   const fetchData = async (startDate?: string, endDate?: string) => {
     if (!user) return;
     let query = supabase
@@ -916,7 +925,8 @@ const RelatorioPage: React.FC = () => {
     const { data } = await query;
     setAllMarcacoes((data as Marcacao[]) || []);
 
-    await fetchBancoHorasEntries(user.id).then(setBancoEntries);
+    const bhRes = await fetchBancoHorasEntries(user.id);
+    setBancoEntries(bhRes);
 
     const { data: compData } = await supabase
       .from('compensacoes_banco_horas')
@@ -924,6 +934,27 @@ const RelatorioPage: React.FC = () => {
       .eq('user_id', user.id);
     const total = (compData as any[] || []).reduce((acc: number, c: any) => acc + c.minutos, 0);
     setTotalCompensado(total);
+
+    // Fetch atestados
+    let regQuery = supabase.from('registros_ponto').select('data, atestado_periodo')
+      .eq('user_id', user.id).is('deleted_at', null)
+      .not('atestado_periodo', 'is', null);
+    if (startDate) regQuery = regQuery.gte('data', startDate);
+    if (endDate) regQuery = regQuery.lte('data', endDate);
+    const { data: regData } = await regQuery;
+    setRegistrosPonto(regData || []);
+
+    // Fetch férias
+    const { data: feriasData } = await supabase.from('ferias').select('*')
+      .eq('user_id', user.id).in('status', ['ativa', 'agendada', 'concluida']);
+    setFeriasPeriodo(feriasData || []);
+
+    // Fetch compensações do período
+    let compPQuery = supabase.from('compensacoes_banco_horas').select('*').eq('user_id', user.id);
+    if (startDate) compPQuery = compPQuery.gte('data', startDate);
+    if (endDate) compPQuery = compPQuery.lte('data', endDate);
+    const { data: compPData } = await compPQuery;
+    setCompPeriodo(compPData || []);
   };
 
   const diaFechamento = (p?.dia_fechamento_folha as number) ?? 0;
@@ -934,10 +965,11 @@ const RelatorioPage: React.FC = () => {
     fetchData(start, end);
   }, [user, diaFechamento]);
 
-  const days = useMemo(
-    () => buildDaySummaries(allMarcacoes, carga, [], undefined, undefined, undefined, [], [], p),
-    [allMarcacoes, carga, p],
-  );
+  const days = useMemo(() => {
+    const { start, end } = getCicloQuery(diaFechamento);
+    const feriadosMap = getFeriadosNoPeriodo(start, end);
+    return buildDaySummaries(allMarcacoes, carga, registrosPonto, feriadosMap, start, end, feriasPeriodo, compPeriodo, p);
+  }, [allMarcacoes, carga, p, registrosPonto, feriasPeriodo, compPeriodo, diaFechamento]);
 
   const totalHoras = days.reduce((s, d) => s + d.totalMin / 60, 0);
   const totalExtra = days.reduce((s, d) => s + d.extraMin / 60, 0);

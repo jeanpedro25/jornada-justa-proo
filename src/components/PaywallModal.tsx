@@ -40,10 +40,11 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
     if (!user) return;
     setProcessing(true);
     try {
-      const plano = selectedPlan === 'anual' ? 'anual' : 'pro';
-      await supabase.from('profiles').update({ plano }).eq('id', user.id);
-      await refreshProfile();
-      toast({ title: '🎉 Plano ativado!', description: 'Agora você tem acesso completo.' });
+      // For now, show message that payment link will be available soon
+      toast({ 
+        title: '🚧 Em breve!', 
+        description: 'O sistema de pagamento está sendo finalizado. Entre em contato para ativar seu plano Pro.',
+      });
       onOpenChange(false);
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
