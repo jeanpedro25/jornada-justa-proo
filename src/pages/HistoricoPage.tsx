@@ -234,9 +234,11 @@ const HistoricoPage: React.FC = () => {
         } else if (atestadoPeriodo === 'manha' || atestadoPeriodo === 'tarde') {
           devendoFinal = Math.max(0, devendoFinal - Math.floor(cargaDoDia / 2));
         }
-        // Day with atestado integral and no marcacoes should not be "pendente"
-        if (status === 'pendente' && atestadoPeriodo === 'integral') {
-          status = 'registrado';
+        // Day with atestado should show as 'atestado' status
+        if (atestadoPeriodo === 'integral' && (status === 'pendente' || status === 'registrado')) {
+          status = 'atestado';
+        } else if ((atestadoPeriodo === 'manha' || atestadoPeriodo === 'tarde') && status === 'pendente') {
+          status = 'atestado';
         }
       }
 
@@ -255,6 +257,7 @@ const HistoricoPage: React.FC = () => {
         compensacao,
         feriadoNome: feriado?.nome ?? null,
         ehHoje,
+        atestadoPeriodo: atestadoPeriodo || null,
       });
     });
 
