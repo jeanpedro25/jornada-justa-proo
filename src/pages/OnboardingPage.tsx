@@ -548,62 +548,124 @@ const OnboardingPage: React.FC = () => {
 
             <hr className="border-border" />
 
-            {/* Horário */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Horário de trabalho</label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Entrada</label>
-                  <Input
-                    type="time"
-                    value={entradaHora}
-                    onChange={(e) => setEntradaHora(e.target.value)}
-                    className="rounded-xl h-12 text-base"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Saída</label>
-                  <Input
-                    type="time"
-                    value={saidaHora}
-                    onChange={(e) => setSaidaHora(e.target.value)}
-                    className="rounded-xl h-12 text-base"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Intervalo (min)</label>
-                <Input
-                  type="number"
-                  value={intervaloMin}
-                  onChange={(e) => setIntervaloMin(e.target.value)}
-                  className="rounded-xl h-12 text-base"
-                  min={0}
-                  max={120}
-                />
-              </div>
-            </div>
-
-            <hr className="border-border" />
-
-            {/* Dias da semana */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Quais dias você trabalhou?</label>
-              <div className="flex gap-2 flex-wrap">
-                {diasLabel.map((label, idx) => (
+            {/* Períodos de trabalho */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  {periodos.length > 1 ? 'Períodos de trabalho' : 'Horário de trabalho'}
+                </label>
+                {periodos.length === 1 && (
                   <button
-                    key={idx}
-                    onClick={() => toggleDia(idx)}
-                    className={`px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-colors ${
-                      diasSemana.includes(idx)
-                        ? 'border-accent bg-accent/10 text-accent'
-                        : 'border-border text-muted-foreground'
-                    }`}
+                    onClick={addPeriodo}
+                    className="text-xs text-accent font-semibold flex items-center gap-1"
                   >
-                    {label}
+                    <Plus size={14} /> Mudou de turno?
                   </button>
-                ))}
+                )}
               </div>
+
+              {periodos.map((periodo, idx) => (
+                <div key={periodo.id} className="space-y-3 p-3 rounded-xl border border-border bg-muted/30">
+                  {periodos.length > 1 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-accent">
+                        Período {idx + 1}
+                        {idx === periodos.length - 1 ? ' (atual → hoje)' : ''}
+                      </span>
+                      <button onClick={() => removePeriodo(periodo.id)} className="text-xs text-destructive flex items-center gap-1">
+                        <Trash2 size={12} /> Remover
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Data fim do período (only for non-last periods) */}
+                  {periodos.length > 1 && idx < periodos.length - 1 && (
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Até quando trabalhou nesse horário?</label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="text" inputMode="numeric" maxLength={2} placeholder="DD"
+                          value={periodo.dataFimDia}
+                          onChange={(e) => updatePeriodoDataFim(periodo.id, e.target.value.replace(/\D/g, '').slice(0, 2), periodo.dataFimMes, periodo.dataFimAno)}
+                          className="rounded-xl h-10 text-sm text-center flex-1"
+                        />
+                        <Input
+                          type="text" inputMode="numeric" maxLength={2} placeholder="MM"
+                          value={periodo.dataFimMes}
+                          onChange={(e) => updatePeriodoDataFim(periodo.id, periodo.dataFimDia, e.target.value.replace(/\D/g, '').slice(0, 2), periodo.dataFimAno)}
+                          className="rounded-xl h-10 text-sm text-center flex-1"
+                        />
+                        <Input
+                          type="text" inputMode="numeric" maxLength={4} placeholder="AAAA"
+                          value={periodo.dataFimAno}
+                          onChange={(e) => updatePeriodoDataFim(periodo.id, periodo.dataFimDia, periodo.dataFimMes, e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          className="rounded-xl h-10 text-sm text-center flex-[1.5]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Entrada</label>
+                      <Input
+                        type="time"
+                        value={periodo.entradaHora}
+                        onChange={(e) => updatePeriodo(periodo.id, 'entradaHora', e.target.value)}
+                        className="rounded-xl h-10 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Saída</label>
+                      <Input
+                        type="time"
+                        value={periodo.saidaHora}
+                        onChange={(e) => updatePeriodo(periodo.id, 'saidaHora', e.target.value)}
+                        className="rounded-xl h-10 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Intervalo (min)</label>
+                    <Input
+                      type="number"
+                      value={periodo.intervaloMin}
+                      onChange={(e) => updatePeriodo(periodo.id, 'intervaloMin', e.target.value)}
+                      className="rounded-xl h-10 text-sm"
+                      min={0} max={120}
+                    />
+                  </div>
+
+                  {/* Dias da semana */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Dias trabalhados</label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {diasLabel.map((label, didx) => (
+                        <button
+                          key={didx}
+                          onClick={() => toggleDia(periodo.id, didx)}
+                          className={`px-2.5 py-1.5 rounded-lg border-2 text-xs font-semibold transition-colors ${
+                            periodo.diasSemana.includes(didx)
+                              ? 'border-accent bg-accent/10 text-accent'
+                              : 'border-border text-muted-foreground'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {periodos.length > 1 && (
+                <button
+                  onClick={addPeriodo}
+                  className="w-full py-2 rounded-xl border-2 border-dashed border-border text-sm text-muted-foreground hover:border-accent hover:text-accent transition-colors flex items-center justify-center gap-1"
+                >
+                  <Plus size={14} /> Adicionar outro período
+                </button>
+              )}
             </div>
 
             <hr className="border-border" />
