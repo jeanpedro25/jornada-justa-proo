@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { Zap, Play, AlertTriangle } from 'lucide-react';
-import { gerarHistoricoAutomatico, contarDiasUteis } from '@/lib/historico-automatico';
+import { Zap, Play, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { gerarHistoricoMultiPeriodo, contarDiasUteis, type PeriodoTrabalho } from '@/lib/historico-automatico';
 import { dataHojeLocal } from '@/lib/dataHora';
 
 const TOTAL_STEPS = 7; // 1-nome, 2-salário, 3-carga, 4-extras, 5-histórico escolha, 6-config importação, 7-processando
