@@ -99,7 +99,7 @@ export async function gerarHistoricoAutomatico(
         data: dataStr,
         tipo,
         horario: `${dataStr}T${hora}:00`,
-        origem: 'manual',
+        origem: 'importacao_automatica',
       });
 
       marcacoes.push(

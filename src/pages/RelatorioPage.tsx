@@ -477,6 +477,7 @@ const RelatorioPage: React.FC = () => {
       .select('*')
       .eq('user_id', user.id)
       .is('deleted_at', null)
+      .neq('origem', 'importacao_automatica')
       .order('horario', { ascending: true });
 
     if (startDate) query = query.gte('data', startDate);
@@ -585,6 +586,7 @@ const RelatorioPage: React.FC = () => {
         .select('*')
         .eq('user_id', user!.id)
         .is('deleted_at', null)
+        .neq('origem', 'importacao_automatica')
         .order('horario', { ascending: true });
 
       if (start !== '2000-01-01') query = query.gte('data', start);
