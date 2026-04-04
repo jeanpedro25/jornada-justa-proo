@@ -453,6 +453,7 @@ const HistoricoPage: React.FC = () => {
                         </p>
                       )}
 
+                      {day.status === 'fimdesemana' && (
                         <p className="text-[10px] text-muted-foreground">Fim de semana</p>
                       )}
 
