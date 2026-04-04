@@ -12,7 +12,7 @@ import {
 } from '@/lib/banco-horas';
 import {
   calcularJornada, formatarHoraLocal,
-  formatarDuracaoJornada, getCargaDiaria, hojeLocal,
+  formatarDuracaoJornada, getCargaDiaria, hojeLocal, isDiaTrabalhoEscala,
   type Marcacao,
 } from '@/lib/jornada';
 import { calcularINSS, calcularIRRF } from '@/lib/descontos';
@@ -45,9 +45,18 @@ interface DaySummary {
   intervaloMin: number;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
-  origem: 'real' | 'reconstituido' | 'manual' | 'atestado' | 'feriado' | 'ferias';
+  origem: 'real' | 'reconstituido' | 'manual' | 'atestado' | 'feriado' | 'ferias' | 'pendente' | 'fds' | 'folga';
   atestadoPeriodo?: string | null;
   feriadoNome?: string | null;
+}
+
+interface ReportProfileConfig {
+  tipo_jornada?: string | null;
+  dias_trabalhados_semana?: number | null;
+  escala_tipo?: string | null;
+  escala_dias_trabalho?: number | null;
+  escala_dias_folga?: number | null;
+  escala_inicio?: string | null;
 }
 
 function classifyOrigin(marks: Marcacao[]): 'real' | 'reconstituido' | 'manual' {
@@ -71,6 +80,33 @@ function getFeriadosNoPeriodo(startDate: string, endDate: string): Map<string, s
   return result;
 }
 
+function isScheduledWorkday(dateStr: string, profile?: ReportProfileConfig): boolean {
+  const date = new Date(dateStr + 'T12:00:00');
+  const dow = date.getDay();
+
+  if (profile?.tipo_jornada === 'escala' && profile.escala_inicio) {
+    return isDiaTrabalhoEscala({
+      tipo: profile.escala_tipo || 'personalizada',
+      diasTrabalho: Number(profile.escala_dias_trabalho ?? 5),
+      diasFolga: Number(profile.escala_dias_folga ?? 2),
+      inicio: profile.escala_inicio,
+    }, dateStr);
+  }
+
+  const diasTrabalhados = Math.min(7, Math.max(1, Number(profile?.dias_trabalhados_semana ?? 5)));
+  if (diasTrabalhados === 7) return true;
+  if (dow === 0) return false;
+  return dow <= diasTrabalhados;
+}
+
+function getOffDayLabel(dateStr: string, profile?: ReportProfileConfig): string {
+  const dow = new Date(dateStr + 'T12:00:00').getDay();
+  if (dow === 0) return 'Domingo';
+  if (dow === 6) return 'Sábado';
+  if (profile?.tipo_jornada === 'escala') return 'Folga da escala';
+  return 'Folga';
+}
+
 function buildDaySummaries(
   marcacoes: Marcacao[],
   cargaHoras: number,
@@ -80,6 +116,7 @@ function buildDaySummaries(
   endDate?: string,
   feriasList?: any[],
   compensacoesList?: any[],
+  profileConfig?: ReportProfileConfig,
 ): DaySummary[] {
   const map = new Map<string, Marcacao[]>();
   marcacoes.forEach(m => {
@@ -127,7 +164,7 @@ function buildDaySummaries(
       const ehFerias = feriasSet.has(dataStr);
       const ehComp = compSet.has(dataStr);
       const dow = current.getDay();
-      const ehFds = dow === 0 || dow === 6;
+      const ehDiaTrabalho = isScheduledWorkday(dataStr, profileConfig);
 
       if (atestado) {
         // Atestado day
@@ -189,27 +226,25 @@ function buildDaySummaries(
         const j = calcularJornada(marks, cargaMin);
         summaries.push({
           data: dataStr, marcacoes: marks,
-          totalMin: j.totalTrabalhado, extraMin: ehFds ? j.totalTrabalhado : j.horaExtraMin,
+          totalMin: j.totalTrabalhado, extraMin: !ehDiaTrabalho ? j.totalTrabalhado : j.horaExtraMin,
           intervaloMin: j.totalIntervalo,
           primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
           origem: classifyOrigin(marks),
         });
-      } else if (ehFds) {
-        // Weekend without work - still show
+      } else if (!ehDiaTrabalho) {
         summaries.push({
           data: dataStr, marcacoes: [],
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
-          origem: 'feriado', // reuse for display
-          feriadoNome: dow === 0 ? 'Domingo' : 'Sábado',
+          origem: dow === 0 || dow === 6 ? 'fds' : 'folga',
+          feriadoNome: getOffDayLabel(dataStr, profileConfig),
         });
       } else {
-        // Weekday without any record
         summaries.push({
           data: dataStr, marcacoes: [],
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
-          origem: 'manual', // "Pendente"
+          origem: 'pendente',
           feriadoNome: 'Sem registro',
         });
       }
@@ -304,6 +339,9 @@ const origemLabel: Record<string, string> = {
   atestado: 'Atestado',
   feriado: 'Feriado',
   ferias: 'Ferias',
+  pendente: 'Pendente',
+  fds: 'FDS',
+  folga: 'Folga',
 };
 
 const origemColor: Record<string, [number, number, number]> = {
@@ -313,6 +351,9 @@ const origemColor: Record<string, [number, number, number]> = {
   atestado: [155, 89, 182],
   feriado: [231, 76, 60],
   ferias: [52, 152, 219],
+  pendente: [243, 156, 18],
+  fds: [149, 165, 166],
+  folga: [46, 204, 113],
 };
 
 // ── PDF generator ──
@@ -355,11 +396,11 @@ function gerarExtratoPDF(
   const daysReconstituidos = days.filter(d => d.origem === 'reconstituido');
   const daysAtestado = days.filter(d => d.origem === 'atestado');
   const daysFeriado = days.filter(d => d.origem === 'feriado');
-
   const daysFerias = days.filter(d => d.origem === 'ferias');
+  const daysPendentes = days.filter(d => d.origem === 'pendente');
   // Only include days with actual work in hour calculations
   const daysForCalc = (incluirReconstituidos ? days : daysReais.concat(daysAtestado))
-    .filter(d => d.origem !== 'feriado' && d.origem !== 'ferias' && d.totalMin > 0);
+    .filter(d => !['feriado', 'ferias', 'pendente', 'fds', 'folga'].includes(d.origem) && d.totalMin > 0);
 
   // Header
   doc.setFillColor(26, 26, 46);
@@ -413,6 +454,7 @@ function gerarExtratoPDF(
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
     { label: 'Atestados', valor: `${daysAtestado.length} dias`, cor: [155, 89, 182] as const },
     { label: 'Feriados', valor: `${daysFeriado.length} dias`, cor: [231, 76, 60] as const },
+    ...(daysPendentes.length > 0 ? [{ label: 'Pendentes', valor: `${daysPendentes.length} dias`, cor: [243, 156, 18] as const }] : []),
     ...(daysFerias.length > 0 ? [{ label: 'Ferias/Folgas', valor: `${daysFerias.length} dias`, cor: [52, 152, 219] as const }] : []),
   ];
 
@@ -590,15 +632,12 @@ function gerarExtratoPDF(
       const trabLabel = d.origem === 'atestado' ? 'Atestado'
         : d.origem === 'feriado' ? (d.feriadoNome || 'Feriado')
         : d.origem === 'ferias' ? (d.feriadoNome || 'Férias')
+        : d.origem === 'folga' ? (d.feriadoNome || 'Folga')
+        : d.origem === 'fds' ? (d.feriadoNome || 'FDS')
         : d.totalMin === 0 && d.marcacoes.length === 0 ? (d.feriadoNome || '—')
         : `${hT}h${mT}min`;
 
-      const tipoLabel = d.origem === 'feriado' && d.marcacoes.length === 0 && !d.feriadoNome?.includes('Domingo') && !d.feriadoNome?.includes('Sábado')
-        ? 'Feriado'
-        : d.feriadoNome === 'Sem registro' ? 'Pendente'
-        : d.feriadoNome === 'Domingo' || d.feriadoNome === 'Sábado' ? 'FDS'
-        : d.feriadoNome === 'Folga compensada' ? 'Folga'
-        : origemLabel[d.origem] || 'Manual';
+      const tipoLabel = origemLabel[d.origem] || 'Manual';
 
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -651,8 +690,8 @@ function gerarExtratoPDF(
       { label: 'Manual — inserido manualmente', cor: origemColor.manual },
       { label: 'Atestado — coberto por atestado medico', cor: origemColor.atestado },
       { label: 'Feriado — feriado nacional/local', cor: origemColor.feriado },
-      { label: 'FDS — fim de semana', cor: [149, 165, 166] as [number, number, number] },
-      { label: 'Pendente — dia util sem registro', cor: [243, 156, 18] as [number, number, number] },
+      { label: 'FDS — fim de semana ou descanso sem expediente', cor: origemColor.fds },
+      { label: 'Pendente — dia de trabalho sem registro', cor: origemColor.pendente },
       { label: 'Ferias/Folga — ferias ou folga compensada', cor: origemColor.ferias },
     ];
     legendItems.forEach(l => {
@@ -894,8 +933,8 @@ const RelatorioPage: React.FC = () => {
   }, [user, diaFechamento]);
 
   const days = useMemo(
-    () => buildDaySummaries(allMarcacoes, carga),
-    [allMarcacoes, carga],
+    () => buildDaySummaries(allMarcacoes, carga, [], undefined, undefined, undefined, [], [], p),
+    [allMarcacoes, carga, p],
   );
 
   const totalHoras = days.reduce((s, d) => s + d.totalMin / 60, 0);
@@ -956,8 +995,7 @@ const RelatorioPage: React.FC = () => {
         return { start: fmt(s), end: fmt(e), label: `${s.toLocaleDateString('pt-BR')} a ${e.toLocaleDateString('pt-BR')}` };
       }
       case 'tudo': {
-        // Use profile creation date or data_admissao as start, not year 2000
-        const admissao = (profile as any)?.data_admissao || (profile as any)?.historico_inicio;
+        const admissao = (profile as any)?.historico_inicio || (profile as any)?.data_admissao;
         const createdAt = (profile as any)?.created_at ? new Date((profile as any).created_at).toISOString().split('T')[0] : null;
         const startTudo = admissao || createdAt || `${now.getFullYear()}-01-01`;
         return { start: startTudo, end: fmt(now), label: 'Todo o historico' };
@@ -1030,7 +1068,7 @@ const RelatorioPage: React.FC = () => {
       const feriadosMap = getFeriadosNoPeriodo(start, end);
       const periodDays = buildDaySummaries(
         marcacoes, carga, registrosPonto || [], feriadosMap,
-        start, end, feriasPeriodo || [], compPeriodo || [],
+        start, end, feriasPeriodo || [], compPeriodo || [], perfilAtual,
       );
 
       if (periodDays.length === 0) {
