@@ -14,6 +14,7 @@ import JornadaConfig from '@/components/JornadaConfig';
 import FeriasConfig from '@/components/FeriasConfig';
 import FeriadosLocaisConfig from '@/components/FeriadosLocaisConfig';
 import AvisoLegal from '@/components/AvisoLegal';
+import DeleteAccountModal from '@/components/DeleteAccountModal';
 
 const ConfigPage: React.FC = () => {
   const { user, profile, signOut, refreshProfile } = useAuth();
