@@ -146,6 +146,12 @@ const HistoricoPage: React.FC = () => {
     });
     setCompensacoes(compMap);
     setFeriadosLocais((feriadosLocaisRes.data as any[]) || []);
+
+    const atestMap = new Map<string, string>();
+    (atestadoRes.data || []).forEach((a: any) => {
+      if (a.anexo_url) atestMap.set(a.data, a.atestado_periodo || 'integral');
+    });
+    setAtestados(atestMap);
   }, [user, filter, dataInicio, dataFim]);
 
   useEffect(() => {
