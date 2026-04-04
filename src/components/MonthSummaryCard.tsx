@@ -53,7 +53,8 @@ const MonthSummaryCard: React.FC = () => {
 
     const [marcRes, feriadosRes] = await Promise.all([
       supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
-        .is('deleted_at', null).gte('data', start).lte('data', end)
+        .is('deleted_at', null).neq('origem', 'importacao_automatica')
+        .gte('data', start).lte('data', end)
         .order('horario', { ascending: true }),
       supabase.from('feriados_locais').select('data, nome, recorrente').eq('user_id', user.id),
     ]);

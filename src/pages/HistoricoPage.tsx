@@ -90,7 +90,8 @@ const HistoricoPage: React.FC = () => {
     const { start, end } = getDateRange(filter);
     const [marcRes, feriasRes, compRes, feriadosLocaisRes] = await Promise.all([
       supabase.from('marcacoes_ponto').select('*').eq('user_id', user.id)
-        .is('deleted_at', null).gte('data', start).lte('data', end)
+        .is('deleted_at', null).neq('origem', 'importacao_automatica')
+        .gte('data', start).lte('data', end)
         .order('horario', { ascending: true }),
       supabase.from('ferias').select('data_inicio, data_fim, status, tipo')
         .eq('user_id', user.id).in('status', ['ativa', 'agendada', 'concluida']),
