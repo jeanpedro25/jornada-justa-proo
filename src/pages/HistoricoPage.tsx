@@ -277,11 +277,16 @@ const HistoricoPage: React.FC = () => {
     return days;
   }, [daySummaries, quickFilter, showWeekends]);
 
-  // Stats
-  const diasComRegistro = daySummaries.filter(d => d.marcacoes.length > 0);
-  const totalHoras = diasComRegistro.reduce((s, d) => s + d.totalMin / 60, 0);
-  const totalExtra = diasComRegistro.reduce((s, d) => s + d.extraHours, 0);
-  const diasTrabalhados = diasComRegistro.length;
+  // Stats — only count REAL records (exclude importacao_automatica)
+  const diasComRegistroReal = daySummaries.filter(d => {
+    if (d.marcacoes.length === 0) return false;
+    // Exclude days where ALL marcacoes are reconstructed
+    const origens = d.marcacoes.map((m: any) => m.origem || 'manual');
+    return !origens.every((o: string) => o === 'importacao_automatica');
+  });
+  const totalHoras = diasComRegistroReal.reduce((s, d) => s + d.totalMin / 60, 0);
+  const totalExtra = diasComRegistroReal.reduce((s, d) => s + d.extraHours, 0);
+  const diasTrabalhados = diasComRegistroReal.length;
   const diasPendentes = daySummaries.filter(d => d.status === 'pendente').length;
 
   const getStatusStyle = (day: DaySummary) => {

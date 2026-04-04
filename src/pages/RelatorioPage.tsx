@@ -648,7 +648,7 @@ function gerarExtratoPDF(
 
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-        diasSemana[dateObj.getDay()],
+        diasSemana[getDiaSemanaIdx(dateObj.getDay())],
         d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
         d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
         d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
