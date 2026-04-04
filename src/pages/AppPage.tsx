@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, calcValorHoraExtra } from '@/lib/formatters';
 import { horaLocalAgora } from '@/lib/dataHora';
@@ -20,7 +21,7 @@ import { usePaywall } from '@/hooks/usePaywall';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Clock } from 'lucide-react';
+import { CheckCircle2, Clock, Settings } from 'lucide-react';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -32,6 +33,7 @@ function getGreeting(): string {
 
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const { shouldShowPaywall, canSeeMoney } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
   const [marcacoes, setMarcacoes] = useState<Marcacao[]>([]);
@@ -43,6 +45,14 @@ const AppPage: React.FC = () => {
   const today = hojeLocal();
   const p = profile as any;
   const userName = p?.nome?.split(' ')[0] || '';
+
+  const configIncompleta = useMemo(() => {
+    if (!p) return false;
+    const faltaSalario = !p.salario_base || Number(p.salario_base) === 0;
+    const faltaHorario = !p.horario_entrada_padrao && !p.horario_saida_padrao;
+    const faltaJornada = p.tipo_jornada === 'jornada_fixa' && faltaHorario;
+    return faltaSalario || faltaJornada;
+  }, [p]);
 
   const fetchMarcacoes = useCallback(async () => {
     if (!user) return;
@@ -186,7 +196,24 @@ const AppPage: React.FC = () => {
           </p>
         )}
 
-        {/* Escala rest day notice */}
+        {/* Config incomplete warning */}
+        {configIncompleta && (
+          <button
+            onClick={() => navigate('/configuracoes')}
+            className="w-full bg-warning/10 rounded-xl p-4 border border-warning/30 animate-slide-up text-left"
+          >
+            <div className="flex items-start gap-3">
+              <Settings size={18} className="text-warning mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-warning">Complete sua configuração</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Configure seu salário, horários e tipo de jornada para que os cálculos fiquem corretos.
+                </p>
+              </div>
+            </div>
+          </button>
+        )}
+
         {isDiaFolga && (
           <div className="bg-accent/10 rounded-xl p-4 text-center border border-accent/20 animate-slide-up">
             <p className="text-sm font-semibold text-accent">📅 Hoje é dia de folga na sua escala</p>
