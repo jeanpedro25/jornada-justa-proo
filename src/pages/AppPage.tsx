@@ -33,6 +33,7 @@ function getGreeting(): string {
 
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const { shouldShowPaywall, canSeeMoney } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
   const [marcacoes, setMarcacoes] = useState<Marcacao[]>([]);
@@ -44,6 +45,14 @@ const AppPage: React.FC = () => {
   const today = hojeLocal();
   const p = profile as any;
   const userName = p?.nome?.split(' ')[0] || '';
+
+  const configIncompleta = useMemo(() => {
+    if (!p) return false;
+    const faltaSalario = !p.salario_base || Number(p.salario_base) === 0;
+    const faltaHorario = !p.horario_entrada_padrao && !p.horario_saida_padrao;
+    const faltaJornada = p.tipo_jornada === 'jornada_fixa' && faltaHorario;
+    return faltaSalario || faltaJornada;
+  }, [p]);
 
   const fetchMarcacoes = useCallback(async () => {
     if (!user) return;
