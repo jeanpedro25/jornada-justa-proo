@@ -242,11 +242,11 @@ function gerarExtratoPDF(
   y = addSectionTitle(doc, 'Resumo Geral', y, margem);
 
   const cards = [
-    { label: 'Total Trabalhado', valor: fmtHM(totalMinTrab), cor: [39, 174, 96] as const },
+    { label: 'Registros Reais', valor: `${daysReais.length} dias · ${fmtHM(totalMinReais)}`, cor: [39, 174, 96] as const },
+    { label: 'Reconstituidos', valor: `${daysReconstituidos.length} dias · ${fmtHM(totalMinReconst)}`, cor: [52, 152, 219] as const },
+    { label: 'Total Combinado', valor: `${daysForCalc.length} dias · ${fmtHM(totalMinTrab)}`, cor: [26, 26, 46] as const },
     { label: 'Horas Extras', valor: totalMinExtra > 0 ? `+${fmtHM(totalMinExtra)}` : '0h', cor: [78, 205, 196] as const },
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
-    { label: 'Registros Reais', valor: `${daysReais.length} dias`, cor: [39, 174, 96] as const },
-    { label: 'Reconstituidos', valor: `${daysReconstituidos.length} dias`, cor: [52, 152, 219] as const },
     { label: 'Atestados', valor: `${daysAtestado.length} dias`, cor: [155, 89, 182] as const },
   ];
 
