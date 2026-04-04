@@ -30,6 +30,26 @@ const OnboardingPage: React.FC = () => {
 
   // Step 6 - import config
   const [dataAdmissao, setDataAdmissao] = useState('');
+  const [admDia, setAdmDia] = useState('');
+  const [admMes, setAdmMes] = useState('');
+  const [admAno, setAdmAno] = useState('');
+
+  // Sync separate fields → dataAdmissao
+  const updateDataAdmissao = (dia: string, mes: string, ano: string) => {
+    setAdmDia(dia);
+    setAdmMes(mes);
+    setAdmAno(ano);
+    if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
+      const d = parseInt(dia), m = parseInt(mes), a = parseInt(ano);
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && a >= 1900 && a <= 2100) {
+        setDataAdmissao(`${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`);
+      } else {
+        setDataAdmissao('');
+      }
+    } else {
+      setDataAdmissao('');
+    }
+  };
   const [entradaHora, setEntradaHora] = useState('08:00');
   const [saidaHora, setSaidaHora] = useState('17:00');
   const [intervaloMin, setIntervaloMin] = useState('60');
