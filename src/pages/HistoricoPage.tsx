@@ -150,16 +150,17 @@ const HistoricoPage: React.FC = () => {
     });
 
     const summaries: DaySummary[] = [];
-    const datasReais = new Set<string>([
-      ...Array.from(marcMap.keys()),
-      ...Array.from(feriasDias.keys()),
-      ...Array.from(compensacoes.keys()),
-    ]);
 
-    Array.from(datasReais)
-      .filter((dataStr) => dataStr >= start && dataStr <= end)
-      .sort()
-      .forEach((dataStr) => {
+    // Generate ALL days in the range (not just days with data)
+    const allDays: string[] = [];
+    const cursor = new Date(start + 'T12:00:00');
+    const endDate = new Date(end + 'T12:00:00');
+    while (cursor <= endDate) {
+      allDays.push(cursor.toISOString().split('T')[0]);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    allDays.forEach((dataStr) => {
         const d = new Date(dataStr + 'T12:00:00');
         const diaSemana = d.getDay();
         const ehFds = diaSemana === 0 || diaSemana === 6;
@@ -169,8 +170,9 @@ const HistoricoPage: React.FC = () => {
         const compensacao = compensacoes.get(dataStr) || null;
         const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
 
-        // CLT: feriados, férias e FDS não têm carga obrigatória
-        // Qualquer trabalho nesses dias = hora extra, nunca "devendo"
+        // Don't show future days (except today)
+        if (dataStr > hojeStr) return;
+
         const ehDiaLivre = !!feriado || !!feriasInfo || ehFds;
         const cargaDoDia = ehDiaLivre ? 0 : carga * 60;
 
@@ -190,6 +192,9 @@ const HistoricoPage: React.FC = () => {
           } else {
             status = feriado ? 'feriado' : 'registrado';
           }
+        } else if (!ehFds) {
+          // Weekday with no records = pending
+          status = 'pendente';
         } else {
           return;
         }
