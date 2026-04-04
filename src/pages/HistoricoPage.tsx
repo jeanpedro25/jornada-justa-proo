@@ -258,7 +258,7 @@ const HistoricoPage: React.FC = () => {
     });
 
     return summaries.reverse();
-  }, [allMarcacoes, carga, dataCriacaoContaStr, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
+  }, [allMarcacoes, carga, dataCriacaoContaStr, feriasDias, compensacoes, atestados, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
 
   // Apply quick filter
   const filteredDays = useMemo(() => {
