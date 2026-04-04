@@ -50,6 +50,14 @@ interface DaySummary {
 }
 
 const HistoricoPage: React.FC = () => {
+  const formatLocalDate = (value: Date | string) => {
+    const date = value instanceof Date ? value : new Date(value);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
@@ -69,6 +77,11 @@ const HistoricoPage: React.FC = () => {
     p?.escala_tipo || null,
     p?.carga_horaria_diaria ?? 8,
   );
+  const dataCriacaoContaStr = user?.created_at
+    ? formatLocalDate(user.created_at)
+    : p?.created_at
+      ? formatLocalDate(p.created_at)
+      : null;
 
   const getDateRange = (period: FilterPeriod) => {
     const now = new Date();
@@ -102,7 +115,6 @@ const HistoricoPage: React.FC = () => {
     ]);
     setAllMarcacoes((marcRes.data as Marcacao[]) || []);
 
-    // Build ferias map
     const dias = new Map<string, FeriasInfo>();
     (feriasRes.data || []).forEach((f: any) => {
       const hoje = new Date(); hoje.setHours(12, 0, 0, 0);
@@ -123,7 +135,6 @@ const HistoricoPage: React.FC = () => {
     });
     setFeriasDias(dias);
 
-    // Build compensacoes map
     const compMap = new Map<string, CompensacaoInfo>();
     (compRes.data || []).forEach((c: any) => {
       compMap.set(c.data, { data: c.data, minutos: c.minutos, observacao: c.observacao });
@@ -139,10 +150,14 @@ const HistoricoPage: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const hojeStr = new Date().toISOString().split('T')[0];
+  const hojeStr = formatLocalDate(new Date());
 
   const daySummaries: DaySummary[] = useMemo(() => {
     const { start, end } = getDateRange(filter);
+    const dataInicialVisivel = dataCriacaoContaStr && dataCriacaoContaStr > start ? dataCriacaoContaStr : start;
+
+    if (dataInicialVisivel > end) return [];
+
     const marcMap = new Map<string, Marcacao[]>();
     allMarcacoes.forEach(m => {
       if (!marcMap.has(m.data)) marcMap.set(m.data, []);
@@ -150,77 +165,74 @@ const HistoricoPage: React.FC = () => {
     });
 
     const summaries: DaySummary[] = [];
-
-    // Generate ALL days in the range (not just days with data)
     const allDays: string[] = [];
-    const cursor = new Date(start + 'T12:00:00');
+    const cursor = new Date(dataInicialVisivel + 'T12:00:00');
     const endDate = new Date(end + 'T12:00:00');
+
     while (cursor <= endDate) {
-      allDays.push(cursor.toISOString().split('T')[0]);
+      allDays.push(formatLocalDate(cursor));
       cursor.setDate(cursor.getDate() + 1);
     }
 
     allDays.forEach((dataStr) => {
-        const d = new Date(dataStr + 'T12:00:00');
-        const diaSemana = d.getDay();
-        const ehFds = diaSemana === 0 || diaSemana === 6;
-        const ehHoje = dataStr === hojeStr;
-        const marcacoes = marcMap.get(dataStr) || [];
-        const feriasInfo = feriasDias.get(dataStr) || null;
-        const compensacao = compensacoes.get(dataStr) || null;
-        const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
+      const d = new Date(dataStr + 'T12:00:00');
+      const diaSemana = d.getDay();
+      const ehFds = diaSemana === 0 || diaSemana === 6;
+      const ehHoje = dataStr === hojeStr;
+      const marcacoes = marcMap.get(dataStr) || [];
+      const feriasInfo = feriasDias.get(dataStr) || null;
+      const compensacao = compensacoes.get(dataStr) || null;
+      const feriado = getFeriadoComLocais(dataStr, feriadosLocais);
 
-        // Don't show future days (except today)
-        if (dataStr > hojeStr) return;
+      if (dataStr > hojeStr) return;
 
-        const ehDiaLivre = !!feriado || !!feriasInfo || ehFds;
-        const cargaDoDia = ehDiaLivre ? 0 : carga * 60;
+      const ehDiaLivre = !!feriado || !!feriasInfo || ehFds;
+      const cargaDoDia = ehDiaLivre ? 0 : carga * 60;
 
-        let status: DayStatus;
-        if (feriado && marcacoes.length === 0) {
-          status = 'feriado';
-        } else if (feriasInfo && marcacoes.length === 0) {
-          status = 'ferias';
-        } else if (compensacao) {
-          status = 'compensado';
-        } else if (ehFds && marcacoes.length === 0) {
-          status = 'fimdesemana';
-        } else if (marcacoes.length > 0) {
-          const jornada = calcularJornada(marcacoes, cargaDoDia);
-          if (jornada.emAndamento && ehHoje) {
-            status = 'em_andamento';
-          } else {
-            status = feriado ? 'feriado' : 'registrado';
-          }
-        } else if (!ehFds) {
-          // Weekday with no records = pending
-          status = 'pendente';
+      let status: DayStatus;
+      if (feriado && marcacoes.length === 0) {
+        status = 'feriado';
+      } else if (feriasInfo && marcacoes.length === 0) {
+        status = 'ferias';
+      } else if (compensacao) {
+        status = 'compensado';
+      } else if (ehFds && marcacoes.length === 0) {
+        status = 'fimdesemana';
+      } else if (marcacoes.length > 0) {
+        const jornada = calcularJornada(marcacoes, cargaDoDia);
+        if (jornada.emAndamento && ehHoje) {
+          status = 'em_andamento';
         } else {
-          return;
+          status = feriado ? 'feriado' : 'registrado';
         }
+      } else if (!ehFds) {
+        status = 'pendente';
+      } else {
+        return;
+      }
 
-        const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
+      const jornada = marcacoes.length > 0 ? calcularJornada(marcacoes, cargaDoDia) : null;
 
-        summaries.push({
-          data: dataStr,
-          diaSemana,
-          status,
-          marcacoes,
-          totalMin: jornada?.totalTrabalhado ?? 0,
-          extraHours: (jornada?.horaExtraMin ?? 0) / 60,
-          devendoMin: jornada?.devendoMin ?? 0,
-          intervaloMin: jornada?.totalIntervalo ?? 0,
-          primeiraEntrada: jornada?.primeiraEntrada ?? null,
-          ultimaSaida: jornada?.ultimaSaida ?? null,
-          feriasInfo,
-          compensacao,
-          feriadoNome: feriado?.nome ?? null,
-          ehHoje,
-        });
+      summaries.push({
+        data: dataStr,
+        diaSemana,
+        status,
+        marcacoes,
+        totalMin: jornada?.totalTrabalhado ?? 0,
+        extraHours: (jornada?.horaExtraMin ?? 0) / 60,
+        devendoMin: jornada?.devendoMin ?? 0,
+        intervaloMin: jornada?.totalIntervalo ?? 0,
+        primeiraEntrada: jornada?.primeiraEntrada ?? null,
+        ultimaSaida: jornada?.ultimaSaida ?? null,
+        feriasInfo,
+        compensacao,
+        feriadoNome: feriado?.nome ?? null,
+        ehHoje,
       });
+    });
 
     return summaries.reverse();
-  }, [allMarcacoes, carga, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
+  }, [allMarcacoes, carga, dataCriacaoContaStr, feriasDias, compensacoes, feriadosLocais, filter, dataInicio, dataFim, hojeStr]);
 
   // Apply quick filter
   const filteredDays = useMemo(() => {
