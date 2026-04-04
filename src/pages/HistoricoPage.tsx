@@ -16,8 +16,8 @@ import {
 } from '@/lib/jornada';
 
 type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
-type DayStatus = 'registrado' | 'pendente' | 'ferias' | 'compensado' | 'fimdesemana' | 'feriado' | 'em_andamento';
-type QuickFilter = 'todos' | 'pendentes' | 'ferias' | 'extras';
+type DayStatus = 'registrado' | 'pendente' | 'ferias' | 'compensado' | 'fimdesemana' | 'feriado' | 'em_andamento' | 'atestado';
+type QuickFilter = 'todos' | 'pendentes' | 'ferias' | 'extras' | 'atestados';
 
 interface FeriasInfo {
   data_inicio: string;
