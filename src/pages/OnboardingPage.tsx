@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { Zap, Play, AlertTriangle } from 'lucide-react';
-import { gerarHistoricoAutomatico, contarDiasUteis } from '@/lib/historico-automatico';
+import { Zap, Play, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { gerarHistoricoMultiPeriodo, contarDiasUteis, type PeriodoTrabalho } from '@/lib/historico-automatico';
 import { dataHojeLocal } from '@/lib/dataHora';
 
 const TOTAL_STEPS = 7; // 1-nome, 2-salário, 3-carga, 4-extras, 5-histórico escolha, 6-config importação, 7-processando
@@ -28,11 +28,51 @@ const OnboardingPage: React.FC = () => {
   // Step 5 - history choice
   const [escolhaHistorico, setEscolhaHistorico] = useState<'zero' | 'importar' | null>(null);
 
-  // Step 6 - import config
+  // Step 6 - import config with multiple periods
   const [dataAdmissao, setDataAdmissao] = useState('');
   const [admDia, setAdmDia] = useState('');
   const [admMes, setAdmMes] = useState('');
   const [admAno, setAdmAno] = useState('');
+
+  // Multiple work periods
+  interface PeriodoUI {
+    id: number;
+    entradaHora: string;
+    saidaHora: string;
+    intervaloMin: string;
+    diasSemana: number[];
+    dataInicio: string; // YYYY-MM-DD — auto-calculated from sequence
+    dataFim: string;    // YYYY-MM-DD — auto-calculated
+    dataFimDia: string;
+    dataFimMes: string;
+    dataFimAno: string;
+  }
+
+  const [periodos, setPeriodos] = useState<PeriodoUI[]>([
+    {
+      id: 1,
+      entradaHora: '08:00',
+      saidaHora: '17:00',
+      intervaloMin: '60',
+      diasSemana: [1, 2, 3, 4, 5],
+      dataInicio: '',
+      dataFim: '',
+      dataFimDia: '',
+      dataFimMes: '',
+      dataFimAno: '',
+    },
+  ]);
+
+  const [sabeSaldo, setSabeSaldo] = useState(false);
+  const [saldoHoras, setSaldoHoras] = useState('0');
+  const [saldoMinutos, setSaldoMinutos] = useState('0');
+
+  // Step 7 - processing
+  const [progresso, setProgresso] = useState(0);
+  const [progressoMsg, setProgressoMsg] = useState('');
+  const [processando, setProcessando] = useState(false);
+
+  const hoje = dataHojeLocal();
 
   // Sync separate fields → dataAdmissao
   const updateDataAdmissao = (dia: string, mes: string, ano: string) => {
@@ -50,25 +90,11 @@ const OnboardingPage: React.FC = () => {
       setDataAdmissao('');
     }
   };
-  const [entradaHora, setEntradaHora] = useState('08:00');
-  const [saidaHora, setSaidaHora] = useState('17:00');
-  const [intervaloMin, setIntervaloMin] = useState('60');
-  const [diasSemana, setDiasSemana] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [sabeSaldo, setSabeSaldo] = useState(false);
-  const [saldoHoras, setSaldoHoras] = useState('0');
-  const [saldoMinutos, setSaldoMinutos] = useState('0');
-
-  // Step 7 - processing
-  const [progresso, setProgresso] = useState(0);
-  const [progressoMsg, setProgressoMsg] = useState('');
-  const [processando, setProcessando] = useState(false);
-
-  const hoje = dataHojeLocal();
 
   const diasUteisEstimados = useMemo(() => {
     if (!dataAdmissao || dataAdmissao >= hoje) return 0;
-    return contarDiasUteis(dataAdmissao, hoje, diasSemana);
-  }, [dataAdmissao, hoje, diasSemana]);
+    return contarDiasUteis(dataAdmissao, hoje, periodos[0].diasSemana);
+  }, [dataAdmissao, hoje, periodos]);
 
   const mesesHistorico = useMemo(() => {
     if (!dataAdmissao) return 0;
@@ -80,10 +106,57 @@ const OnboardingPage: React.FC = () => {
   const maxStep = escolhaHistorico === 'importar' ? 7 : 5;
   const progressValue = (Math.min(step, maxStep) / maxStep) * 100;
 
-  const toggleDia = (dia: number) => {
-    setDiasSemana(prev =>
-      prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia].sort()
-    );
+  const toggleDia = (periodoId: number, dia: number) => {
+    setPeriodos(prev => prev.map(p => {
+      if (p.id !== periodoId) return p;
+      const newDias = p.diasSemana.includes(dia)
+        ? p.diasSemana.filter(d => d !== dia)
+        : [...p.diasSemana, dia].sort();
+      return { ...p, diasSemana: newDias };
+    }));
+  };
+
+  const updatePeriodo = (id: number, field: string, value: any) => {
+    setPeriodos(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const updatePeriodoDataFim = (id: number, dia: string, mes: string, ano: string) => {
+    setPeriodos(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const updated = { ...p, dataFimDia: dia, dataFimMes: mes, dataFimAno: ano };
+      if (dia.length === 2 && mes.length === 2 && ano.length === 4) {
+        const d = parseInt(dia), m = parseInt(mes), a = parseInt(ano);
+        if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && a >= 1900 && a <= 2100) {
+          updated.dataFim = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+        } else {
+          updated.dataFim = '';
+        }
+      } else {
+        updated.dataFim = '';
+      }
+      return updated;
+    }));
+  };
+
+  const addPeriodo = () => {
+    const lastPeriodo = periodos[periodos.length - 1];
+    setPeriodos(prev => [...prev, {
+      id: Date.now(),
+      entradaHora: lastPeriodo.entradaHora,
+      saidaHora: lastPeriodo.saidaHora,
+      intervaloMin: lastPeriodo.intervaloMin,
+      diasSemana: [...lastPeriodo.diasSemana],
+      dataInicio: '',
+      dataFim: '',
+      dataFimDia: '',
+      dataFimMes: '',
+      dataFimAno: '',
+    }]);
+  };
+
+  const removePeriodo = (id: number) => {
+    if (periodos.length <= 1) return;
+    setPeriodos(prev => prev.filter(p => p.id !== id));
   };
 
   const canAdvance = (): boolean => {
@@ -92,7 +165,16 @@ const OnboardingPage: React.FC = () => {
     if (step === 3) return carga !== null || (cargaCustom.trim().length > 0 && Number(cargaCustom) > 0);
     if (step === 4) return Number(percentual) > 0 && Number(percentualFeriado) > 0;
     if (step === 5) return escolhaHistorico !== null;
-    if (step === 6) return dataAdmissao.length > 0 && dataAdmissao < hoje && diasSemana.length > 0;
+    if (step === 6) {
+      if (!dataAdmissao || dataAdmissao >= hoje) return false;
+      // If multiple periods, each needs a dataFim (except the last which goes to today)
+      if (periodos.length > 1) {
+        for (let i = 0; i < periodos.length - 1; i++) {
+          if (!periodos[i].dataFim) return false;
+        }
+      }
+      return periodos.every(p => p.diasSemana.length > 0);
+    }
     return false;
   };
 
@@ -136,6 +218,24 @@ const OnboardingPage: React.FC = () => {
     setLoading(false);
   };
 
+  const buildPeriodos = (): PeriodoTrabalho[] => {
+    const result: PeriodoTrabalho[] = [];
+    for (let i = 0; i < periodos.length; i++) {
+      const p = periodos[i];
+      const inicio = i === 0 ? dataAdmissao : (periodos[i - 1].dataFim || dataAdmissao);
+      const fim = i === periodos.length - 1 ? hoje : (p.dataFim || hoje);
+      result.push({
+        dataInicio: inicio,
+        dataFim: fim,
+        entradaHora: p.entradaHora,
+        saidaHora: p.saidaHora,
+        intervaloMin: Number(p.intervaloMin),
+        diasSemana: p.diasSemana,
+      });
+    }
+    return result;
+  };
+
   const handleStartImport = async () => {
     if (!user) return;
     setStep(7);
@@ -143,7 +243,6 @@ const OnboardingPage: React.FC = () => {
     setProgresso(0);
 
     try {
-      // Save profile first
       const ok = await saveProfile(
         { data_admissao: dataAdmissao, onboarding_completo: false },
         { completeOnboarding: false }
@@ -155,18 +254,12 @@ const OnboardingPage: React.FC = () => {
       }
 
       const saldoTotal = (Number(saldoHoras) * 60) + Number(saldoMinutos);
+      const periodosConfig = buildPeriodos();
 
-      const result = await gerarHistoricoAutomatico(
+      const result = await gerarHistoricoMultiPeriodo(
         user.id,
-        {
-          dataInicio: dataAdmissao,
-          dataFim: hoje,
-          entradaHora,
-          saidaHora,
-          intervaloMin: Number(intervaloMin),
-          diasSemana,
-          saldoBancoMin: sabeSaldo ? saldoTotal : 0,
-        },
+        periodosConfig,
+        sabeSaldo ? saldoTotal : 0,
         (pct, msg) => {
           setProgresso(pct);
           setProgressoMsg(msg);
@@ -455,62 +548,124 @@ const OnboardingPage: React.FC = () => {
 
             <hr className="border-border" />
 
-            {/* Horário */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Horário de trabalho</label>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">Entrada</label>
-                  <Input
-                    type="time"
-                    value={entradaHora}
-                    onChange={(e) => setEntradaHora(e.target.value)}
-                    className="rounded-xl h-12 text-base"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Saída</label>
-                  <Input
-                    type="time"
-                    value={saidaHora}
-                    onChange={(e) => setSaidaHora(e.target.value)}
-                    className="rounded-xl h-12 text-base"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Intervalo (min)</label>
-                <Input
-                  type="number"
-                  value={intervaloMin}
-                  onChange={(e) => setIntervaloMin(e.target.value)}
-                  className="rounded-xl h-12 text-base"
-                  min={0}
-                  max={120}
-                />
-              </div>
-            </div>
-
-            <hr className="border-border" />
-
-            {/* Dias da semana */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Quais dias você trabalhou?</label>
-              <div className="flex gap-2 flex-wrap">
-                {diasLabel.map((label, idx) => (
+            {/* Períodos de trabalho */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  {periodos.length > 1 ? 'Períodos de trabalho' : 'Horário de trabalho'}
+                </label>
+                {periodos.length === 1 && (
                   <button
-                    key={idx}
-                    onClick={() => toggleDia(idx)}
-                    className={`px-3 py-2 rounded-lg border-2 text-sm font-semibold transition-colors ${
-                      diasSemana.includes(idx)
-                        ? 'border-accent bg-accent/10 text-accent'
-                        : 'border-border text-muted-foreground'
-                    }`}
+                    onClick={addPeriodo}
+                    className="text-xs text-accent font-semibold flex items-center gap-1"
                   >
-                    {label}
+                    <Plus size={14} /> Mudou de turno?
                   </button>
-                ))}
+                )}
               </div>
+
+              {periodos.map((periodo, idx) => (
+                <div key={periodo.id} className="space-y-3 p-3 rounded-xl border border-border bg-muted/30">
+                  {periodos.length > 1 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-accent">
+                        Período {idx + 1}
+                        {idx === periodos.length - 1 ? ' (atual → hoje)' : ''}
+                      </span>
+                      <button onClick={() => removePeriodo(periodo.id)} className="text-xs text-destructive flex items-center gap-1">
+                        <Trash2 size={12} /> Remover
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Data fim do período (only for non-last periods) */}
+                  {periodos.length > 1 && idx < periodos.length - 1 && (
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Até quando trabalhou nesse horário?</label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="text" inputMode="numeric" maxLength={2} placeholder="DD"
+                          value={periodo.dataFimDia}
+                          onChange={(e) => updatePeriodoDataFim(periodo.id, e.target.value.replace(/\D/g, '').slice(0, 2), periodo.dataFimMes, periodo.dataFimAno)}
+                          className="rounded-xl h-10 text-sm text-center flex-1"
+                        />
+                        <Input
+                          type="text" inputMode="numeric" maxLength={2} placeholder="MM"
+                          value={periodo.dataFimMes}
+                          onChange={(e) => updatePeriodoDataFim(periodo.id, periodo.dataFimDia, e.target.value.replace(/\D/g, '').slice(0, 2), periodo.dataFimAno)}
+                          className="rounded-xl h-10 text-sm text-center flex-1"
+                        />
+                        <Input
+                          type="text" inputMode="numeric" maxLength={4} placeholder="AAAA"
+                          value={periodo.dataFimAno}
+                          onChange={(e) => updatePeriodoDataFim(periodo.id, periodo.dataFimDia, periodo.dataFimMes, e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          className="rounded-xl h-10 text-sm text-center flex-[1.5]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Entrada</label>
+                      <Input
+                        type="time"
+                        value={periodo.entradaHora}
+                        onChange={(e) => updatePeriodo(periodo.id, 'entradaHora', e.target.value)}
+                        className="rounded-xl h-10 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Saída</label>
+                      <Input
+                        type="time"
+                        value={periodo.saidaHora}
+                        onChange={(e) => updatePeriodo(periodo.id, 'saidaHora', e.target.value)}
+                        className="rounded-xl h-10 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Intervalo (min)</label>
+                    <Input
+                      type="number"
+                      value={periodo.intervaloMin}
+                      onChange={(e) => updatePeriodo(periodo.id, 'intervaloMin', e.target.value)}
+                      className="rounded-xl h-10 text-sm"
+                      min={0} max={120}
+                    />
+                  </div>
+
+                  {/* Dias da semana */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Dias trabalhados</label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {diasLabel.map((label, didx) => (
+                        <button
+                          key={didx}
+                          onClick={() => toggleDia(periodo.id, didx)}
+                          className={`px-2.5 py-1.5 rounded-lg border-2 text-xs font-semibold transition-colors ${
+                            periodo.diasSemana.includes(didx)
+                              ? 'border-accent bg-accent/10 text-accent'
+                              : 'border-border text-muted-foreground'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {periodos.length > 1 && (
+                <button
+                  onClick={addPeriodo}
+                  className="w-full py-2 rounded-xl border-2 border-dashed border-border text-sm text-muted-foreground hover:border-accent hover:text-accent transition-colors flex items-center justify-center gap-1"
+                >
+                  <Plus size={14} /> Adicionar outro período
+                </button>
+              )}
             </div>
 
             <hr className="border-border" />

@@ -29,6 +29,7 @@ import autoTable from 'jspdf-autotable';
 import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
 import { startOfWeek, endOfWeek, subMonths } from 'date-fns';
+import { getFeriadosDoAno, type Feriado } from '@/lib/feriados';
 
 const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -44,8 +45,9 @@ interface DaySummary {
   intervaloMin: number;
   primeiraEntrada: string | null;
   ultimaSaida: string | null;
-  origem: 'real' | 'reconstituido' | 'manual' | 'atestado';
+  origem: 'real' | 'reconstituido' | 'manual' | 'atestado' | 'feriado' | 'ferias';
   atestadoPeriodo?: string | null;
+  feriadoNome?: string | null;
 }
 
 function classifyOrigin(marks: Marcacao[]): 'real' | 'reconstituido' | 'manual' {
@@ -55,10 +57,25 @@ function classifyOrigin(marks: Marcacao[]): 'real' | 'reconstituido' | 'manual' 
   return 'manual';
 }
 
+function getFeriadosNoPeriodo(startDate: string, endDate: string): Map<string, string> {
+  const result = new Map<string, string>();
+  const anoInicio = parseInt(startDate.substring(0, 4));
+  const anoFim = parseInt(endDate.substring(0, 4));
+  for (let ano = anoInicio; ano <= anoFim; ano++) {
+    for (const f of getFeriadosDoAno(ano)) {
+      if (f.data >= startDate && f.data <= endDate) {
+        result.set(f.data, f.nome);
+      }
+    }
+  }
+  return result;
+}
+
 function buildDaySummaries(
   marcacoes: Marcacao[],
   cargaHoras: number,
   registrosPonto?: any[],
+  feriadosMap?: Map<string, string>,
 ): DaySummary[] {
   const map = new Map<string, Marcacao[]>();
   marcacoes.forEach(m => {
@@ -75,10 +92,14 @@ function buildDaySummaries(
   });
 
   const summaries: DaySummary[] = [];
+  const processedDates = new Set<string>();
+
   map.forEach((marks, data) => {
+    processedDates.add(data);
     const cargaMin = cargaHoras * 60;
     const j = calcularJornada(marks, cargaMin);
     const atestado = atestadoMap.get(data);
+    const feriado = feriadosMap?.get(data);
     summaries.push({
       data,
       marcacoes: marks,
@@ -87,10 +108,54 @@ function buildDaySummaries(
       intervaloMin: j.totalIntervalo,
       primeiraEntrada: j.primeiraEntrada,
       ultimaSaida: j.ultimaSaida,
-      origem: atestado ? 'atestado' : classifyOrigin(marks),
+      origem: atestado ? 'atestado' : feriado ? 'feriado' : classifyOrigin(marks),
       atestadoPeriodo: atestado,
+      feriadoNome: feriado,
     });
   });
+
+  // Add atestado-only days (no marcações)
+  atestadoMap.forEach((periodo, data) => {
+    if (!processedDates.has(data)) {
+      processedDates.add(data);
+      summaries.push({
+        data,
+        marcacoes: [],
+        totalMin: 0,
+        extraMin: 0,
+        intervaloMin: 0,
+        primeiraEntrada: null,
+        ultimaSaida: null,
+        origem: 'atestado',
+        atestadoPeriodo: periodo,
+      });
+    }
+  });
+
+  // Add feriado days that don't have marcações (weekdays only)
+  if (feriadosMap) {
+    feriadosMap.forEach((nome, data) => {
+      if (!processedDates.has(data)) {
+        const dateObj = new Date(data + 'T12:00:00');
+        const dow = dateObj.getDay();
+        // Only add feriados on weekdays (not weekends)
+        if (dow >= 1 && dow <= 5) {
+          processedDates.add(data);
+          summaries.push({
+            data,
+            marcacoes: [],
+            totalMin: 0,
+            extraMin: 0,
+            intervaloMin: 0,
+            primeiraEntrada: null,
+            ultimaSaida: null,
+            origem: 'feriado',
+            feriadoNome: nome,
+          });
+        }
+      }
+    });
+  }
 
   return summaries.sort((a, b) => a.data.localeCompare(b.data));
 }
@@ -147,6 +212,8 @@ const origemLabel: Record<string, string> = {
   reconstituido: 'Reconstituido',
   manual: 'Manual',
   atestado: 'Atestado',
+  feriado: 'Feriado',
+  ferias: 'Ferias',
 };
 
 const origemColor: Record<string, [number, number, number]> = {
@@ -154,6 +221,8 @@ const origemColor: Record<string, [number, number, number]> = {
   reconstituido: [52, 152, 219],
   manual: [243, 156, 18],
   atestado: [155, 89, 182],
+  feriado: [231, 76, 60],
+  ferias: [52, 152, 219],
 };
 
 // ── PDF generator ──
@@ -195,9 +264,10 @@ function gerarExtratoPDF(
   const daysReais = days.filter(d => d.origem === 'real' || d.origem === 'manual');
   const daysReconstituidos = days.filter(d => d.origem === 'reconstituido');
   const daysAtestado = days.filter(d => d.origem === 'atestado');
+  const daysFeriado = days.filter(d => d.origem === 'feriado');
 
-  // Only include reconstituídos in totals if option is on
-  const daysForCalc = incluirReconstituidos ? days : daysReais.concat(daysAtestado);
+  // Only include reconstituídos in totals if option is on (exclude feriados from hour calc)
+  const daysForCalc = (incluirReconstituidos ? days : daysReais.concat(daysAtestado)).filter(d => d.origem !== 'feriado');
 
   // Header
   doc.setFillColor(26, 26, 46);
@@ -250,6 +320,7 @@ function gerarExtratoPDF(
     { label: 'Horas Extras', valor: totalMinExtra > 0 ? `+${fmtHM(totalMinExtra)}` : '0h', cor: [78, 205, 196] as const },
     { label: 'Banco de Horas', valor: formatMinutosHoras(saldoFinalPDF), cor: saldoFinalPDF >= 0 ? [39, 174, 96] as const : [231, 76, 60] as const },
     { label: 'Atestados', valor: `${daysAtestado.length} dias`, cor: [155, 89, 182] as const },
+    { label: 'Feriados', valor: `${daysFeriado.length} dias`, cor: [231, 76, 60] as const },
   ];
 
   const cardW = (contentW - 6) / 3;
@@ -271,7 +342,7 @@ function gerarExtratoPDF(
     doc.setTextColor(c.cor[0], c.cor[1], c.cor[2]);
     doc.text(c.valor, x + cardW / 2, cy + 15, { align: 'center' });
   });
-  y += (cardH + 3) * 2 + 4;
+  y += (cardH + 3) * Math.ceil(cards.length / 3) + 4;
 
   // ── DEMONSTRATIVO FINANCEIRO ──
   if (incluirFinanceiro && salario > 0) {
@@ -403,10 +474,18 @@ function gerarExtratoPDF(
     y = checkPage(doc, y, 20);
     y = addSectionTitle(doc, 'Registros Detalhados', y, margem);
 
-    // Filter based on options
-    let filteredDays = [...daysReais];
+    // Filter based on options - include feriados always
+    const daysFeriado = days.filter(d => d.origem === 'feriado');
+    let filteredDays = [...daysReais, ...daysFeriado];
     if (incluirReconstituidos) filteredDays = filteredDays.concat(daysReconstituidos);
     if (incluirAtestados) filteredDays = filteredDays.concat(daysAtestado);
+    // Remove duplicates by date
+    const seenDates = new Set<string>();
+    filteredDays = filteredDays.filter(d => {
+      if (seenDates.has(d.data)) return false;
+      seenDates.add(d.data);
+      return true;
+    });
     filteredDays.sort((a, b) => a.data.localeCompare(b.data));
 
     const tableBody = filteredDays.map(d => {
@@ -416,13 +495,17 @@ function gerarExtratoPDF(
       const hE = Math.floor(d.extraMin / 60);
       const mE = Math.round(d.extraMin % 60);
 
+      const trabLabel = d.origem === 'atestado' ? 'Atestado'
+        : d.origem === 'feriado' ? (d.feriadoNome || 'Feriado')
+        : `${hT}h${mT}min`;
+
       return [
         dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
         diasSemana[dateObj.getDay()],
         d.primeiraEntrada ? formatarHoraLocal(d.primeiraEntrada) : '—',
         d.ultimaSaida ? formatarHoraLocal(d.ultimaSaida) : '—',
         d.intervaloMin > 0 ? `${d.intervaloMin}min` : '—',
-        d.origem === 'atestado' ? 'Atestado' : `${hT}h${mT}min`,
+        trabLabel,
         d.extraMin > 0 ? `+${hE}h${mE}m` : '—',
         origemLabel[d.origem] || 'Manual',
       ];
@@ -466,6 +549,7 @@ function gerarExtratoPDF(
       { label: 'Reconstituido — gerado automaticamente', cor: origemColor.reconstituido },
       { label: 'Manual — inserido manualmente', cor: origemColor.manual },
       { label: 'Atestado — coberto por atestado medico', cor: origemColor.atestado },
+      { label: 'Feriado — feriado nacional/local', cor: origemColor.feriado },
     ];
     legendItems.forEach(l => {
       doc.setFillColor(l.cor[0], l.cor[1], l.cor[2]);
@@ -821,7 +905,8 @@ const RelatorioPage: React.FC = () => {
 
       const { data: registrosPonto } = await regQuery;
 
-      const periodDays = buildDaySummaries(marcacoes, carga, registrosPonto || []);
+      const feriadosMap = getFeriadosNoPeriodo(start, end);
+      const periodDays = buildDaySummaries(marcacoes, carga, registrosPonto || [], feriadosMap);
 
       if (periodDays.length === 0) {
         toast({ title: 'Sem dados', description: 'Nenhum registro encontrado no período selecionado.', variant: 'destructive' });
