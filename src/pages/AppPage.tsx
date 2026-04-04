@@ -20,7 +20,7 @@ import { usePaywall } from '@/hooks/usePaywall';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Clock } from 'lucide-react';
+import { CheckCircle2, Clock, Settings } from 'lucide-react';
 
 function getGreeting(): string {
   const h = new Date().getHours();
