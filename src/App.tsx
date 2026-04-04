@@ -19,9 +19,25 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const FullScreenLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <p className="text-muted-foreground">Carregando...</p>
+  </div>
+);
+
+const HomeRoute: React.FC = () => {
+  const { session, profile, loading } = useAuth();
+
+  if (loading) return <FullScreenLoader />;
+  if (!session) return <LandingPage />;
+  if (profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
+  if (profile?.onboarding_completo) return <Navigate to="/app" replace />;
+  return <Navigate to="/onboarding" replace />;
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode; skipOnboardingCheck?: boolean }> = ({ children, skipOnboardingCheck }) => {
   const { session, profile, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
+  if (loading) return <FullScreenLoader />;
   if (!session) return <Navigate to="/auth" replace />;
   if (profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
   if (!skipOnboardingCheck && profile && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
@@ -30,7 +46,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; skipOnboardingCheck?
 
 const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, profile, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
+  if (loading) return <FullScreenLoader />;
   if (session && profile && !(profile as any).aceite_termos) return <Navigate to="/aceite-termos" replace />;
   if (session && profile?.onboarding_completo) return <Navigate to="/app" replace />;
   if (session && !profile?.onboarding_completo) return <Navigate to="/onboarding" replace />;
@@ -39,7 +55,7 @@ const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const TermsRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session, profile, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
+  if (loading) return <FullScreenLoader />;
   if (!session) return <Navigate to="/auth" replace />;
   if (profile && (profile as any).aceite_termos && profile.onboarding_completo) return <Navigate to="/app" replace />;
   if (profile && (profile as any).aceite_termos && !profile.onboarding_completo) return <Navigate to="/onboarding" replace />;
@@ -54,7 +70,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/auth" element={<AuthRoute><AuthPage /></AuthRoute>} />
             <Route path="/aceite-termos" element={<TermsRoute><AceiteTermosPage /></TermsRoute>} />
             <Route path="/termos" element={<TermosUsoPage />} />
