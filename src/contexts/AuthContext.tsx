@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -53,22 +54,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true);
-      setSession(session);
-      setUser(session?.user ?? null);
+    let mounted = true;
 
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-      }
-
-      setLoading(false);
-    });
-
+    // First, restore session from storage
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setLoading(true);
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -79,10 +69,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setLoading(false);
+      setInitialLoad(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // Then, listen for subsequent auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      // Skip if we're still doing initial load (getSession handles that)
+      if (initialLoad) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        setLoading(true);
+        await fetchProfile(session.user.id);
+        setLoading(false);
+      } else {
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [initialLoad]);
 
   const signOut = async () => {
     localStorage.removeItem('hj_entrada_ts');
