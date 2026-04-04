@@ -470,8 +470,20 @@ const ConfigPage: React.FC = () => {
 
         {/* Delete account */}
         <Button
-          onClick={async () => {
-            if (!confirm('Tem certeza? Isso vai deletar TODOS os seus dados permanentemente. Essa ação não pode ser desfeita.')) return;
+          onClick={() => setShowDeleteModal(true)}
+          disabled={deleting}
+          variant="ghost"
+          className="w-full rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 text-xs"
+        >
+          <Trash2 size={14} />
+          Deletar minha conta e todos os dados
+        </Button>
+
+        <DeleteAccountModal
+          open={showDeleteModal}
+          onOpenChange={setShowDeleteModal}
+          deleting={deleting}
+          onConfirm={async () => {
             setDeleting(true);
             try {
               const { error } = await supabase.rpc('delete_my_account' as never);
@@ -483,13 +495,7 @@ const ConfigPage: React.FC = () => {
               setDeleting(false);
             }
           }}
-          disabled={deleting}
-          variant="ghost"
-          className="w-full rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 text-xs"
-        >
-          <Trash2 size={14} />
-          {deleting ? 'Deletando...' : 'Deletar minha conta e todos os dados'}
-        </Button>
+        />
       </div>
       <BottomNav />
     </div>
