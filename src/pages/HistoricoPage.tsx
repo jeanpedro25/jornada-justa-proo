@@ -63,6 +63,7 @@ const HistoricoPage: React.FC = () => {
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
   const [feriasDias, setFeriasDias] = useState<Map<string, FeriasInfo>>(new Map());
   const [compensacoes, setCompensacoes] = useState<Map<string, CompensacaoInfo>>(new Map());
+  const [atestados, setAtestados] = useState<Map<string, string>>(new Map());
   const [filter, setFilter] = useState<FilterPeriod>('month');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('todos');
   const [showWeekends, setShowWeekends] = useState(false);
