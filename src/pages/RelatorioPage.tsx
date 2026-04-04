@@ -212,6 +212,8 @@ const origemLabel: Record<string, string> = {
   reconstituido: 'Reconstituido',
   manual: 'Manual',
   atestado: 'Atestado',
+  feriado: 'Feriado',
+  ferias: 'Ferias',
 };
 
 const origemColor: Record<string, [number, number, number]> = {
@@ -219,6 +221,8 @@ const origemColor: Record<string, [number, number, number]> = {
   reconstituido: [52, 152, 219],
   manual: [243, 156, 18],
   atestado: [155, 89, 182],
+  feriado: [231, 76, 60],
+  ferias: [52, 152, 219],
 };
 
 // ── PDF generator ──
