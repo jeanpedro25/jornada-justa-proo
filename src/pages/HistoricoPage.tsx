@@ -447,7 +447,7 @@ const HistoricoPage: React.FC = () => {
                         </p>
                       )}
 
-                      {day.status === 'atestado' && (
+                      {day.atestadoPeriodo && (
                         <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">
                           🏥 Atestado médico {day.atestadoPeriodo === 'integral' ? '(integral)' : day.atestadoPeriodo === 'manha' ? '(manhã)' : day.atestadoPeriodo === 'tarde' ? '(tarde)' : ''}
                         </p>
@@ -477,7 +477,7 @@ const HistoricoPage: React.FC = () => {
                         </div>
                       )}
 
-                      {day.status === 'registrado' && (
+                      {(day.status === 'registrado' || day.status === 'atestado') && (
                         <p className="text-xs text-muted-foreground tabular-nums">
                           {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
                           {' · '}{formatarDuracaoJornada(day.totalMin)}
@@ -486,22 +486,29 @@ const HistoricoPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Right badge */}
-                    {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana' || day.status === 'atestado') && (
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${style.badge}`}>
-                        {style.label}
-                      </span>
-                    )}
-                    {day.status === 'registrado' && day.extraHours > 0 && (
-                      <span className="text-[10px] font-bold text-warning bg-warning/10 px-2 py-0.5 rounded-full shrink-0">
-                        +{formatarDuracaoJornada(Math.round(day.extraHours * 60))}
-                      </span>
-                    )}
-                    {day.status === 'registrado' && day.devendoMin > 0 && day.extraHours <= 0 && (
-                      <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full shrink-0">
-                        -{formatarDuracaoJornada(day.devendoMin)} devendo
-                      </span>
-                    )}
+                    {/* Right badges */}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {day.atestadoPeriodo && (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300">
+                          Atestado médico
+                        </span>
+                      )}
+                      {(day.status === 'pendente' || day.status === 'em_andamento' || day.status === 'ferias' || day.status === 'feriado' || day.status === 'compensado' || day.status === 'fimdesemana' || day.status === 'atestado') && (
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${style.badge}`}>
+                          {style.label}
+                        </span>
+                      )}
+                      {day.status === 'registrado' && day.extraHours > 0 && (
+                        <span className="text-[10px] font-bold text-warning bg-warning/10 px-2 py-0.5 rounded-full">
+                          +{formatarDuracaoJornada(Math.round(day.extraHours * 60))}
+                        </span>
+                      )}
+                      {day.status === 'registrado' && day.devendoMin > 0 && day.extraHours <= 0 && (
+                        <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
+                          -{formatarDuracaoJornada(day.devendoMin)} devendo
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
