@@ -29,6 +29,7 @@ import autoTable from 'jspdf-autotable';
 import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
 import { startOfWeek, endOfWeek, subMonths } from 'date-fns';
+import { getFeriadosDoAno, type Feriado } from '@/lib/feriados';
 
 const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
