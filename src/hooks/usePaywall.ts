@@ -1,26 +1,28 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
+import { usePlano } from './usePlano';
 
 export const usePaywall = () => {
   const { profile } = useAuth();
+  const plano = usePlano();
 
   return useMemo(() => {
-    const isPro = profile?.plano === 'pro' || profile?.plano === 'anual';
-    const createdAt = profile?.created_at ? new Date(profile.created_at) : new Date();
-    const daysUsed = Math.max(0, Math.floor((Date.now() - createdAt.getTime()) / 86400000));
+    const { isPro, isTrial, podeUsarPro } = plano;
 
     return {
       isPro,
-      daysUsed,
-      canSeeMoney: isPro,
-      canExportPdf: isPro,
-      canSeeFullHistory: isPro,
-      canSimulateValue: isPro,
-      shouldShowPaywall: (action: 'money' | 'pdf' | 'history' | 'simulate' | 'auto') => {
-        if (isPro) return false;
-        if (action === 'auto') return daysUsed >= 2;
+      isTrial,
+      podeUsarPro,
+      canSeeMoney: podeUsarPro,
+      canExportPdf: podeUsarPro,
+      canExportExcel: podeUsarPro,
+      canSeeFullHistory: podeUsarPro,
+      canSimulateValue: podeUsarPro,
+      canUseRadar: podeUsarPro,
+      shouldShowPaywall: (action: 'money' | 'pdf' | 'history' | 'simulate' | 'auto' | 'excel' | 'radar') => {
+        if (podeUsarPro) return false;
         return true;
       },
     };
-  }, [profile]);
+  }, [plano, profile]);
 };

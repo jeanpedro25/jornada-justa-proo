@@ -18,6 +18,10 @@ import PrivacidadePage from "./pages/PrivacidadePage";
 import PrivacidadePublicaPage from "./pages/PrivacidadePublicaPage";
 import TermosUsoPage from "./pages/TermosUsoPage";
 import NotFound from "./pages/NotFound";
+import PlanosPage from "./pages/PlanosPage";
+import RadarPage from "./pages/RadarPage";
+import RescisaoPage from "./pages/RescisaoPage";
+import FechamentoMensalPage from "./pages/FechamentoMensalPage";
 
 const FullScreenLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -81,6 +85,10 @@ const App = () => (
             <Route path="/relatorio" element={<ProtectedRoute><RelatorioPage /></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} />
             <Route path="/privacidade" element={<ProtectedRoute><PrivacidadePage /></ProtectedRoute>} />
+            <Route path="/planos" element={<ProtectedRoute><PlanosPage /></ProtectedRoute>} />
+            <Route path="/radar" element={<ProtectedRoute><RadarPage /></ProtectedRoute>} />
+            <Route path="/rescisao" element={<ProtectedRoute><RescisaoPage /></ProtectedRoute>} />
+            <Route path="/fgts" element={<ProtectedRoute><FechamentoMensalPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

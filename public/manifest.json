@@ -1,17 +1,24 @@
 {
-  "name": "Hora Justa",
+  "name": "Hora Justa — Seu ponto digital",
   "short_name": "Hora Justa",
-  "description": "Registre sua jornada. Prove seus direitos.",
+  "description": "Registre sua jornada de trabalho, controle horas extras e proteja seus direitos. Simples, seguro e gratuito para CLT.",
   "start_url": "/app",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
+  "background_color": "#0f5f5f",
+  "theme_color": "#0f5f5f",
   "icons": [
     {
-      "src": "/placeholder.svg",
+      "src": "/logo.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

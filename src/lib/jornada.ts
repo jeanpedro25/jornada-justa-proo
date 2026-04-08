@@ -367,6 +367,7 @@ export function getCargaDiaria(
   tipoJornada: TipoJornada,
   escalaTipo: string | null,
   cargaHorariaDiaria: number,
+  _profile?: any,
 ): number {
   if (tipoJornada === 'escala' && escalaTipo === '12x36') return 12;
   return cargaHorariaDiaria;
@@ -381,4 +382,23 @@ export function getMarcacaoVisual(tipo: TipoMarcacao) {
     case 'volta_intervalo': return { icone: '🔵', label: 'Volta intervalo', cor: 'text-accent' };
     case 'saida_final': return { icone: '🔴', label: 'Saída final', cor: 'text-destructive' };
   }
+}
+
+/** Alias: retorna true se a data for um dia útil de trabalho para este perfil */
+export function isScheduledWorkday(dateStr: string, profile?: any): boolean {
+  if (!profile) return true;
+  const date = new Date(dateStr + 'T12:00:00');
+  const dow = date.getDay(); // 0=Sun,6=Sat
+  const tipoJornada = profile.tipo_jornada || 'jornada_fixa';
+  if (tipoJornada === 'escala') {
+    const escalaTipo = profile.escala_tipo || null;
+    const inicio = profile.escala_inicio || profile.historico_inicio || profile.created_at?.split('T')[0];
+    if (escalaTipo === '12x36' && inicio) {
+      const cfg: EscalaConfig = { tipo: '12x36', diasTrabalho: 1, diasFolga: 1, inicio };
+      return isDiaTrabalhoEscala(cfg, dateStr);
+    }
+    return true;
+  }
+  // Jornada fixa: seg-sex por padrão
+  return dow !== 0 && dow !== 6;
 }

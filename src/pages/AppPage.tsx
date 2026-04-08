@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
 import { CheckCircle2, Clock, Settings } from 'lucide-react';
+import TrialBanner from '@/components/TrialBanner';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -187,8 +188,9 @@ const AppPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <AppHeader />
-      <div className="px-4 pt-3 max-w-lg mx-auto space-y-4">
+      <AppHeader title={`${getGreeting()}, ${userName}!`} subtitle={today} />
+      <div className="px-4 mt-2 max-w-lg mx-auto space-y-4">
+        <TrialBanner />
         {/* Greeting */}
         {userName && (
           <p className="text-sm text-muted-foreground animate-fade-in">
