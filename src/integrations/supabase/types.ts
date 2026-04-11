@@ -250,16 +250,20 @@ export type Database = {
           horario_saida_padrao: string | null
           id: string
           intervalo_almoco: number
+          is_pro: boolean
           limite_banco_horas: number | null
           modo_trabalho: string
           nome: string | null
           onboarding_completo: boolean | null
           outros_descontos_detalhados: number
           plano: string | null
+          plano_payment_id: string | null
           plano_saude: number
+          plano_vencimento: string | null
           prazo_compensacao_dias: number
           regra_conversao: string
           salario_base: number | null
+          subscription_status: string
           tipo_jornada: string
           turno_a_fim: string | null
           turno_a_inicio: string | null
@@ -297,16 +301,20 @@ export type Database = {
           horario_saida_padrao?: string | null
           id: string
           intervalo_almoco?: number
+          is_pro?: boolean
           limite_banco_horas?: number | null
           modo_trabalho?: string
           nome?: string | null
           onboarding_completo?: boolean | null
           outros_descontos_detalhados?: number
           plano?: string | null
+          plano_payment_id?: string | null
           plano_saude?: number
+          plano_vencimento?: string | null
           prazo_compensacao_dias?: number
           regra_conversao?: string
           salario_base?: number | null
+          subscription_status?: string
           tipo_jornada?: string
           turno_a_fim?: string | null
           turno_a_inicio?: string | null
@@ -344,16 +352,20 @@ export type Database = {
           horario_saida_padrao?: string | null
           id?: string
           intervalo_almoco?: number
+          is_pro?: boolean
           limite_banco_horas?: number | null
           modo_trabalho?: string
           nome?: string | null
           onboarding_completo?: boolean | null
           outros_descontos_detalhados?: number
           plano?: string | null
+          plano_payment_id?: string | null
           plano_saude?: number
+          plano_vencimento?: string | null
           prazo_compensacao_dias?: number
           regra_conversao?: string
           salario_base?: number | null
+          subscription_status?: string
           tipo_jornada?: string
           turno_a_fim?: string | null
           turno_a_inicio?: string | null

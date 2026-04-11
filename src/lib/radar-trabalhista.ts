@@ -28,6 +28,11 @@ export interface RadarInput {
   salario: number;
   percentualHE: number;
   cargaHoras: number; // horas/dia
+  /**
+   * Quando true (padrão), ignora dias cujo ponto foi gerado por importação/reconstrução automática.
+   * A análise considera apenas registros reais ou lançados manualmente pelo usuário.
+   */
+  excluirReconstituidos?: boolean;
 }
 
 function fmtData(d: string): string {
@@ -44,8 +49,17 @@ function diffMeses(d1: Date, d2: Date): number {
   return Math.max(0, (d2.getFullYear() - d1.getFullYear()) * 12 + d2.getMonth() - d1.getMonth());
 }
 
+/** Texto jurídico neutro: responsabilidade dos dados permanece com o usuário (exibido no app/PDF). */
+export const RADAR_ISENCAO_RODAPE =
+  'Indicador automatizado para organização pessoal. Não constitui parecer jurídico nem certifica fatos; a responsabilidade pela veracidade dos registros é exclusiva do usuário.';
+
 export function analisarRadarTrabalhista(input: RadarInput): AlertaRadar[] {
-  const { days, bancoSaldoMin, bancoDataPrimeiro, salario, percentualHE } = input;
+  const { bancoSaldoMin, bancoDataPrimeiro, salario, percentualHE } = input;
+  const excluirReconst = input.excluirReconstituidos !== false;
+  const days = excluirReconst
+    ? input.days.filter((d: any) => d.registroOrigem !== 'reconstituido')
+    : input.days;
+
   const alertas: AlertaRadar[] = [];
   const hoje = new Date();
   const vhExtra = salario > 0 ? (salario / 220) * (1 + percentualHE / 100) : 0;
@@ -65,10 +79,10 @@ export function analisarRadarTrabalhista(input: RadarInput): AlertaRadar[] {
         nivel: 'alto',
         emoji: '⏳',
         titulo: 'Banco de Horas Acumulado Há Mais de 6 Meses',
-        narrativa: `Com base nos dados informados, você está acumulando horas extras no banco há aproximadamente ${messesSemComp} meses — desde ${dataInicioStr} — e até hoje essas horas não foram compensadas em folga. O saldo atual estimado é de ${saldoH}h. Acordos de banco de horas com prazo superior a 6 meses sem compensação podem indicar necessidade de revisão urgente.`,
+        narrativa: `À vista dos registros informados pelo usuário, identifica-se saldo de banco de horas não compensado em folga há aproximadamente ${messesSemComp} meses (referência de primeiro acúmulo: ${dataInicioStr}), com saldo estimado de ${saldoH}h. A habitualidade de prazos excessivos para compensação pode ensejar discussão quanto à observância do regime legal de horas suplementares.`,
         periodo: `Desde ${dataInicioStr} (${messesSemComp} meses sem compensação)`,
         ocorrencias: bancoDataPrimeiro ? [`Primeiro acúmulo: ${dataInicioStr}`, `Saldo acumulado: ${fmtHM(bancoSaldoMin)}`] : undefined,
-        recomendacao: 'Recomenda-se verificar o acordo de banco de horas vigente, o prazo máximo de compensação e solicitar esclarecimentos ao RH sobre a previsão de quitação.',
+        recomendacao: 'Cabe ao trabalhador verificar acordo coletivo, normas internas e controles oficiais de ponto antes de qualquer medida.',
         clt: 'CLT Art. 59 e 59-B — Banco de horas e prazo de compensação',
         valorEstimado: estimativa > 0 ? estimativa : undefined,
       });
@@ -78,9 +92,9 @@ export function analisarRadarTrabalhista(input: RadarInput): AlertaRadar[] {
         nivel: 'medio',
         emoji: '📈',
         titulo: 'Saldo Elevado no Banco de Horas',
-        narrativa: `Com base nos dados informados, seu banco de horas apresenta um saldo estimado de ${saldoH}h. Embora ainda dentro do prazo comum de 6 meses, um saldo elevado sem previsão de compensação pode se tornar um problema futuro. Recomenda-se acompanhar de perto para garantir a compensação dentro do prazo acordado.`,
+        narrativa: `Nos termos dos lançamentos informados pelo usuário, o saldo de banco de horas encontra-se estimado em ${saldoH}h. Saldo elevado, ainda que dentro de eventual prazo convencional, pode indicar necessidade de acompanhamento quanto à programação de compensações.`,
         periodo: 'Período atual',
-        recomendacao: 'Verifique o prazo máximo previsto no acordo de banco de horas e acompanhe a programação de folgas compensatórias.',
+        recomendacao: 'Sugerem-se conferência de acordos aplicáveis e de extratos oficiais, sem imputação automática de débito ao empregador.',
         clt: 'CLT Art. 59 — Horas suplementares e banco de horas',
         valorEstimado: estimativa > 0 ? estimativa : undefined,
       });
@@ -99,10 +113,10 @@ export function analisarRadarTrabalhista(input: RadarInput): AlertaRadar[] {
       nivel: diasMais2h.length >= 5 ? 'alto' : 'medio',
       emoji: '🕐',
       titulo: `${diasMais2h.length} Dia(s) com Mais de 2h Extras`,
-      narrativa: `Com base nos dados informados, foram identificados ${diasMais2h.length} dia(s) no período com estimativa de horas extras superiores a 2h diárias. Isso pode indicar que a jornada máxima legal de 10h/dia esteja sendo ultrapassada regularmente.`,
+      narrativa: `Dos registros informados pelo usuário, constatam-se ${diasMais2h.length} dia(s) com horas extras estimadas em patamar superior a duas horas diárias, o que, em tese, aproxima-se do limite legal usual de duração da jornada (8h + 2h extras).`,
       periodo: `${diasMais2h.length} dia(s) identificado(s)`,
       ocorrencias: exemplos,
-      recomendacao: 'Recomenda-se verificar com o RH se todas as horas extras acima de 2h estão sendo corretamente registradas, remuneradas ou compensadas.',
+      recomendacao: 'A conferência com documentos oficiais e negociais vigentes é indispensável; este indicador não presume ilícito por parte do empregador.',
       clt: 'CLT Art. 59 §1º — Limite de 2h extras por dia de trabalho',
       valorEstimado: estimativa > 0 ? estimativa : undefined,
     });
@@ -231,6 +245,37 @@ export function analisarRadarTrabalhista(input: RadarInput): AlertaRadar[] {
       recomendacao: 'Verifique com o RH se houve compensação em folga ou pagamento adicional correspondente ao trabalho realizado nos feriados.',
       clt: 'CLT Art. 70 e CF/88 Art. 7º XV — Repouso em feriados',
       valorEstimado: estimativa > 0 ? estimativa : undefined,
+    });
+  }
+
+  // ── 8. Sequência prolongada de dias corridos com labor (repouso) ─────────
+  const datasComTrabalho = [...new Set(diasUteis.filter(d => d.totalMin > 0).map(d => d.data))].sort();
+  let maxSeqDias = datasComTrabalho.length ? 1 : 0;
+  let curSeqDias = 1;
+  for (let i = 1; i < datasComTrabalho.length; i++) {
+    const a = new Date(datasComTrabalho[i - 1] + 'T12:00:00');
+    const b = new Date(datasComTrabalho[i] + 'T12:00:00');
+    const diffDays = Math.round((b.getTime() - a.getTime()) / 86400000);
+    if (diffDays === 1) {
+      curSeqDias++;
+      maxSeqDias = Math.max(maxSeqDias, curSeqDias);
+    } else if (diffDays > 1) {
+      curSeqDias = 1;
+    }
+  }
+  if (maxSeqDias >= 12) {
+    alertas.push({
+      id: 'sequencia_dias_labor',
+      nivel: maxSeqDias >= 23 ? 'alto' : 'medio',
+      emoji: '📆',
+      titulo: `Sequência de ${maxSeqDias} Dia(s) Corridos com Registro de Labor`,
+      narrativa:
+        `Na sequência dos registros informados pelo usuário (excluídos pontos meramente reconstituídos), verifica-se período de ${maxSeqDias} dias corridos consecutivos com jornada registrada. ` +
+        'Padrões prolongados de labor sem intervalo de descanso semanal podem, conforme o caso concreto, relacionar-se à fiscalização do repouso entre jornadas e do repouso semanal remunerado, sem imputação automática de infração.',
+      periodo: `Maior sequência: ${maxSeqDias} dia(s) consecutivos`,
+      recomendacao:
+        'Cabe confrontar com o contrato, normas coletivas e o ponto oficial; eventual questionamento deve ser objeto de análise individualizada por profissional habilitado.',
+      clt: 'CLT Art. 66 e 67 — Intervalo entre jornadas e repouso semanal',
     });
   }
 

@@ -30,6 +30,7 @@ import { usePaywall } from '@/hooks/usePaywall';
 import PaywallModal from '@/components/PaywallModal';
 import { startOfWeek, endOfWeek, subMonths } from 'date-fns';
 import { getFeriadosDoAno, type Feriado } from '@/lib/feriados';
+import { analisarRadarTrabalhista, RADAR_ISENCAO_RODAPE, type AlertaRadar } from '@/lib/radar-trabalhista';
 
 const diasSemana = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
 
@@ -54,6 +55,8 @@ interface DaySummary {
   registroOrigem: 'real' | 'reconstituido' | 'manual' | null;
   atestadoPeriodo?: string | null;
   feriadoNome?: string | null;
+  /** Necessário para o Radar Trabalhista (mesmo motor da tela /radar) */
+  ehDiaTrabalho?: boolean;
 }
 
 interface ReportProfileConfig {
@@ -184,6 +187,7 @@ function buildDaySummaries(
             intervaloMin: j.totalIntervalo,
             primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
             origem: 'atestado', registroOrigem, atestadoPeriodo: atestado,
+            ehDiaTrabalho,
           });
         } else {
           summaries.push({
@@ -191,6 +195,7 @@ function buildDaySummaries(
             totalMin: 0, extraMin: 0, intervaloMin: 0,
             primeiraEntrada: null, ultimaSaida: null,
             origem: 'atestado', registroOrigem: null, atestadoPeriodo: atestado,
+            ehDiaTrabalho,
           });
         }
       } else if (feriado) {
@@ -204,6 +209,7 @@ function buildDaySummaries(
             intervaloMin: j.totalIntervalo,
             primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
             origem: 'feriado', registroOrigem, feriadoNome: feriado,
+            ehDiaTrabalho: true,
           });
         } else {
           summaries.push({
@@ -211,6 +217,7 @@ function buildDaySummaries(
             totalMin: 0, extraMin: 0, intervaloMin: 0,
             primeiraEntrada: null, ultimaSaida: null,
             origem: 'feriado', registroOrigem: null, feriadoNome: feriado,
+            ehDiaTrabalho,
           });
         }
       } else if (ehFerias) {
@@ -219,6 +226,7 @@ function buildDaySummaries(
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
           origem: 'ferias', registroOrigem: null,
+          ehDiaTrabalho: false,
         });
       } else if (ehComp) {
         summaries.push({
@@ -227,6 +235,7 @@ function buildDaySummaries(
           primeiraEntrada: null, ultimaSaida: null,
           origem: 'ferias', registroOrigem: null, // reuse ferias label for folga
           feriadoNome: 'Folga compensada',
+          ehDiaTrabalho: false,
         });
       } else if (marks.length > 0) {
         const cargaMin = cargaHoras * 60;
@@ -237,6 +246,7 @@ function buildDaySummaries(
           intervaloMin: j.totalIntervalo,
           primeiraEntrada: j.primeiraEntrada, ultimaSaida: j.ultimaSaida,
           origem: registroOrigem || 'manual', registroOrigem,
+          ehDiaTrabalho,
         });
       } else if (!ehDiaTrabalho) {
         summaries.push({
@@ -245,6 +255,7 @@ function buildDaySummaries(
           primeiraEntrada: null, ultimaSaida: null,
           origem: dow === 0 || dow === 6 ? 'fds' : 'folga', registroOrigem: null,
           feriadoNome: getOffDayLabel(dataStr, profileConfig),
+          ehDiaTrabalho: false,
         });
       } else {
         summaries.push({
@@ -253,6 +264,7 @@ function buildDaySummaries(
           primeiraEntrada: null, ultimaSaida: null,
           origem: 'pendente', registroOrigem: null,
           feriadoNome: 'Sem registro',
+          ehDiaTrabalho: true,
         });
       }
 
@@ -265,6 +277,7 @@ function buildDaySummaries(
       const j = calcularJornada(marks, cargaMin);
       const atestado = atestadoMap.get(data);
       const feriado = feriadosMap?.get(data);
+      const ehDiaTrabalho = isScheduledWorkday(data, profileConfig);
       summaries.push({
         data, marcacoes: marks,
         totalMin: j.totalTrabalhado, extraMin: j.horaExtraMin,
@@ -273,6 +286,7 @@ function buildDaySummaries(
         origem: atestado ? 'atestado' : feriado ? 'feriado' : classifyOrigin(marks),
         registroOrigem: classifyOrigin(marks),
         atestadoPeriodo: atestado, feriadoNome: feriado,
+        ehDiaTrabalho,
       });
     });
 
@@ -284,6 +298,7 @@ function buildDaySummaries(
           totalMin: 0, extraMin: 0, intervaloMin: 0,
           primeiraEntrada: null, ultimaSaida: null,
           origem: 'atestado', registroOrigem: null, atestadoPeriodo: periodo,
+          ehDiaTrabalho: isScheduledWorkday(data, profileConfig),
         });
       }
     });
@@ -373,6 +388,186 @@ interface PDFOptions {
   incluirAtestados?: boolean;
   incluirFinanceiro?: boolean;
   incluirBancoHoras?: boolean;
+  /** Banco de horas completo para o Radar (mesmo se a seção BH estiver oculta no PDF) */
+  bancoEntriesParaRadar?: BancoHorasEntry[];
+}
+
+type RadarNivel = 'perigo' | 'alerta' | 'info';
+
+interface AlertaRadarPDF {
+  nivel: RadarNivel;
+  titulo: string;
+  dataFormatada: string;
+  descricao: string;
+  baseLegal: string;
+  impacto: string;
+  /** Minutos (legado) */
+  valorEstimadoMin?: number;
+  /** Valor em R$ (motor radar-trabalhista.ts) */
+  valorEstimadoReais?: number;
+}
+
+interface RadarResultado {
+  alertas: AlertaRadarPDF[];
+  valorTotal: number;
+}
+
+function stripEmoji(s: string) {
+  return s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
+function mapAlertaRadarParaPdf(a: AlertaRadar): AlertaRadarPDF {
+  const nivel: RadarNivel = a.nivel === 'alto' ? 'perigo' : a.nivel === 'medio' ? 'alerta' : 'info';
+  let desc = a.narrativa;
+  if (a.ocorrencias && a.ocorrencias.length > 0) {
+    desc += '\n\nRegistros identificados: ' + a.ocorrencias.join(' | ');
+  }
+  return {
+    nivel,
+    titulo: stripEmoji(a.titulo) || a.titulo,
+    dataFormatada: a.periodo,
+    descricao: desc,
+    baseLegal: a.clt,
+    impacto: `Recomendacao: ${a.recomendacao}`,
+    valorEstimadoReais: a.valorEstimado != null && a.valorEstimado > 0 ? a.valorEstimado : undefined,
+  };
+}
+
+/** Mesmo motor da tela /radar (lib/radar-trabalhista.ts) */
+function gerarRadarParaPdf(
+  days: DaySummary[],
+  bancoEntriesRadar: BancoHorasEntry[],
+  saldoBancoMin: number,
+  perfil: any,
+  cargaHoras: number,
+  salario: number,
+  percentual: number,
+): RadarResultado {
+  const sorted = [...days].sort((a, b) => a.data.localeCompare(b.data));
+  const semReconst = sorted.filter(d => d.registroOrigem !== 'reconstituido');
+  const daysComRadar = semReconst.map(d => ({
+    ...d,
+    ehDiaTrabalho: d.ehDiaTrabalho ?? isScheduledWorkday(d.data, perfil),
+  }));
+  const bancoDataPrimeiro =
+    bancoEntriesRadar.length > 0
+      ? bancoEntriesRadar.filter(e => e.tipo === 'acumulo').sort((a, b) => a.data.localeCompare(b.data))[0]?.data ?? null
+      : null;
+  const alertasLib = analisarRadarTrabalhista({
+    days: daysComRadar,
+    bancoSaldoMin: saldoBancoMin,
+    bancoDataPrimeiro,
+    created_at: perfil?.created_at,
+    data_admissao: perfil?.data_admissao || perfil?.historico_inicio,
+    salario,
+    percentualHE: percentual,
+    cargaHoras,
+    excluirReconstituidos: true,
+  });
+  const alertas = alertasLib.map(a => mapAlertaRadarParaPdf(a));
+  const valorTotal = alertas.reduce((s, a) => s + (a.valorEstimadoReais ?? 0), 0);
+  return { alertas, valorTotal };
+}
+
+function adicionarRadarNoPDF(
+  doc: jsPDF,
+  alertas: AlertaRadarPDF[],
+  y: number,
+  valorHoraNormal: number,
+  margem: number,
+  contentW: number,
+): { y: number; totalEstimado: number } {
+  y = checkPage(doc, y, 42);
+
+  doc.setFillColor(26, 26, 46);
+  doc.rect(margem, y, contentW, 10, 'F');
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(78, 205, 196);
+  doc.text('RADAR TRABALHISTA — ANALISE CLT', margem + contentW / 2, y + 6.8, { align: 'center' });
+  y += 14;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 110);
+  const introRadar =
+    'Bloco informativo: le os registros de ponto reais ou manuais (nao inclui historico reconstituido por importacao automatica) e destaca padroes com base em dispositivos legais gerais — sem valor de auditoria, pericia ou parecer juridico.';
+  const introLinhas = doc.splitTextToSize(introRadar, contentW - 8);
+  introLinhas.forEach((linha: string) => {
+    if (y > 255) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.text(linha, margem + contentW / 2, y, { align: 'center' });
+    y += 3.8;
+  });
+  y += 4;
+
+  let totalEstimado = 0;
+  const cores: Record<RadarNivel, { fundo: [number, number, number]; borda: [number, number, number]; texto: [number, number, number]; badge: string }> = {
+    perigo: { fundo: [255, 235, 238], borda: [239, 83, 80], texto: [198, 40, 40], badge: 'PERIGO' },
+    alerta: { fundo: [255, 243, 224], borda: [255, 167, 38], texto: [230, 81, 0], badge: 'ALERTA' },
+    info: { fundo: [227, 242, 253], borda: [66, 165, 245], texto: [21, 101, 192], badge: 'INFO' },
+  };
+
+  alertas.forEach((alerta) => {
+    const cor = cores[alerta.nivel];
+    const descLinhas = doc.splitTextToSize(alerta.descricao, contentW - 10);
+    const baseLinhas = doc.splitTextToSize(`${alerta.baseLegal} | ${alerta.impacto}`, contentW - 10);
+    const temValorReais = alerta.valorEstimadoReais != null && alerta.valorEstimadoReais > 0;
+    const cardH = Math.max(34, 18 + descLinhas.length * 3.8 + baseLinhas.length * 3.2 + (temValorReais ? 5 : 0));
+    y = checkPage(doc, y, cardH + 6);
+
+    doc.setFillColor(cor.fundo[0], cor.fundo[1], cor.fundo[2]);
+    doc.setDrawColor(cor.borda[0], cor.borda[1], cor.borda[2]);
+    doc.roundedRect(margem, y, contentW, cardH, 2, 2, 'FD');
+
+    doc.setFillColor(cor.borda[0], cor.borda[1], cor.borda[2]);
+    doc.roundedRect(margem + 3, y + 3, 24, 6.5, 1.5, 1.5, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text(cor.badge, margem + 15, y + 7.5, { align: 'center' });
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(alerta.dataFormatada, margem + contentW - 3, y + 7.5, { align: 'right' });
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(cor.texto[0], cor.texto[1], cor.texto[2]);
+    doc.text(alerta.titulo, margem + 3, y + 14);
+
+    doc.setFontSize(8.2);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.text(descLinhas, margem + 3, y + 18);
+
+    doc.setFontSize(7.6);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(95, 95, 95);
+    const baseY = temValorReais ? y + cardH - 10 : y + cardH - 3.5;
+    doc.text(baseLinhas, margem + 3, baseY);
+
+    if (temValorReais) {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(39, 174, 96);
+      doc.text(
+        `Estimativa: ${(alerta.valorEstimadoReais as number).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
+        margem + contentW - 3,
+        y + cardH - 3.5,
+        { align: 'right' },
+      );
+      totalEstimado += alerta.valorEstimadoReais as number;
+    } else if (alerta.valorEstimadoMin && alerta.valorEstimadoMin > 0) {
+      totalEstimado += (alerta.valorEstimadoMin / 60) * valorHoraNormal * 1.5;
+    }
+    y += cardH + 4;
+  });
+
+  return { y, totalEstimado };
 }
 
 function gerarExtratoPDF(
@@ -392,6 +587,7 @@ function gerarExtratoPDF(
   const incluirBH = opcoes?.incluirBancoHoras !== false;
   const incluirReconstituidos = opcoes?.incluirReconstituidos !== false;
   const incluirAtestados = opcoes?.incluirAtestados !== false;
+  const bancoEntriesRadar = opcoes?.bancoEntriesParaRadar ?? bancoEntries;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const largura = doc.internal.pageSize.getWidth();
@@ -836,15 +1032,77 @@ function gerarExtratoPDF(
   });
   y += 4;
 
-  // Legal footer
-  y = checkPage(doc, y, 40);
+  // Radar Trabalhista (mesmo motor da tela /radar)
+  const radar = gerarRadarParaPdf(
+    days,
+    bancoEntriesRadar,
+    saldoFinalPDF,
+    perfil,
+    carga,
+    salario,
+    percentual,
+  );
+
+  const alertasParaRender = radar.alertas.length > 0
+    ? radar.alertas
+    : [{
+      nivel: 'info' as const,
+      titulo: 'Tudo certo por aqui',
+      dataFormatada: 'Periodo analisado',
+      descricao:
+        'Nao foram identificados padroes relevantes nos registros reais/manuais deste periodo (pontos reconstituidos excluidos da analise).',
+      baseLegal: 'Indicador meramente informativo',
+      impacto: 'Nenhuma estimativa financeira adicional neste bloco',
+      valorEstimadoMin: 0,
+    }];
+
+  const radarRender = adicionarRadarNoPDF(doc, alertasParaRender, y, valorHN, margem, contentW);
+  y = radarRender.y + 1;
+
+  const perigos = radar.alertas.filter(a => a.nivel === 'perigo').length;
+  const atencao = radar.alertas.filter(a => a.nivel === 'alerta').length;
+  const totalRadar = Math.max(radar.valorTotal, radarRender.totalEstimado);
+
+  y = checkPage(doc, y, 34);
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margem, y, largura - margem, y);
+  y += 5;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(26, 26, 46);
+  doc.text('RESUMO DO RADAR', margem, y);
+  y += 5;
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(198, 40, 40);
+  doc.text(`Irregularidades criticas: ${perigos}`, margem, y);
+  y += 4.5;
+  doc.setTextColor(230, 81, 0);
+  doc.text(`Irregularidades de atencao: ${atencao}`, margem, y);
+  y += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(26, 26, 46);
+  doc.text('Total estimado a receber:', margem, y);
+  doc.setTextColor(39, 174, 96);
+  doc.text(
+    totalRadar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+    largura - margem,
+    y,
+    { align: 'right' },
+  );
+  y += 7;
+
+  // Legal footer (unico — inclui Radar e extrato)
+  y = checkPage(doc, y, 52);
   doc.setFillColor(255, 248, 225);
   doc.setDrawColor(243, 156, 18);
   const avisoTexto =
     'Este documento e um extrato matematico privado para organizacao pessoal. ' +
     'Nao possui valor de laudo pericial, nao substitui cartoes de ponto oficiais e nao constitui prova legal absoluta. ' +
     'O nome da empresa e demais dados sao informados pelo proprio usuario para fins de controle pessoal. ' +
-    'O desenvolvedor isenta-se de responsabilidade por decisoes judiciais ou administrativas tomadas com base nestas estimativas. ' +
+    'O bloco Radar Trabalhista utiliza apenas registros de ponto reais ou manuais informados pelo usuario; nao incorpora dados meramente reconstituidos por importacao automatica. ' +
+    'Os indicadores do Radar traduzem dispositivos legais gerais para leitura educativa e nao imputam conduta a empregador ou terceiros, nem substituem assessoria juridica. ' +
+    RADAR_ISENCAO_RODAPE +
+    ' O desenvolvedor do aplicativo e seus licenciados isentam-se de responsabilidade por decisoes judiciais ou administrativas tomadas com base nestas estimativas. ' +
     'Para validacao juridica, consulte um advogado ou contador qualificado.';
   const avisoLines = doc.splitTextToSize(avisoTexto, contentW - 6);
   const avisoH = avisoLines.length * 3.5 + 10;
@@ -873,7 +1131,26 @@ function gerarExtratoPDF(
 
   addWatermark(doc);
 
-  doc.save(`extrato-jornada-${new Date().toISOString().slice(0, 7)}.pdf`);
+  const safeSlug = (s: string) =>
+    s.replace(/[^\w-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'extrato';
+  const dataSlug = new Date().toISOString().slice(0, 10);
+  const nomeArquivo = `extrato-jornada-${safeSlug(periodoLabel)}-${dataSlug}.pdf`;
+
+  const blob = doc.output('blob') as Blob;
+  const pdfBlob =
+    blob.type === 'application/pdf'
+      ? blob
+      : new Blob([blob], { type: 'application/pdf' });
+
+  const url = URL.createObjectURL(pdfBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── Irregularidade type ──
@@ -1122,6 +1399,7 @@ const RelatorioPage: React.FC = () => {
           incluirAtestados: options.incluirAtestados,
           incluirFinanceiro: options.incluirFinanceiro,
           incluirBancoHoras: options.incluirBancoHoras,
+          bancoEntriesParaRadar: bancoEntries,
         },
       );
       toast({ title: 'PDF gerado!', description: 'Extrato salvo no seu dispositivo.' });

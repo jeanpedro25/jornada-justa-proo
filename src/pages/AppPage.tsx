@@ -21,7 +21,7 @@ import { usePaywall } from '@/hooks/usePaywall';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Clock, Settings } from 'lucide-react';
+import { CheckCircle2, Clock, Settings, Calculator, CalendarRange, CreditCard, ShieldAlert } from 'lucide-react';
 import TrialBanner from '@/components/TrialBanner';
 
 function getGreeting(): string {
@@ -373,6 +373,64 @@ const AppPage: React.FC = () => {
 
         {/* Monthly Summary (hero + details + banco + CTA + disclaimer) */}
         <MonthSummaryCard />
+
+        <div className="rounded-2xl border border-border bg-card p-4 space-y-3 animate-slide-up">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ferramentas PRO</p>
+          <div className="grid gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/radar')}
+              className="flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                <ShieldAlert size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Radar Trabalhista</p>
+                <p className="text-[11px] text-muted-foreground">Monitor e alerta de direitos</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/fgts')}
+              className="flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                <CalendarRange size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Fechamento mensal</p>
+                <p className="text-[11px] text-muted-foreground">Controle de horas extras por mês</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/rescisao')}
+              className="flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                <Calculator size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Rescisão &amp; FGTS</p>
+                <p className="text-[11px] text-muted-foreground">Simulador de desligamento e saldo FGTS</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/planos')}
+              className="flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                <CreditCard size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Planos &amp; Assinatura</p>
+                <p className="text-[11px] text-muted-foreground">Desbloqueie todos os recursos PRO</p>
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
 
       <PaywallModal open={showPaywall} onOpenChange={setShowPaywall} estimatedValue={valorReceber} />

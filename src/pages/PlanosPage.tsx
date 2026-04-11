@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlano } from '@/hooks/usePlano';
 import { toast } from '@/hooks/use-toast';
+import { iniciarCheckoutMercadoPago } from '@/lib/payments';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Zap, ArrowLeft, Crown, X } from 'lucide-react';
 
@@ -48,6 +50,7 @@ const PLANOS = [
 
 const PlanosPage: React.FC = () => {
   const { user, profile, refreshProfile } = useAuth();
+  const { isPro, isTrial } = usePlano();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
@@ -73,40 +76,28 @@ const PlanosPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  const handleAssinar = async (planoId: string) => {
+  const handleAssinar = async (planoId: 'pro' | 'anual') => {
     if (!user || !profile) {
       navigate('/auth');
       return;
     }
     setLoading(planoId);
     try {
-      const { data, error } = await supabase.functions.invoke('create-payment', {
-        body: {
-          plano: planoId,
-          user_id: user.id,
-          user_email: user.email,
-          user_nome: (profile as any)?.nome || user.email,
-        },
-      });
-
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-
-      // Redirecionar para checkout do Mercado Pago
-      const url = data.sandbox_init_point || data.init_point;
-      if (url) {
-        window.location.href = url;
-      } else {
-        throw new Error('URL de pagamento não retornada.');
-      }
-    } catch (err: any) {
-      toast({ title: '❌ Erro ao iniciar pagamento', description: err.message, variant: 'destructive' });
+      const res = await iniciarCheckoutMercadoPago(supabase, planoId, user, profile);
+      if (res.error) throw new Error(res.error);
+      const url = res.init_point || res.sandbox_init_point;
+      if (url) window.location.href = url;
+      else throw new Error('URL de pagamento não retornada.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast({ title: '❌ Erro ao iniciar pagamento', description: msg, variant: 'destructive' });
     } finally {
       setLoading(null);
     }
   };
 
-  const jaPro = profile?.plano === 'pro' || profile?.plano === 'anual';
+  /** Trial ainda pode assinar; bloqueia só assinatura paga ativa (não reter quem já pagou). */
+  const jaPro = isPro && !isTrial;
 
   return (
     <div className="min-h-screen bg-background pb-8">
@@ -182,7 +173,7 @@ const PlanosPage: React.FC = () => {
               </ul>
 
               <Button
-                onClick={() => handleAssinar(plano.id)}
+                onClick={() => handleAssinar(plano.id as 'pro' | 'anual')}
                 disabled={!!loading || jaPro}
                 className={`w-full h-12 rounded-xl font-bold text-sm ${
                   plano.destaque

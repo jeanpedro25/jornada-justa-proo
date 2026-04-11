@@ -9,69 +9,27 @@ import {
   ArrowLeft, Calculator
 } from 'lucide-react';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function diffMonths(from: Date, to: Date): number {
-  return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
-}
+import {
+  mesesFGTSCalendario,
+  anosCompletosServico,
+  diasAvisoPrevio12606,
+  valorAvisoPrevio,
+  avosFeriasProporcionais,
+  avos13SalarioNoAno,
+  valor13Proporcional,
+  valorFeriasMaisTerco,
+  saldoSalarioMes,
+  fgtsEstimado,
+  multaFgtsPercentual,
+  type TipoRescisao,
+} from '@/lib/rescisao-calculo';
+import { calcularINSS, calcularIRRFFixaComDependentes } from '@/lib/descontos';
 
 function formatBRL(val: number) {
   return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function mesesNoAno(from: Date, ref: Date): number {
-  // months worked in current year (for 13o)
-  const yearStart = new Date(ref.getFullYear(), 0, 1);
-  const start = from > yearStart ? from : yearStart;
-  const diff = diffMonths(start, ref);
-  return Math.min(12, Math.max(0, diff + 1));
-}
-
-function mesesParaFerias(from: Date, ref: Date, lastVacation: Date | null): number {
-  const base = lastVacation ?? from;
-  return Math.min(12, Math.max(0, diffMonths(base, ref)));
-}
-
-function calcularINSS(salarioBruto: number): number {
-  // Tabela INSS 2024
-  const faixas = [
-    { ate: 1412.00, aliquota: 0.075 },
-    { ate: 2666.68, aliquota: 0.09 },
-    { ate: 4000.03, aliquota: 0.12 },
-    { ate: 7786.02, aliquota: 0.14 },
-  ];
-  let inss = 0;
-  let anterior = 0;
-  for (const f of faixas) {
-    if (salarioBruto <= anterior) break;
-    const base = Math.min(salarioBruto, f.ate) - anterior;
-    inss += base * f.aliquota;
-    anterior = f.ate;
-  }
-  return Math.min(inss, 7786.02 * 0.14); // teto
-}
-
-function calcularIRRF(brutoDescontadoINSS: number, dependentes: number = 0): number {
-  const deducaoDependente = 189.59;
-  const baseCalculo = brutoDescontadoINSS - (dependentes * deducaoDependente);
-  const faixas = [
-    { ate: 2259.20, aliquota: 0, deducao: 0 },
-    { ate: 2826.65, aliquota: 0.075, deducao: 169.44 },
-    { ate: 3751.05, aliquota: 0.15, deducao: 381.44 },
-    { ate: 4664.68, aliquota: 0.225, deducao: 662.77 },
-    { ate: Infinity, aliquota: 0.275, deducao: 896.00 },
-  ];
-  for (const f of faixas) {
-    if (baseCalculo <= f.ate) {
-      return Math.max(0, baseCalculo * f.aliquota - f.deducao);
-    }
-  }
-  return 0;
-}
-
 // ── Types ──────────────────────────────────────────────────────────────────
-
-type TipoRescisao = 'sem_justa_causa' | 'justa_causa' | 'pedido_demissao' | 'comum_acordo';
 
 interface ItemCalculo {
   label: string;
@@ -105,36 +63,42 @@ const RescisaoPage: React.FC = () => {
 
   const mesesTrabalhados = useMemo(() => {
     if (!dataAdmissao) return 0;
-    return Math.max(0, diffMonths(dataAdmissao, dataRef));
+    return mesesFGTSCalendario(dataAdmissao, dataRef);
   }, [dataAdmissao, dataRef]);
 
-  const anosCompletos = Math.floor(mesesTrabalhados / 12);
+  const anosCompletos = useMemo(
+    () => (dataAdmissao ? anosCompletosServico(dataAdmissao, dataRef) : 0),
+    [dataAdmissao, dataRef],
+  );
 
-  // FGTS acumulado estimado: 8% do salário × meses trabalhados
-  const fgtsEstimado = useMemo(() => salario * 0.08 * mesesTrabalhados, [salario, mesesTrabalhados]);
-  const fgtsBase = fgtsAcumuladoManual ? parseFloat(fgtsAcumuladoManual.replace(',', '.')) : fgtsEstimado;
+  const fgtsEstimadoVal = useMemo(
+    () => fgtsEstimado(salario, mesesTrabalhados),
+    [salario, mesesTrabalhados],
+  );
+  const fgtsBase = fgtsAcumuladoManual
+    ? parseFloat(String(fgtsAcumuladoManual).replace(',', '.')) || 0
+    : fgtsEstimadoVal;
 
-  // Aviso prévio: 30 dias + 3 dias por ano (máx 90)
-  const diasAvisoPrevio = Math.min(90, 30 + anosCompletos * 3);
-  const valorAvisoPrevio = (salario / 30) * diasAvisoPrevio;
+  const diasAvisoPrevio = diasAvisoPrevio12606(anosCompletos);
+  const valorAvisoIntegral = valorAvisoPrevio(salario, diasAvisoPrevio, 1);
+  const valorAvisoAcordo = valorAvisoPrevio(salario, diasAvisoPrevio, 0.5);
 
-  // 13o proporcional (meses no ano corrente)
-  const meses13o = mesesNoAno(dataAdmissao ?? dataRef, dataRef);
-  const valor13o = (salario / 12) * meses13o;
+  const inicioPeriodoFerias = dataUltimaFerias ?? dataAdmissao ?? dataRef;
+  const avos13 = dataAdmissao && tipoRescisao !== 'justa_causa'
+    ? avos13SalarioNoAno(dataAdmissao, dataRef)
+    : 0;
+  const valor13o = valor13Proporcional(salario, avos13);
 
-  // Férias proporcionais
-  const mesesFerias = mesesParaFerias(dataAdmissao ?? dataRef, dataRef, dataUltimaFerias);
-  const valorFeriasProp = (salario / 12) * mesesFerias;
-  const valorFeriasComTerco = valorFeriasProp * (4 / 3); // + 1/3
+  const avosFer = dataAdmissao && tipoRescisao !== 'justa_causa'
+    ? avosFeriasProporcionais(inicioPeriodoFerias, dataRef)
+    : 0;
+  const valorFeriasComTerco = tipoRescisao === 'justa_causa' ? 0 : valorFeriasMaisTerco(salario, avosFer);
 
-  // Saldo de salário no mês
-  const diasNoMes = new Date(dataRef.getFullYear(), dataRef.getMonth() + 1, 0).getDate();
+  const saldoSalario = saldoSalarioMes(salario, dataRef);
   const diasTrabNoMes = dataRef.getDate();
-  const saldoSalario = (salario / diasNoMes) * diasTrabNoMes;
 
-  // FGTS multa 40%, 20% (acordo)
-  const multaFGTS40 = fgtsBase * 0.40;
-  const multaFGTS20 = fgtsBase * 0.20;
+  const pctMulta = multaFgtsPercentual(tipoRescisao);
+  const valorMultaFgts = fgtsBase * pctMulta;
 
   const itensRescisao = useMemo((): ItemCalculo[] => {
     const items: ItemCalculo[] = [];
@@ -142,7 +106,7 @@ const RescisaoPage: React.FC = () => {
     items.push({
       label: 'Saldo de salário',
       valor: saldoSalario,
-      descricao: `${diasTrabNoMes} dias trabalhados em ${dataRef.toLocaleDateString('pt-BR', { month: 'long' })} (salário diário × dias)`,
+      descricao: `${diasTrabNoMes} dias trabalhados em ${dataRef.toLocaleDateString('pt-BR', { month: 'long' })} (proporcional ao mês da rescisão)`,
       positivo: true,
     });
 
@@ -150,14 +114,14 @@ const RescisaoPage: React.FC = () => {
       items.push({
         label: '13º salário proporcional',
         valor: valor13o,
-        descricao: `${meses13o}/12 avos do salário (meses trabalhados no ano ${dataRef.getFullYear()})`,
+        descricao: `${avos13}/12 avos no ano-calendário ${dataRef.getFullYear()} (art. 7º, VIII, CF)`,
         positivo: true,
       });
 
       items.push({
         label: 'Férias proporcionais + 1/3',
         valor: valorFeriasComTerco,
-        descricao: `${mesesFerias}/12 avos de férias + adicional de 1/3 constitucional`,
+        descricao: `${avosFer}/12 avos no período aquisitivo em curso + terço constitucional (1/3)`,
         positivo: true,
       });
     }
@@ -165,15 +129,15 @@ const RescisaoPage: React.FC = () => {
     if (tipoRescisao === 'sem_justa_causa') {
       items.push({
         label: `Aviso prévio indenizado (${diasAvisoPrevio} dias)`,
-        valor: valorAvisoPrevio,
-        descricao: `30 dias base + ${anosCompletos} anos × 3 dias por ano de serviço (Lei 12.506/2011)`,
+        valor: valorAvisoIntegral,
+        descricao: `Lei 12.506/2011: 30 dias + 3 dias por ano completo (máx. 90). Valor = (salário÷30)×dias.`,
         positivo: true,
       });
 
       items.push({
         label: 'FGTS — Multa rescisória (40%)',
-        valor: multaFGTS40,
-        descricao: `40% sobre o saldo do FGTS acumulado (${formatBRL(fgtsBase)}). Pago pelo empregador.`,
+        valor: valorMultaFgts,
+        descricao: `40% sobre o saldo FGTS (${formatBRL(fgtsBase)}). Demissão sem justa causa.`,
         positivo: true,
         destaque: true,
       });
@@ -182,43 +146,62 @@ const RescisaoPage: React.FC = () => {
     if (tipoRescisao === 'comum_acordo') {
       items.push({
         label: `Aviso prévio (50% — acordo mútuo)`,
-        valor: valorAvisoPrevio * 0.5,
-        descricao: `Metade do aviso prévio (${Math.round(diasAvisoPrevio / 2)} dias) — rescisão por comum acordo (art. 484-A CLT)`,
+        valor: valorAvisoAcordo,
+        descricao: `Comum acordo: metade do aviso calculado por Lei 12.506/2011 (${diasAvisoPrevio} dias × 50%).`,
         positivo: true,
       });
 
       items.push({
         label: 'FGTS — Multa rescisória (20%)',
-        valor: multaFGTS20,
-        descricao: `20% sobre o saldo do FGTS acumulado — rescisão por acordo mútuo`,
+        valor: valorMultaFgts,
+        descricao: `20% sobre o saldo FGTS — rescisão por acordo mútuo.`,
         positivo: true,
         destaque: true,
       });
     }
 
-    // Desconto INSS sobre bruto estimado
-    const brutoBase = saldoSalario + (tipoRescisao !== 'justa_causa' ? valor13o : 0);
-    const inss = calcularINSS(brutoBase);
+    let baseTributavel = saldoSalario;
+    if (tipoRescisao !== 'justa_causa') {
+      baseTributavel += valor13o + valorFeriasComTerco;
+    }
+    if (tipoRescisao === 'sem_justa_causa') baseTributavel += valorAvisoIntegral;
+    if (tipoRescisao === 'comum_acordo') baseTributavel += valorAvisoAcordo;
+
+    const inss = calcularINSS(baseTributavel);
     items.push({
       label: 'Desconto INSS',
       valor: -inss,
-      descricao: `Contribuição previdenciária progressiva sobre o salário bruto (tabela 2024)`,
+      descricao: 'Contribuição previdenciária progressiva sobre a base tributável das verbas (tabelas 2024/2025).',
       positivo: false,
     });
 
-    // IRRF sobre férias+13o (simplificado)
-    const irrf = calcularIRRF(brutoBase - inss, dependentes);
+    const irrf = calcularIRRFFixaComDependentes(baseTributavel - inss, dependentes);
     if (irrf > 0) {
       items.push({
         label: 'Desconto IRRF',
         valor: -irrf,
-        descricao: `Imposto de Renda retido na fonte sobre rendimentos tributáveis (tabela progressiva 2024)`,
+        descricao: `IRRF sobre base após INSS, com dedução por ${dependentes} dependente(s) (tabela 2024/2025).`,
         positivo: false,
       });
     }
 
     return items;
-  }, [tipoRescisao, saldoSalario, valor13o, valorFeriasComTerco, valorAvisoPrevio, multaFGTS40, multaFGTS20, meses13o, mesesFerias, diasAvisoPrevio, anosCompletos, dependentes, fgtsBase, dataRef, diasTrabNoMes]);
+  }, [
+    tipoRescisao,
+    saldoSalario,
+    valor13o,
+    valorFeriasComTerco,
+    valorAvisoIntegral,
+    valorAvisoAcordo,
+    valorMultaFgts,
+    avos13,
+    avosFer,
+    diasAvisoPrevio,
+    dependentes,
+    fgtsBase,
+    dataRef,
+    diasTrabNoMes,
+  ]);
 
   const totalBruto = itensRescisao.filter(i => i.valor > 0).reduce((s, i) => s + i.valor, 0);
   const totalDescontos = itensRescisao.filter(i => i.valor < 0).reduce((s, i) => s + i.valor, 0);
@@ -244,7 +227,7 @@ const RescisaoPage: React.FC = () => {
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-8 -translate-x-8" />
 
             <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-1">📦 FGTS Estimado</p>
-            <p className="text-white text-3xl font-black tracking-tight">{formatBRL(fgtsEstimado)}</p>
+            <p className="text-white text-3xl font-black tracking-tight">{formatBRL(fgtsEstimadoVal)}</p>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               <div className="bg-white/15 rounded-xl p-2.5 text-center">
@@ -277,14 +260,14 @@ const RescisaoPage: React.FC = () => {
                 <p className="text-[10px] text-muted-foreground uppercase font-semibold">Admissão</p>
               </div>
               <p className="text-sm font-bold">{dataAdmissao ? dataAdmissao.toLocaleDateString('pt-BR') : '—'}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{anosCompletos} anos, {mesesTrabalhados % 12} meses</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{anosCompletos} anos completos (aviso) · {mesesTrabalhados} meses (FGTS)</p>
             </div>
             <div className="bg-card border border-border rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Shield size={14} className="text-emerald-500" />
                 <p className="text-[10px] text-muted-foreground uppercase font-semibold">Multa 40%</p>
               </div>
-              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(fgtsEstimado * 0.4)}</p>
+              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(fgtsEstimadoVal * 0.4)}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">se demitido sem causa</p>
             </div>
           </div>
@@ -301,7 +284,7 @@ const RescisaoPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground mt-0.5">30 base + {anosCompletos} anos × 3 dias</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold">{formatBRL(valorAvisoPrevio)}</p>
+                <p className="text-sm font-bold">{formatBRL(valorAvisoIntegral)}</p>
                 <p className="text-[10px] text-muted-foreground">valor indenizado</p>
               </div>
             </div>
@@ -403,7 +386,7 @@ const RescisaoPage: React.FC = () => {
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">R$</span>
             <input type="number" inputMode="decimal" value={fgtsAcumuladoManual} onChange={e => setFgtsAcumuladoManual(e.target.value)}
-              placeholder={`Estimado: ${fgtsEstimado.toFixed(2)}`}
+              placeholder={`Estimado: ${fgtsEstimadoVal.toFixed(2)}`}
               className="w-full rounded-2xl border border-border bg-card pl-10 pr-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
           <p className="text-[10px] text-muted-foreground mt-1 px-1">Consulte o app do FGTS (Caixa Econômica) para o saldo exato.</p>

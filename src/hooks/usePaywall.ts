@@ -2,6 +2,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMemo } from 'react';
 import { usePlano } from './usePlano';
 
+export type PaywallAction = 'money' | 'pdf' | 'history' | 'simulate' | 'auto' | 'excel';
+
 export const usePaywall = () => {
   const { profile } = useAuth();
   const plano = usePlano();
@@ -18,8 +20,7 @@ export const usePaywall = () => {
       canExportExcel: podeUsarPro,
       canSeeFullHistory: podeUsarPro,
       canSimulateValue: podeUsarPro,
-      canUseRadar: podeUsarPro,
-      shouldShowPaywall: (action: 'money' | 'pdf' | 'history' | 'simulate' | 'auto' | 'excel' | 'radar') => {
+      shouldShowPaywall: (_action: PaywallAction) => {
         if (podeUsarPro) return false;
         return true;
       },

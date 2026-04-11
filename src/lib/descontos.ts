@@ -1,15 +1,14 @@
 /**
- * Cálculo de INSS (tabela progressiva 2024/2025) e IRRF para estimativa de salário líquido.
- * Valores atualizados conforme legislação vigente.
- * ATENÇÃO: São estimativas. Valores reais dependem de convenção coletiva e holerite oficial.
+ * Cálculo de INSS e IRRF (tabelas vigentes) para estimativa de salário líquido.
+ * ATENÇÃO: São estimativas. Valores reais dependem de regras do empregador, convenção coletiva e holerite oficial.
  */
 
-// Tabela progressiva INSS 2024/2025
+// Tabela progressiva INSS 2026 (empregado/avulso/doméstico) — aplicada por faixas (progressiva)
 const FAIXAS_INSS = [
-  { teto: 1518.00, aliquota: 0.075 },
-  { teto: 2793.88, aliquota: 0.09 },
-  { teto: 4190.83, aliquota: 0.12 },
-  { teto: 8157.41, aliquota: 0.14 },
+  { teto: 1621.00, aliquota: 0.075 },
+  { teto: 2902.84, aliquota: 0.09 },
+  { teto: 4354.27, aliquota: 0.12 },
+  { teto: 8475.55, aliquota: 0.14 },
 ];
 
 export function calcularINSS(bruto: number): number {
@@ -28,19 +27,37 @@ export function calcularINSS(bruto: number): number {
   return Math.round(desconto * 100) / 100;
 }
 
-// Tabela IRRF 2024/2025
+// Tabela IRRF mensal 2026 (base após INSS)
 const FAIXAS_IRRF = [
-  { teto: 2259.20, aliquota: 0, deduzir: 0 },
-  { teto: 2826.65, aliquota: 0.075, deduzir: 169.44 },
-  { teto: 3751.05, aliquota: 0.15, deduzir: 381.44 },
-  { teto: 4664.68, aliquota: 0.225, deduzir: 662.77 },
-  { teto: Infinity, aliquota: 0.275, deduzir: 896.00 },
+  { teto: 2428.80, aliquota: 0, deduzir: 0 },
+  { teto: 2826.65, aliquota: 0.075, deduzir: 182.16 },
+  { teto: 3751.05, aliquota: 0.15, deduzir: 394.16 },
+  { teto: 4664.68, aliquota: 0.225, deduzir: 675.49 },
+  { teto: Infinity, aliquota: 0.275, deduzir: 908.73 },
 ];
 
 export function calcularIRRF(bruto: number, inss: number): number {
   const base = bruto - inss;
   if (base <= 0) return 0;
 
+  for (const faixa of FAIXAS_IRRF) {
+    if (base <= faixa.teto) {
+      const imposto = base * faixa.aliquota - faixa.deduzir;
+      return Math.max(0, Math.round(imposto * 100) / 100);
+    }
+  }
+  return 0;
+}
+
+/** Dedução por dependente — IRRF mensal (valor vigente em 2026) */
+const DEDUCAO_DEPENDENTE_IRRF = 189.59;
+
+/**
+ * IRRF sobre base já descontada do INSS, com abatimento por dependentes (dedução legal por dependente).
+ */
+export function calcularIRRFFixaComDependentes(baseAposInss: number, dependentes: number): number {
+  const dep = Math.max(0, Math.min(dependentes, 99));
+  const base = Math.max(0, baseAposInss - dep * DEDUCAO_DEPENDENTE_IRRF);
   for (const faixa of FAIXAS_IRRF) {
     if (base <= faixa.teto) {
       const imposto = base * faixa.aliquota - faixa.deduzir;

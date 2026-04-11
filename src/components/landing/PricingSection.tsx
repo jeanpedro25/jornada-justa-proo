@@ -70,10 +70,10 @@ const PricingSection: React.FC = () => {
             </div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-accent-container mb-4">Plano Anual</p>
             <div className="mb-2">
-              <span className="text-5xl font-extrabold">R$ 79,90</span>
+              <span className="text-5xl font-extrabold">R$ 89,90</span>
               <span className="opacity-80 text-sm">/ano</span>
             </div>
-            <p className="text-sm opacity-70 mb-6">Menos de R$ 6,70/mês • Economize 33%</p>
+            <p className="text-sm opacity-70 mb-6">Valor alinhado ao checkout Mercado Pago</p>
             <ul className="space-y-3 mb-10 flex-1">
               {['Tudo do plano mensal', 'Histórico ilimitado', 'Backup na nuvem', 'Alertas inteligentes', 'Simulação de valor estimado'].map((f, i) => (
                 <li key={i} className="flex items-center gap-3 text-sm">

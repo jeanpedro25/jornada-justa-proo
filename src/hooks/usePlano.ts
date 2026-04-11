@@ -5,31 +5,42 @@ export type PlanoStatus = 'pro' | 'anual' | 'trial' | 'expirado';
 
 export interface PlanoInfo {
   status: PlanoStatus;
-  isPro: boolean;        // tem plano pago ativo
-  isTrial: boolean;      // está no período trial de 7 dias
-  isExpirado: boolean;   // trial venceu, sem plano pago
+  isPro: boolean;
+  isTrial: boolean;
+  isExpirado: boolean;
   diasRestantesTrial: number;
-  podeUsarPro: boolean;  // isPro || isTrial
+  /** Acesso irrestrito: plano pago ativo, flags no perfil, ou trial de 7 dias */
+  podeUsarPro: boolean;
 }
 
 const TRIAL_DIAS = 7;
 
 export function usePlano(): PlanoInfo {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   return useMemo(() => {
     const agora = new Date();
+    const rawVenc = (profile as { plano_vencimento?: string | null })?.plano_vencimento;
+    const vencimento = rawVenc ? new Date(rawVenc) : null;
+    const vencimentoValido = vencimento && !Number.isNaN(vencimento.getTime());
+    const vencido = vencimentoValido && vencimento! <= agora;
 
-    // Plano pago ativo
-    const planoPago = profile?.plano === 'pro' || profile?.plano === 'anual';
-    const vencimento = (profile as any)?.plano_vencimento
-      ? new Date((profile as any).plano_vencimento)
-      : null;
-    const planoAtivo = planoPago && (!vencimento || vencimento > agora);
+    const planoId = profile?.plano;
+    const ehPlanoPago = planoId === 'pro' || planoId === 'anual';
+    const isProFlag = (profile as { is_pro?: boolean })?.is_pro === true;
+    const subAtivo =
+      String((profile as { subscription_status?: string | null })?.subscription_status || '')
+        .toLowerCase() === 'active';
 
-    if (planoAtivo) {
+    const planoPagoAtivo = ehPlanoPago && (!vencimentoValido || vencimento! > agora);
+    const flagsAtivas =
+      (isProFlag || subAtivo) && (!vencimentoValido || vencimento! > agora);
+
+    if (planoPagoAtivo || flagsAtivas) {
+      const st: PlanoStatus =
+        planoId === 'anual' ? 'anual' : planoId === 'pro' ? 'pro' : 'pro';
       return {
-        status: profile!.plano as PlanoStatus,
+        status: st,
         isPro: true,
         isTrial: false,
         isExpirado: false,
@@ -38,12 +49,15 @@ export function usePlano(): PlanoInfo {
       };
     }
 
-    // Trial: baseia-se em created_at do perfil
-    const criadoEm = (profile as any)?.created_at
-      ? new Date((profile as any).created_at)
-      : null;
+    if (vencido && ehPlanoPago) {
+      // Plano expirado: não retém se ainda estiver em trial (calculado abaixo)
+    }
 
-    if (criadoEm) {
+    const criadoEmStr =
+      profile?.created_at || user?.created_at || null;
+    const criadoEm = criadoEmStr ? new Date(criadoEmStr) : null;
+
+    if (criadoEm && !Number.isNaN(criadoEm.getTime())) {
       const diffMs = agora.getTime() - criadoEm.getTime();
       const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       const diasRestantesTrial = Math.max(0, TRIAL_DIAS - diffDias);
@@ -61,7 +75,6 @@ export function usePlano(): PlanoInfo {
       }
     }
 
-    // Expirado
     return {
       status: 'expirado',
       isPro: false,
@@ -70,5 +83,5 @@ export function usePlano(): PlanoInfo {
       diasRestantesTrial: 0,
       podeUsarPro: false,
     };
-  }, [profile]);
+  }, [profile, user]);
 }

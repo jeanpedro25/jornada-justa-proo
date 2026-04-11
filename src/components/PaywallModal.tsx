@@ -5,6 +5,7 @@ import { Lock, TrendingUp, FileText, Clock, Shield, Sparkles, CheckCircle2 } fro
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { iniciarCheckoutMercadoPago } from '@/lib/payments';
 import { formatCurrency } from '@/lib/formatters';
 
 interface PaywallModalProps {
@@ -30,7 +31,7 @@ const phrases = [
 ];
 
 const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimatedValue, trigger }) => {
-  const { user, refreshProfile } = useAuth();
+  const { user, profile } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<'mensal' | 'anual'>('anual');
   const [processing, setProcessing] = useState(false);
 
@@ -40,14 +41,15 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
     if (!user) return;
     setProcessing(true);
     try {
-      // For now, show message that payment link will be available soon
-      toast({ 
-        title: '🚧 Em breve!', 
-        description: 'O sistema de pagamento está sendo finalizado. Entre em contato para ativar seu plano Pro.',
-      });
-      onOpenChange(false);
-    } catch (err: any) {
-      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+      const plano = selectedPlan === 'mensal' ? 'pro' : 'anual';
+      const res = await iniciarCheckoutMercadoPago(supabase, plano, user, profile);
+      if (res.error) throw new Error(res.error);
+      const url = res.init_point || res.sandbox_init_point;
+      if (!url) throw new Error('URL de pagamento não retornada.');
+      window.location.href = url;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast({ title: 'Erro ao iniciar pagamento', description: msg, variant: 'destructive' });
     }
     setProcessing(false);
   };
@@ -60,7 +62,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
           <Lock size={28} className="mx-auto mb-3 opacity-80" />
           <h2 className="text-xl font-bold mb-1">Visualize a estimativa completa da sua jornada</h2>
           <p className="text-sm opacity-80">
-            Desbloqueie sua estimativa financeira e organize seu extrato pessoal por apenas R$ 9,90/mês ou R$ 79,90/ano
+            Desbloqueie sua estimativa financeira e organize seu extrato pessoal por apenas R$ 9,90/mês ou R$ 89,90/ano
           </p>
         </div>
 
@@ -109,9 +111,9 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
                 MELHOR VALOR
               </span>
               <p className="text-xs text-muted-foreground mb-1">Anual</p>
-              <p className="text-xl font-bold">R$ 79,90</p>
+              <p className="text-xl font-bold">R$ 89,90</p>
               <p className="text-[10px] text-muted-foreground">/ano</p>
-              <p className="text-[10px] text-accent font-semibold mt-1">Economize 33%</p>
+              <p className="text-[10px] text-accent font-semibold mt-1">Melhor custo anual</p>
             </button>
           </div>
 

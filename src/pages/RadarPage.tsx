@@ -14,12 +14,19 @@ import {
 } from '@/lib/banco-horas';
 import { getCargaDiaria, isDiaTrabalhoEscala, type Marcacao } from '@/lib/jornada';
 import { getCicloQuery } from '@/lib/ciclo-folha';
-import { usePaywall } from '@/hooks/usePaywall';
 import { usePlano } from '@/hooks/usePlano';
 import { useEffect } from 'react';
-import { analisarRadarTrabalhista, type AlertaRadar, type NivelAlerta } from '@/lib/radar-trabalhista';
+import { analisarRadarTrabalhista, RADAR_ISENCAO_RODAPE, type AlertaRadar, type NivelAlerta } from '@/lib/radar-trabalhista';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function classifyOrigin(marks: any[]): 'real' | 'reconstituido' | 'manual' {
+  if (!marks.length) return 'manual';
+  const origens = marks.map(m => m.origem || 'manual');
+  if (origens.every((o: string) => o === 'importacao_automatica')) return 'reconstituido';
+  if (origens.some((o: string) => o === 'botao')) return 'real';
+  return 'manual';
+}
 
 function fmtData(d: string) {
   return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -145,7 +152,6 @@ const AlertaCard: React.FC<{ alerta: AlertaRadar; isPro: boolean; idx: number }>
 const RadarPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { canExportPdf } = usePaywall();
   const plano = usePlano();
   const p = profile as any;
 
@@ -226,14 +232,22 @@ const RadarPage: React.FC = () => {
 
           if (feriado) {
             const j = marks.length > 0 ? calcularJornada(marks, cargaMin) : null;
-            summaries.push({ data: ds, totalMin: j?.totalTrabalhado || 0, extraMin: j?.totalTrabalhado || 0, intervaloMin: j?.totalIntervalo || 0, origem: 'feriado', feriadoNome: feriado, marcacoes: marks, ehDiaTrabalho: true });
+            const ro = marks.length > 0 ? classifyOrigin(marks) : null;
+            summaries.push({
+              data: ds, totalMin: j?.totalTrabalhado || 0, extraMin: j?.totalTrabalhado || 0, intervaloMin: j?.totalIntervalo || 0,
+              origem: 'feriado', feriadoNome: feriado, marcacoes: marks, ehDiaTrabalho: true, registroOrigem: ro,
+            });
           } else if (eFerias) {
-            summaries.push({ data: ds, totalMin: 0, extraMin: 0, intervaloMin: 0, origem: 'ferias', feriadoNome: null, marcacoes: [], ehDiaTrabalho: false });
+            summaries.push({ data: ds, totalMin: 0, extraMin: 0, intervaloMin: 0, origem: 'ferias', feriadoNome: null, marcacoes: [], ehDiaTrabalho: false, registroOrigem: null });
           } else if (marks.length > 0) {
             const j = calcularJornada(marks, cargaMin);
-            summaries.push({ data: ds, totalMin: j.totalTrabalhado, extraMin: ehDia ? j.horaExtraMin : j.totalTrabalhado, intervaloMin: j.totalIntervalo, origem: 'real', feriadoNome: null, marcacoes: marks, ehDiaTrabalho: ehDia });
+            const ro = classifyOrigin(marks);
+            summaries.push({
+              data: ds, totalMin: j.totalTrabalhado, extraMin: ehDia ? j.horaExtraMin : j.totalTrabalhado, intervaloMin: j.totalIntervalo,
+              origem: 'real', feriadoNome: null, marcacoes: marks, ehDiaTrabalho: ehDia, registroOrigem: ro,
+            });
           } else {
-            summaries.push({ data: ds, totalMin: 0, extraMin: 0, intervaloMin: 0, origem: ehDia ? 'pendente' : 'fds', feriadoNome: null, marcacoes: [], ehDiaTrabalho: ehDia });
+            summaries.push({ data: ds, totalMin: 0, extraMin: 0, intervaloMin: 0, origem: ehDia ? 'pendente' : 'fds', feriadoNome: null, marcacoes: [], ehDiaTrabalho: ehDia, registroOrigem: null });
           }
           cur.setDate(cur.getDate() + 1);
         }
@@ -266,6 +280,7 @@ const RadarPage: React.FC = () => {
       salario,
       percentualHE: percentual,
       cargaHoras: carga,
+      excluirReconstituidos: true,
     });
   }, [days, saldoFinal, bancoEntries, salario, percentual, carga, p, loading]);
 
@@ -277,7 +292,7 @@ const RadarPage: React.FC = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header especial */}
       <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-900 to-slate-800 px-4 py-4 flex items-center gap-3">
-        <button onClick={() => navigate('/relatorio')} className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
+        <button onClick={() => navigate('/app')} className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
           <ArrowLeft size={16} className="text-white" />
         </button>
         <div className="flex-1">
@@ -372,7 +387,7 @@ const RadarPage: React.FC = () => {
             <div>
               <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">⚖️ Aviso Legal</p>
               <p className="text-[11px] text-amber-700/80 dark:text-amber-300/80 leading-relaxed">
-                Este relatório apresenta análises e estimativas baseadas nas informações fornecidas pelo usuário e não constitui parecer jurídico, podendo variar conforme regras específicas da empresa e legislação vigente. Para validação oficial, consulte um advogado trabalhista.
+                {RADAR_ISENCAO_RODAPE} A análise considera apenas registros reais ou manuais; pontos gerados por importação/reconstrução automática não entram no cálculo. Não há certificação de fatos nem conclusão sobre o empregador. Para validação oficial, consulte profissional habilitado.
               </p>
             </div>
           </div>
