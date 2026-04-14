@@ -5,6 +5,15 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error(
+    `[Hora Justa] Variáveis de ambiente do Supabase não encontradas.\n` +
+    `VITE_SUPABASE_URL: ${SUPABASE_URL ? 'OK' : 'MISSING'}\n` +
+    `VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY ? 'OK' : 'MISSING'}\n` +
+    `Configure essas variáveis no painel do Vercel em Settings > Environment Variables.`
+  );
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -14,4 +23,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
   }
-});
+});
