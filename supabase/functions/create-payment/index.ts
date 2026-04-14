@@ -35,12 +35,18 @@ serve(async (req) => {
 
     const token = Deno.env.get("MP_ACCESS_TOKEN");
     if (!token) throw new Error("MP_ACCESS_TOKEN não configurado");
+
+    // URL base de retorno — configurável via env var ou fallback para produção
+    const baseUrl = Deno.env.get("APP_URL") || "https://horajusta.vercel.app";
+    const webhookUrl = Deno.env.get("MP_WEBHOOK_URL") || `${supabaseUrl}/functions/v1/mp-webhook`;
+
     const PRICES: Record<string, number> = { pro: 9.90, anual: 89.90 };
     const TITLES: Record<string, string> = {
       pro: "Hora Justa PRO Mensal",
       anual: "Hora Justa PRO Anual",
     };
     if (!plano || PRICES[plano] == null) throw new Error("Plano inválido");
+
     const preference = {
       items: [
         {
@@ -51,10 +57,21 @@ serve(async (req) => {
           unit_price: PRICES[plano],
         },
       ],
-      payer: { email: user_email ?? user.email ?? "", name: user_nome || user_email || user.email || "Usuario" },
+      payer: {
+        email: user_email ?? user.email ?? "",
+        name: user_nome || user_email || user.email || "Usuario",
+      },
+      back_urls: {
+        success: `${baseUrl}/planos?payment=success&plano=${plano}`,
+        failure: `${baseUrl}/planos?payment=failure`,
+        pending: `${baseUrl}/planos?payment=pending`,
+      },
+      auto_return: "approved",
+      notification_url: webhookUrl,
       external_reference: `${user_id}|${plano}|${Date.now()}`,
       statement_descriptor: "HORA JUSTA",
     };
+
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -62,6 +79,7 @@ serve(async (req) => {
     });
     const data = await mpRes.json();
     if (!mpRes.ok) throw new Error(data?.message || JSON.stringify(data));
+
     return new Response(JSON.stringify({ id: data.id, init_point: data.init_point }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });

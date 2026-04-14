@@ -62,7 +62,7 @@ const PricingSection: React.FC = () => {
 
           {/* Anual */}
           <motion.div
-            className="bg-primary text-primary-foreground p-10 rounded-[2.5rem] flex flex-col shadow-2xl shadow-primary/20 relative md:scale-105"
+            className="bg-primary text-primary-foreground p-8 rounded-[2.5rem] flex flex-col shadow-2xl shadow-primary/20 relative"
             variants={scaleIn} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={2}
           >
             <div className="absolute top-5 right-5 bg-accent-container text-primary px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">

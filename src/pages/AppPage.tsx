@@ -21,7 +21,7 @@ import { usePaywall } from '@/hooks/usePaywall';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Clock, Settings, Calculator, CalendarRange, CreditCard, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Clock, Settings, Calculator, CalendarRange, CreditCard, ShieldAlert, Lock } from 'lucide-react';
 import TrialBanner from '@/components/TrialBanner';
 
 function getGreeting(): string {
@@ -35,7 +35,7 @@ function getGreeting(): string {
 const AppPage: React.FC = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
-  const { shouldShowPaywall, canSeeMoney } = usePaywall();
+  const { shouldShowPaywall, canSeeMoney, podeUsarPro } = usePaywall();
   const [showPaywall, setShowPaywall] = useState(false);
   const [marcacoes, setMarcacoes] = useState<Marcacao[]>([]);
   const [loading, setLoading] = useState(false);
@@ -379,42 +379,45 @@ const AppPage: React.FC = () => {
           <div className="grid gap-2">
             <button
               type="button"
-              onClick={() => navigate('/radar')}
-              className="flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors"
+              onClick={() => podeUsarPro ? navigate('/radar') : setShowPaywall(true)}
+              className={`flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors ${!podeUsarPro ? 'opacity-60' : ''}`}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
                 <ShieldAlert size={20} />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">Radar Trabalhista</p>
                 <p className="text-[11px] text-muted-foreground">Monitor e alerta de direitos</p>
               </div>
+              {!podeUsarPro && <Lock size={14} className="text-muted-foreground/60 shrink-0" />}
             </button>
             <button
               type="button"
-              onClick={() => navigate('/fgts')}
-              className="flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors"
+              onClick={() => podeUsarPro ? navigate('/fgts') : setShowPaywall(true)}
+              className={`flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors ${!podeUsarPro ? 'opacity-60' : ''}`}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
                 <CalendarRange size={20} />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">Fechamento mensal</p>
                 <p className="text-[11px] text-muted-foreground">Controle de horas extras por mês</p>
               </div>
+              {!podeUsarPro && <Lock size={14} className="text-muted-foreground/60 shrink-0" />}
             </button>
             <button
               type="button"
-              onClick={() => navigate('/rescisao')}
-              className="flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors"
+              onClick={() => podeUsarPro ? navigate('/rescisao') : setShowPaywall(true)}
+              className={`flex items-center gap-3 w-full rounded-xl border border-border bg-secondary/50 hover:bg-secondary px-4 py-3 text-left transition-colors ${!podeUsarPro ? 'opacity-60' : ''}`}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
                 <Calculator size={20} />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">Rescisão &amp; FGTS</p>
                 <p className="text-[11px] text-muted-foreground">Simulador de desligamento e saldo FGTS</p>
               </div>
+              {!podeUsarPro && <Lock size={14} className="text-muted-foreground/60 shrink-0" />}
             </button>
             <button
               type="button"

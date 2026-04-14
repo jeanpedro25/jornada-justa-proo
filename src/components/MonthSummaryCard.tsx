@@ -304,7 +304,7 @@ const MonthSummaryCard: React.FC = () => {
 
       {/* === Legal disclaimer === */}
       <p className="text-[9px] text-muted-foreground/50 text-center px-4 leading-relaxed">
-        Os descontos são estimativas baseadas na legislação geral. Valores reais de benefícios (VT, VR, Saúde) e descontos específicos da empresa devem ser conferidos no seu holerite oficial.
+        ⚠️ Todos os valores exibidos são <strong>estimativas</strong> calculadas com base nos dados informados por você (salário, jornada, horários registrados). Os valores reais de INSS, IRRF, benefícios (VT, VR, Saúde) e descontos dependem do seu holerite oficial. O Hora Justa é uma ferramenta de organização pessoal e <strong>não substitui</strong> documentos oficiais nem orientação jurídica ou contábil.
       </p>
     </div>
   );

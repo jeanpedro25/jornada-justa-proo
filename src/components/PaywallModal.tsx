@@ -69,11 +69,11 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
         {/* Estimated value teaser */}
         {estimatedValue !== undefined && estimatedValue > 0 && (
           <div className="mx-6 -mt-4 bg-success/10 border border-success/30 rounded-xl p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Você já acumulou aproximadamente</p>
+            <p className="text-xs text-muted-foreground mb-1">Estimativa de horas extras (hoje)</p>
             <p className="text-2xl font-bold text-success">{formatCurrency(estimatedValue)}</p>
-            <p className="text-xs text-muted-foreground mt-1">em horas extras</p>
-            <p className="text-[10px] text-muted-foreground mt-2 italic">
-              Estimativa baseada nos dados informados pelo usuário. Não substitui documentos oficiais.
+            <p className="text-xs text-muted-foreground mt-1">calculado com base nos seus dados</p>
+            <p className="text-[10px] text-muted-foreground/70 mt-2 italic leading-relaxed">
+              ⚠️ Valor estimado com base nos dados informados por você. O valor real depende da confirmação do empregador. O Hora Justa não garante recebimento.
             </p>
           </div>
         )}
@@ -137,7 +137,7 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
           </Button>
 
           <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
-            Os valores apresentados são estimativas baseadas nos dados informados pelo usuário. O Hora Justa é uma ferramenta de organização pessoal e não substitui documentos oficiais.
+            ⚠️ Os valores exibidos são <strong>estimativas</strong> calculadas com base nos dados informados por você (salário, percentual de hora extra, horários). O valor real pode variar. O Hora Justa é uma ferramenta de organização pessoal e <strong>não substitui</strong> holerites, registros oficiais ou orientação jurídica.
           </p>
         </div>
       </DialogContent>
