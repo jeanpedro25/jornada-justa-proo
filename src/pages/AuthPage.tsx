@@ -7,18 +7,11 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import HoraJustaLogo from '@/components/HoraJustaLogo';
 
-/** Lovable OAuth só existe na hospedagem deles; em localhost/LAN o Vite devolve 404 em /~/oauth/initiate */
+/** Sempre usa Supabase OAuth diretamente — lovable.auth só funciona na hospedagem da Lovable */
 function useSupabaseGoogleOAuth(): boolean {
-  if (import.meta.env.VITE_USE_LOVABLE_OAUTH === 'true') return false;
-  if (import.meta.env.VITE_USE_SUPABASE_GOOGLE === 'true') return true;
-  if (import.meta.env.DEV) return true;
-  const h = typeof window !== 'undefined' ? window.location.hostname : '';
-  if (h === 'localhost' || h === '127.0.0.1') return true;
-  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
-  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
-  return false;
+  return true;
 }
+
 
 const AuthPage: React.FC = () => {
   const [tab, setTab] = useState<'login' | 'signup'>('login');
