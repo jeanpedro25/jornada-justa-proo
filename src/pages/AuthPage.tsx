@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import HoraJustaLogo from '@/components/HoraJustaLogo';
-
-/** Sempre usa Supabase OAuth diretamente — lovable.auth só funciona na hospedagem da Lovable */
-function useSupabaseGoogleOAuth(): boolean {
-  return true;
-}
 
 
 const AuthPage: React.FC = () => {
@@ -67,29 +61,18 @@ const AuthPage: React.FC = () => {
     setGoogleLoading(true);
     const redirectTo = `${window.location.origin}/auth`;
     try {
-      if (useSupabaseGoogleOAuth()) {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: { redirectTo },
-        });
-        if (error) throw error;
-        return;
-      }
-
-      const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: redirectTo,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
       });
-      if (result.error) {
-        toast({ title: 'Erro', description: 'Não foi possível entrar com Google.', variant: 'destructive' });
-        return;
-      }
-      if (result.redirected) return;
+      if (error) throw error;
     } catch (error: any) {
       toast({ title: 'Erro', description: error.message || 'Algo deu errado.', variant: 'destructive' });
     } finally {
       setGoogleLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-primary flex flex-col items-center justify-center px-4">
