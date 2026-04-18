@@ -66,17 +66,6 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
           </p>
         </div>
 
-        {/* Estimated value teaser */}
-        {estimatedValue !== undefined && estimatedValue > 0 && (
-          <div className="mx-6 -mt-4 bg-success/10 border border-success/30 rounded-xl p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-1">Estimativa de horas extras (hoje)</p>
-            <p className="text-2xl font-bold text-success">{formatCurrency(estimatedValue)}</p>
-            <p className="text-xs text-muted-foreground mt-1">calculado com base nos seus dados</p>
-            <p className="text-[10px] text-muted-foreground/70 mt-2 italic leading-relaxed">
-              ⚠️ Valor estimado com base nos dados informados por você. O valor real depende da confirmação do empregador. O Hora Justa não garante recebimento.
-            </p>
-          </div>
-        )}
 
         <div className="p-6 space-y-4">
           {/* Emotional phrase */}

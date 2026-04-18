@@ -16,7 +16,7 @@ const TrialBanner: React.FC = () => {
         className="cursor-pointer flex items-center gap-2 px-3 py-2 bg-destructive text-destructive-foreground text-xs font-semibold rounded-xl shadow-md animate-pulse"
       >
         <AlertTriangle size={13} className="shrink-0" />
-        <span>Trial encerrado — Assine para continuar usando os recursos PRO</span>
+        <span>Período de teste encerrado — Assine para continuar usando os recursos PRO</span>
         <span className="ml-auto bg-white/20 rounded px-2 py-0.5 text-[10px]">Assinar →</span>
       </div>
     );
@@ -36,8 +36,8 @@ const TrialBanner: React.FC = () => {
       <Clock size={13} className="shrink-0" />
       <span>
         {diasRestantesTrial === 1
-          ? '⚠️ Último dia de trial gratuito!'
-          : `🎁 Trial grátis: ${diasRestantesTrial} dias restantes`}
+          ? '⚠️ Último dia de teste gratuito!'
+          : `🎁 Teste grátis: ${diasRestantesTrial} dias restantes`}
       </span>
       <span className={`ml-auto rounded px-2 py-0.5 text-[10px] ${urgente ? 'bg-white/20' : 'bg-accent/20'}`}>
         Assinar PRO →
