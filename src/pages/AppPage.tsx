@@ -224,6 +224,21 @@ const AppPage: React.FC = () => {
         )}
 
         {/* Main Action Card */}
+        {!podeUsarPro ? (
+          <div className="bg-card rounded-2xl p-8 text-center shadow-sm border border-destructive/20 animate-slide-up flex flex-col items-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-destructive/80" />
+            <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-4">
+              <Lock size={32} />
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-foreground">Período de teste encerrado</h3>
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              Assine o plano PRO para continuar registrando seu ponto, visualizando histórico e gerando relatórios.
+            </p>
+            <Button onClick={() => setShowPaywall(true)} className="w-full bg-accent hover:bg-accent/90 text-white shadow-lg h-12 text-base font-bold">
+              Desbloquear acesso
+            </Button>
+          </div>
+        ) : (
         <div className="bg-card rounded-2xl p-6 text-center shadow-sm border border-border animate-slide-up">
           {estado === 'encerrada' ? (
             <>
@@ -351,6 +366,7 @@ const AppPage: React.FC = () => {
             </>
           )}
         </div>
+        )}
 
         {/* Registros de hoje */}
         {marcacoes.length > 0 && (

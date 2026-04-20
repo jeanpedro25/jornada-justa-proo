@@ -14,6 +14,10 @@ import {
   calcularJornada, formatarDuracaoJornada,
   formatarHoraLocal, getCargaDiaria, type Marcacao,
 } from '@/lib/jornada';
+import { usePaywall } from '@/hooks/usePaywall';
+import PaywallModal from '@/components/PaywallModal';
+import { Button } from '@/components/ui/button';
+import { Lock } from 'lucide-react';
 
 type FilterPeriod = 'week' | 'month' | 'prev_month' | 'custom';
 type DayStatus = 'registrado' | 'pendente' | 'ferias' | 'compensado' | 'fimdesemana' | 'feriado' | 'em_andamento' | 'atestado';
@@ -61,6 +65,8 @@ const HistoricoPage: React.FC = () => {
 
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { canSeeFullHistory } = usePaywall();
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [allMarcacoes, setAllMarcacoes] = useState<Marcacao[]>([]);
   const [feriasDias, setFeriasDias] = useState<Map<string, FeriasInfo>>(new Map());
   const [compensacoes, setCompensacoes] = useState<Map<string, CompensacaoInfo>>(new Map());
@@ -407,8 +413,23 @@ const HistoricoPage: React.FC = () => {
             <p className="text-xs text-muted-foreground/60">Use o botão acima para adicionar registros manuais</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredDays.map((day, idx) => {
+          <div className="relative">
+            {!canSeeFullHistory && (
+              <div className="absolute inset-0 z-10 backdrop-blur-sm bg-background/60 flex flex-col items-center justify-center rounded-xl p-6 border border-border mt-2">
+                <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-4">
+                  <Lock size={32} />
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-foreground text-center">Histórico bloqueado</h3>
+                <p className="text-sm text-muted-foreground text-center mb-6 max-w-xs">
+                  Seu período de teste acabou. Assine o plano PRO para visualizar e editar seu histórico completo.
+                </p>
+                <Button onClick={() => setShowPaywallModal(true)} className="w-full max-w-xs bg-accent hover:bg-accent/90 text-white shadow-lg h-12 font-bold">
+                  Desbloquear acesso
+                </Button>
+              </div>
+            )}
+            <div className={`space-y-2 ${!canSeeFullHistory ? 'opacity-20 select-none pointer-events-none overflow-hidden h-[400px]' : ''}`}>
+              {filteredDays.map((day, idx) => {
               const date = new Date(day.data + 'T12:00:00');
               const style = getStatusStyle(day);
 
@@ -523,6 +544,7 @@ const HistoricoPage: React.FC = () => {
                 </button>
               );
             })}
+            </div>
           </div>
         )}
       </div>
@@ -535,6 +557,7 @@ const HistoricoPage: React.FC = () => {
       />
 
       <BottomNav />
+      <PaywallModal open={showPaywallModal} onOpenChange={setShowPaywallModal} trigger="history_lock" />
     </div>
   );
 };
