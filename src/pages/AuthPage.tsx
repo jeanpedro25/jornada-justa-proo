@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -16,14 +16,20 @@ const AuthPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Forgot / Reset password states
-  const [view, setView] = useState<'auth' | 'forgot' | 'reset'>(() => {
-    const hash = window.location.hash;
-    if (hash.includes('type=recovery')) return 'reset';
-    return 'auth';
-  });
+  const [view, setView] = useState<'auth' | 'forgot' | 'reset'>('auth');
   const [newPassword, setNewPassword] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Detecta o evento de recuperação de senha enviado pelo Supabase
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setView('reset');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
