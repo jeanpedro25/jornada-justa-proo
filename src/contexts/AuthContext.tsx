@@ -3,6 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { clearAllClientState, clearTransientClientState } from '@/lib/client-state';
+import { useNavigate } from 'react-router-dom';
 
 type Profile = Tables<'profiles'>;
 
@@ -34,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initialLoadDone = React.useRef(false);
   const profileRequestId = React.useRef(0);
   const lastUserId = React.useRef<string | null>(null);
+  const navigate = useNavigate();
 
   const ensureProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -131,6 +133,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
+      // Intercept recovery: redirect to /auth so AuthPage can show the reset form
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/auth');
+        return;
+      }
       if (!initialLoadDone.current && event === 'INITIAL_SESSION') return;
       syncAuthState(nextSession);
     });

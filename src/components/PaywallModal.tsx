@@ -56,9 +56,22 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md mx-auto p-0 overflow-hidden rounded-2xl border-0 bg-card">
+      <DialogContent className="max-w-md mx-auto p-0 overflow-hidden rounded-2xl border-0 bg-card
+        sm:top-[50%] sm:translate-y-[-50%]
+        top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 w-full sm:w-auto
+        sm:rounded-2xl rounded-t-2xl rounded-b-none
+        max-h-[92vh] overflow-y-auto
+        sm:left-[50%] sm:right-auto sm:translate-x-[-50%]">
         {/* Header */}
-        <div className="bg-primary text-primary-foreground p-6 pb-8 text-center">
+        <div className="bg-primary text-primary-foreground p-6 pb-8 text-center relative">
+          {/* Botão X visível sobre o fundo escuro */}
+          <button
+            onClick={() => onOpenChange(false)}
+            aria-label="Fechar"
+            className="absolute right-3 top-3 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors z-10"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
           <Lock size={28} className="mx-auto mb-3 opacity-80" />
           <h2 className="text-xl font-bold mb-1">Visualize a estimativa completa da sua jornada</h2>
           <p className="text-sm opacity-80">
