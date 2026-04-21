@@ -54,27 +54,89 @@ const PlanosPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState<'idle' | 'polling' | 'activated' | 'not_found'>('idle');
+  const pollingRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Parar polling ao desmontar
+  React.useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   // Detectar retorno do Mercado Pago
   useEffect(() => {
     const payment = searchParams.get('payment');
     const plano = searchParams.get('plano');
     if (payment === 'success' && plano) {
-      toast({
-        title: '🎉 Pagamento confirmado!',
-        description: `Plano ${plano === 'anual' ? 'PRO Anual' : 'PRO Mensal'} ativado com sucesso! Aproveite todos os recursos premium.`,
-      });
-      refreshProfile();
-      // Limpar query params
+      // Tentar verificar via API antes de mostrar sucesso
+      verifyPayment(true);
       navigate('/planos', { replace: true });
     } else if (payment === 'failure') {
       toast({ title: '❌ Pagamento não concluído', description: 'Tente novamente ou escolha outra forma de pagamento.', variant: 'destructive' });
       navigate('/planos', { replace: true });
     } else if (payment === 'pending') {
-      toast({ title: '⏳ Pagamento pendente', description: 'Assim que confirmado, seu plano será ativado automaticamente.' });
+      toast({ title: '⏳ Pagamento pendente', description: 'Seu plano será ativado assim que o pagamento for confirmado. Se pagou por PIX, clique em "Já paguei" abaixo.' });
       navigate('/planos', { replace: true });
     }
   }, [searchParams]);
+
+  // Verificar pagamento manualmente ou via polling
+  const verifyPayment = async (silent = false) => {
+    if (!user) return;
+    if (!silent) setVerifying(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await supabase.functions.invoke('verify-payment', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      const result = res.data as { status: string; plano?: string } | null;
+
+      if (result?.status === 'activated') {
+        await refreshProfile();
+        setVerifyStatus('activated');
+        if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+        toast({
+          title: '🎉 Pagamento confirmado!',
+          description: `Plano PRO ativado com sucesso! Aproveite todos os recursos.`,
+        });
+      } else if (result?.status === 'already_active') {
+        await refreshProfile();
+        setVerifyStatus('activated');
+        if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+        if (!silent) toast({ title: '✅ Plano já ativo!', description: 'Seu plano PRO já está ativo.' });
+      } else {
+        if (!silent) setVerifyStatus('not_found');
+      }
+    } catch (err) {
+      console.error('verify-payment error:', err);
+      if (!silent) setVerifyStatus('not_found');
+    } finally {
+      if (!silent) setVerifying(false);
+    }
+  };
+
+  const handleVerifyWithPolling = async () => {
+    setVerifyStatus('polling');
+    await verifyPayment(false);
+    if (verifyStatus !== 'activated') {
+      // Tentar de 10 em 10 segundos por 2 minutos
+      let attempts = 0;
+      pollingRef.current = setInterval(async () => {
+        attempts++;
+        await verifyPayment(false);
+        if (attempts >= 12) {
+          clearInterval(pollingRef.current!);
+          pollingRef.current = null;
+          setVerifyStatus('not_found');
+        }
+      }, 10000);
+    }
+  };
 
   const handleAssinar = async (planoId: 'pro' | 'anual') => {
     if (!user || !profile) {
@@ -228,6 +290,33 @@ const PlanosPage: React.FC = () => {
             ))}
           </ul>
         </div>
+
+        {/* Banner: Já paguei mas não ativou */}
+        {!jaPro && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">⚠️ Pagou por PIX e não ativou?</p>
+            <p className="text-xs text-amber-600/80 dark:text-amber-400">
+              Pagamentos por PIX podem demorar alguns minutos para serem confirmados. Clique abaixo para verificar.
+            </p>
+            {verifyStatus === 'activated' && (
+              <p className="text-xs font-bold text-emerald-600">✅ Plano ativado com sucesso! Atualize a página.</p>
+            )}
+            {verifyStatus === 'not_found' && (
+              <p className="text-xs text-red-600">Pagamento não encontrado. Se acabou de pagar, aguarde 1-2 minutos e tente novamente.</p>
+            )}
+            {verifyStatus === 'polling' && (
+              <p className="text-xs text-amber-600 animate-pulse">🔄 Verificando pagamento... isso pode levar até 2 minutos.</p>
+            )}
+            <Button
+              onClick={handleVerifyWithPolling}
+              disabled={verifying || verifyStatus === 'polling' || verifyStatus === 'activated'}
+              variant="outline"
+              className="w-full h-10 rounded-xl text-sm font-semibold border-amber-300 text-amber-700 hover:bg-amber-50"
+            >
+              {verifying || verifyStatus === 'polling' ? '🔄 Verificando...' : '✅ Já paguei — verificar agora'}
+            </Button>
+          </div>
+        )}
 
         {/* Segurança */}
         <div className="text-center space-y-1">
