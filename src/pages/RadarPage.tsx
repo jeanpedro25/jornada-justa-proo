@@ -308,7 +308,9 @@ const RadarPage: React.FC = () => {
   }, [days, saldoFinal, bancoEntries, salario, percentual, carga, p, loading]);
 
   // Cálculos Avançados do Radar
-  const totalFinanceiro = alertas.reduce((acc, curr) => acc + (curr.valorEstimado || 0), 0);
+  // Em vez de somar tudo (o que causa contagem dupla, pois o mesmo dia de feriado também gera extra e vai pro banco),
+  // pegamos a maior estimativa de prejuízo única (geralmente o Banco de Horas vencido/elevado ou o montante de extras).
+  const totalFinanceiro = alertas.length > 0 ? Math.max(...alertas.map(a => a.valorEstimado || 0)) : 0;
   
   // Score de Saúde
   const score = useMemo(() => {
