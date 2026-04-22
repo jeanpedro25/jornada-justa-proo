@@ -56,12 +56,12 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md mx-auto p-0 overflow-hidden rounded-2xl border-0 bg-card
-        sm:top-[50%] sm:translate-y-[-50%]
-        top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 w-full sm:w-auto
-        sm:rounded-2xl rounded-t-2xl rounded-b-none
+      <DialogContent className="max-w-md mx-auto p-0 overflow-hidden border-0 bg-card
+        top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 w-full
+        rounded-t-2xl rounded-b-none
         max-h-[92vh] overflow-y-auto
-        sm:left-[50%] sm:right-auto sm:translate-x-[-50%]">
+        sm:top-[50%] sm:bottom-auto sm:left-[50%] sm:right-auto sm:translate-x-[-50%] sm:translate-y-[-50%] sm:w-auto sm:rounded-2xl
+        [&>button.absolute]:hidden">
         {/* Header */}
         <div className="bg-primary text-primary-foreground p-6 pb-8 text-center relative">
           {/* Botão X visível sobre o fundo escuro */}
