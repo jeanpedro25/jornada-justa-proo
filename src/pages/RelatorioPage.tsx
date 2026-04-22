@@ -1259,18 +1259,26 @@ const RelatorioPage: React.FC = () => {
   const listaIrregularidades: Irregularidade[] = useMemo(() => {
     const lista: Irregularidade[] = [];
     if (!profile?.salario_base || profile.salario_base === 0) {
-      lista.push({ tipo: 'config', mensagem: 'Salário base não configurado.', rota: '/configuracoes' });
+      lista.push({ tipo: 'config', mensagem: 'Salário base não configurado.', rota: '/config' });
     }
     if (!profile?.carga_horaria_diaria) {
-      lista.push({ tipo: 'config', mensagem: 'Carga horária não configurada.', rota: '/configuracoes' });
+      lista.push({ tipo: 'config', mensagem: 'Carga horária não configurada.', rota: '/config' });
     }
-    days.forEach(d => {
-      const dl = new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      if (d.totalMin > 600) lista.push({ tipo: 'jornada', mensagem: `Jornada >10h em ${dl}`, rota: '/historico' });
-      if (d.intervaloMin < 60 && d.totalMin > 360) lista.push({ tipo: 'intervalo', mensagem: `Intervalo <1h em ${dl}`, rota: '/historico' });
-    });
+    
+    // Erros operacionais que o usuário deve corrigir:
     const incompletos = days.filter(d => !d.ultimaSaida && d.marcacoes.length > 0);
-    if (incompletos.length > 0) lista.push({ tipo: 'sem_saida', mensagem: `${incompletos.length} dia(s) sem saída registrada.`, rota: '/historico' });
+    if (incompletos.length > 0) {
+      lista.push({ tipo: 'sem_saida', mensagem: `${incompletos.length} dia(s) com ponto aberto (esqueceu de bater a saída?).`, rota: '/historico' });
+    }
+
+    // Registros absurdos (provável erro de digitação)
+    days.forEach(d => {
+      if (d.totalMin > 18 * 60) {
+        const dl = new Date(d.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        lista.push({ tipo: 'jornada', mensagem: `Aviso: Registradas ${Math.floor(d.totalMin/60)}h em ${dl}. Corrija se for erro.`, rota: '/historico' });
+      }
+    });
+
     return lista;
   }, [days, profile]);
 
