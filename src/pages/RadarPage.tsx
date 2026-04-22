@@ -45,10 +45,13 @@ const CATEGORIAS_MAP: Record<string, { nome: string; icon: React.ReactNode }> = 
   intervalo_6h: { nome: 'Saúde & Descanso', icon: <HeartPulse size={16} /> },
   intervalo_4h: { nome: 'Saúde & Descanso', icon: <HeartPulse size={16} /> },
   sequencia_dias_labor: { nome: 'Saúde & Descanso', icon: <HeartPulse size={16} /> },
+  interjornada_11h: { nome: 'Saúde & Descanso', icon: <HeartPulse size={16} /> },
+  trabalho_noturno: { nome: 'Adicionais', icon: <DollarSign size={16} /> },
   banco_horas_vencido: { nome: 'Banco de Horas', icon: <Scale size={16} /> },
   banco_horas_elevado: { nome: 'Banco de Horas', icon: <Scale size={16} /> },
   feriados_trabalhados: { nome: 'Feriados & Férias', icon: <AlertCircle size={16} /> },
   ferias_pendentes: { nome: 'Feriados & Férias', icon: <AlertCircle size={16} /> },
+  domingos_trabalhados: { nome: 'Feriados & Férias', icon: <AlertCircle size={16} /> },
 };
 
 // ─── Card de Alerta ───────────────────────────────────────────────────────────

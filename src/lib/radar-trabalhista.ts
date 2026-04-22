@@ -279,5 +279,103 @@ export function analisarRadarTrabalhista(input: RadarInput): AlertaRadar[] {
     });
   }
 
+  // ── 9. Interjornada Inferior a 11h ─────────────────────────────────────────
+  const interjornadaDias = [];
+  const diasComPonto = days.filter(d => d.marcacoes && d.marcacoes.length > 0).sort((a, b) => a.data.localeCompare(b.data));
+  for (let i = 1; i < diasComPonto.length; i++) {
+    const diaAnt = diasComPonto[i - 1];
+    const diaAtual = diasComPonto[i];
+
+    const dateAnt = new Date(diaAnt.data + 'T12:00:00');
+    const dateAtual = new Date(diaAtual.data + 'T12:00:00');
+    const diffDays = Math.round((dateAtual.getTime() - dateAnt.getTime()) / 86400000);
+
+    if (diffDays === 1) {
+      const ultimaAnt = diaAnt.marcacoes[diaAnt.marcacoes.length - 1]?.horario;
+      const primeiraAtual = diaAtual.marcacoes[0]?.horario;
+
+      if (ultimaAnt && primeiraAtual) {
+        const [hA, mA] = ultimaAnt.split(':').map(Number);
+        const [hB, mB] = primeiraAtual.split(':').map(Number);
+        const horasDescanso = ((24 * 60 - (hA * 60 + mA)) + (hB * 60 + mB)) / 60;
+        
+        if (horasDescanso > 0 && horasDescanso < 11) {
+          interjornadaDias.push({
+            dataAnt: diaAnt.data, dataAtual: diaAtual.data,
+            ultimaAnt, primeiraAtual,
+            descanso: horasDescanso
+          });
+        }
+      }
+    }
+  }
+
+  if (interjornadaDias.length > 0) {
+    const estimativa = vhExtra > 0 ? Math.round(interjornadaDias.reduce((s, d) => s + (11 - d.descanso), 0) * vhExtra) : 0;
+    const exemplos = interjornadaDias.slice(0, 5).map(d => `${fmtData(d.dataAnt)} (${d.ultimaAnt}) até ${fmtData(d.dataAtual)} (${d.primeiraAtual}) - ${Math.floor(d.descanso)}h${Math.round((d.descanso % 1) * 60)}m descanso`);
+
+    alertas.push({
+      id: 'interjornada_11h',
+      nivel: interjornadaDias.length >= 3 ? 'alto' : 'medio',
+      emoji: '🛌',
+      titulo: `Descanso Interjornada < 11h em ${interjornadaDias.length} Ocorrência(s)`,
+      narrativa: `A CLT exige descanso ininterrupto mínimo de 11 horas entre duas jornadas de trabalho. Identificamos ${interjornadaDias.length} episódio(s) onde o intervalo foi inferior a 11h. As horas subtraídas desse descanso caracterizam horas extras.`,
+      periodo: `${interjornadaDias.length} ocorrência(s)`,
+      ocorrencias: exemplos,
+      recomendacao: 'As horas faltantes para completar as 11h de descanso devem ser remuneradas como extras. Verifique se o pagamento ou compensação foi feito.',
+      clt: 'CLT Art. 66 e Súmula 436 TST — Descanso mínimo de 11h entre jornadas',
+      valorEstimado: estimativa > 0 ? estimativa : undefined,
+    });
+  }
+
+  // ── 10. Trabalho Noturno ──────────────────────────────────────────────────
+  const diasNoturnos = diasComPonto.filter(d => {
+    return d.marcacoes.some((m: any) => {
+      if (!m.horario) return false;
+      const h = Number(m.horario.split(':')[0]);
+      return h >= 22 || h < 5;
+    });
+  });
+
+  if (diasNoturnos.length > 0) {
+    const exemplos = diasNoturnos.slice(0, 5).map(d => `${fmtData(d.data)} (Ponto em horário noturno)`);
+    alertas.push({
+      id: 'trabalho_noturno',
+      nivel: 'medio',
+      emoji: '🌙',
+      titulo: `Trabalho Noturno Identificado em ${diasNoturnos.length} Dia(s)`,
+      narrativa: `Identificamos ${diasNoturnos.length} dia(s) com labor entre 22h00 e 05h00. O trabalho realizado nesse período confere direito ao adicional noturno (mínimo de 20%), e cada hora noturna trabalhada equivale a 52 minutos e 30 segundos (hora ficta).`,
+      periodo: `${diasNoturnos.length} dia(s) identificados`,
+      ocorrencias: exemplos,
+      recomendacao: 'Certifique-se nos contracheques se o adicional noturno está sendo aplicado e se o cálculo considera a hora reduzida.',
+      clt: 'CLT Art. 73 — Adicional noturno de 20% e hora noturna reduzida',
+    });
+  }
+
+  // ── 11. Domingos Trabalhados ──────────────────────────────────────────────
+  const domingosTrabalhados = diasComPonto.filter(d => {
+    const dt = new Date(d.data + 'T12:00:00');
+    return dt.getDay() === 0 && d.totalMin > 0 && d.origem !== 'feriado';
+  });
+
+  if (domingosTrabalhados.length > 0) {
+    const totalDomMin = domingosTrabalhados.reduce((s, d) => s + d.totalMin, 0);
+    const estimativa = vhExtra > 0 ? Math.round(totalDomMin / 60 * vhExtra) : 0;
+    const exemplos = domingosTrabalhados.slice(0, 5).map(d => `${fmtData(d.data)}: ${fmtHM(d.totalMin)} trabalhados`);
+
+    alertas.push({
+      id: 'domingos_trabalhados',
+      nivel: domingosTrabalhados.length >= 2 ? 'alto' : 'medio',
+      emoji: '☀️',
+      titulo: `Trabalho em ${domingosTrabalhados.length} Domingo(s) Sem Feriado`,
+      narrativa: `Registramos ${domingosTrabalhados.length} domingo(s) com labor. A lei estabelece que o DSR deve coincidir preferencialmente com o domingo. Sem escala especial (ex: 12x36, comércio) ou folga compensatória na semana, o domingo trabalhado deve ser pago em dobro.`,
+      periodo: `${domingosTrabalhados.length} domingo(s) laborado(s)`,
+      ocorrencias: exemplos,
+      recomendacao: 'Caso não tenha tido folga compensatória na mesma semana, o pagamento dessas horas deve ser com adicional de 100%.',
+      clt: 'Lei 605/49 — Repouso Semanal Remunerado preferencialmente aos domingos',
+      valorEstimado: estimativa > 0 ? estimativa : undefined,
+    });
+  }
+
   return alertas.sort((a, b) => ({ alto: 0, medio: 1, baixo: 2 }[a.nivel] - ({ alto: 0, medio: 1, baixo: 2 }[b.nivel])));
 }
