@@ -61,7 +61,8 @@ export function usePlano(): PlanoInfo {
       const diffMs = agora.getTime() - criadoEm.getTime();
       const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       const diasRestantesTrial = Math.max(0, TRIAL_DIAS - diffDias);
-      const estaNoTrial = diasRestantesTrial > 0;
+      const isCancelled = String((profile as { subscription_status?: string | null })?.subscription_status || '').toLowerCase() === 'cancelled';
+      const estaNoTrial = diasRestantesTrial > 0 && !isCancelled;
 
       if (estaNoTrial) {
         return {
