@@ -144,13 +144,34 @@ const PlanosPage: React.FC = () => {
       return;
     }
     setLoading(planoId);
+    
+    // Abre aba antes do await para contornar bloqueadores de popup
+    const newWindow = window.open('about:blank', '_blank');
+    
     try {
       const res = await iniciarCheckoutMercadoPago(supabase, planoId, user, profile);
       if (res.error) throw new Error(res.error);
       const url = res.init_point || res.sandbox_init_point;
-      if (url) window.location.href = url;
-      else throw new Error('URL de pagamento não retornada.');
+      if (url) {
+        if (newWindow) {
+          newWindow.location.href = url;
+        } else {
+          // Fallback se o navegador bloqueou o popup
+          window.location.href = url;
+        }
+        
+        toast({ 
+          title: 'Aba de pagamento aberta', 
+          description: 'Conclua o pagamento na nova aba. Se for PIX, volte aqui após pagar para liberação automática.' 
+        });
+        
+        // Auto-iniciar o polling se o usuário pagou por PIX e vai voltar pra esta aba
+        handleVerifyWithPolling();
+      } else {
+        throw new Error('URL de pagamento não retornada.');
+      }
     } catch (err: unknown) {
+      if (newWindow) newWindow.close();
       const msg = err instanceof Error ? err.message : 'Erro desconhecido';
       toast({ title: '❌ Erro ao iniciar pagamento', description: msg, variant: 'destructive' });
     } finally {

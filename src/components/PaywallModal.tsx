@@ -40,18 +40,39 @@ const PaywallModal: React.FC<PaywallModalProps> = ({ open, onOpenChange, estimat
   const handleSubscribe = async () => {
     if (!user) return;
     setProcessing(true);
+    
+    // Abre aba antes do await para contornar bloqueadores de popup
+    const newWindow = window.open('about:blank', '_blank');
+    
     try {
       const plano = selectedPlan === 'mensal' ? 'pro' : 'anual';
       const res = await iniciarCheckoutMercadoPago(supabase, plano, user, profile);
       if (res.error) throw new Error(res.error);
       const url = res.init_point || res.sandbox_init_point;
+      
       if (!url) throw new Error('URL de pagamento não retornada.');
-      window.location.href = url;
+      
+      if (newWindow) {
+        newWindow.location.href = url;
+      } else {
+        window.location.href = url; // Fallback
+      }
+      
+      toast({ 
+        title: 'Aba de pagamento aberta', 
+        description: 'Conclua o pagamento na nova aba. Se for PIX, retorne para esta página após o pagamento.' 
+      });
+      
+      // Fecha o modal para o usuário poder clicar em "Já paguei" se ele navegar para a tela de planos
+      onOpenChange(false);
+      
     } catch (err: unknown) {
+      if (newWindow) newWindow.close();
       const msg = err instanceof Error ? err.message : 'Erro desconhecido';
       toast({ title: 'Erro ao iniciar pagamento', description: msg, variant: 'destructive' });
+    } finally {
+      setProcessing(false);
     }
-    setProcessing(false);
   };
 
   return (
