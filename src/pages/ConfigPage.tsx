@@ -21,6 +21,9 @@ const ConfigPage: React.FC = () => {
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCancelStep1, setShowCancelStep1] = useState(false);
+  const [showCancelStep2, setShowCancelStep2] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [nome, setNome] = useState('');
   const [empresa, setEmpresa] = useState('');
   const [salario, setSalario] = useState('');
@@ -409,22 +412,102 @@ const ConfigPage: React.FC = () => {
               {profile?.plano === 'pro' ? 'PRO Mensal' : profile?.plano === 'anual' ? 'PRO Anual' : 'FREE'}
             </span>
           </div>
-          {(profile?.plano === 'pro' || profile?.plano === 'anual') && (
+
+          {(profile?.plano === 'pro' || profile?.plano === 'anual') && !showCancelStep1 && !showCancelStep2 && (
             <Button
               variant="ghost"
               size="sm"
               className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 gap-2 text-xs"
-              onClick={async () => {
-                if (!confirm('Tem certeza que deseja cancelar seu plano? Você voltará ao plano Free.')) return;
-                if (!user) return;
-                await supabase.from('profiles').update({ plano: null } as any).eq('id', user.id);
-                await refreshProfile();
-                toast({ title: 'Plano cancelado', description: 'Você voltou para o plano Free.' });
-              }}
+              onClick={() => setShowCancelStep1(true)}
             >
               <XCircle size={14} />
               Cancelar assinatura
             </Button>
+          )}
+
+          {/* PASSO 1: Aviso sério */}
+          {showCancelStep1 && !showCancelStep2 && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <XCircle size={18} className="text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-destructive">⚠️ Atenção: Esta ação é irreversível</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Ao cancelar, você <strong>perde imediatamente</strong> acesso a todos os recursos PRO:
+                    relatórios PDF, exportação Excel, fechamento mensal e rescisão trabalhista.
+                    <br /><br />
+                    Não há reembolso pro rata. Seu plano será cancelado agora.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 rounded-xl text-xs"
+                  onClick={() => setShowCancelStep1(false)}
+                >
+                  Manter plano
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1 rounded-xl text-xs"
+                  onClick={() => { setShowCancelStep1(false); setShowCancelStep2(true); }}
+                >
+                  Continuar cancelamento
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* PASSO 2: Confirmação final */}
+          {showCancelStep2 && (
+            <div className="bg-red-950/20 border-2 border-destructive rounded-xl p-4 space-y-3">
+              <p className="text-sm font-black text-destructive text-center">🚨 CONFIRMAÇÃO FINAL</p>
+              <p className="text-xs text-center text-muted-foreground">
+                Tem absoluta certeza? Você vai perder o acesso PRO <strong>agora</strong>.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 rounded-xl text-xs border-destructive/50"
+                  onClick={() => setShowCancelStep2(false)}
+                  disabled={cancelLoading}
+                >
+                  Não, manter
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1 rounded-xl text-xs font-black"
+                  disabled={cancelLoading}
+                  onClick={async () => {
+                    if (!user) return;
+                    setCancelLoading(true);
+                    try {
+                      // FIX CRÍTICO: zera TODAS as flags de plano
+                      await supabase.from('profiles').update({
+                        plano: null,
+                        is_pro: false,
+                        subscription_status: 'cancelled',
+                        plano_vencimento: null,
+                      } as any).eq('id', user.id);
+                      await refreshProfile();
+                      setShowCancelStep2(false);
+                      toast({ title: 'Plano cancelado', description: 'Você voltou para o plano Free. Esperamos te ver de volta em breve!' });
+                    } catch (e: any) {
+                      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+                    } finally {
+                      setCancelLoading(false);
+                    }
+                  }}
+                >
+                  {cancelLoading ? 'Cancelando...' : '❌ Sim, cancelar agora'}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
 
