@@ -302,7 +302,11 @@ const HistoricoPage: React.FC = () => {
 
   const getStatusStyle = (day: DaySummary) => {
     switch (day.status) {
-      case 'feriado': return { bg: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', label: 'Feriado' };
+      case 'feriado': return { 
+        bg: day.marcacoes.length > 0 ? 'bg-orange-50 border-orange-300 dark:bg-orange-950/30 dark:border-orange-800' : 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800', 
+        badge: day.marcacoes.length > 0 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', 
+        label: 'Feriado' 
+      };
       case 'ferias': return { bg: 'bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', label: 'Férias' };
       case 'compensado': return { bg: 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300', label: 'Compensado' };
       case 'fimdesemana': return { bg: 'bg-muted/50 border-border', badge: 'bg-muted text-muted-foreground', label: 'Fim de semana' };
@@ -456,7 +460,9 @@ const HistoricoPage: React.FC = () => {
 
                       {/* Status-specific content */}
                       {day.status === 'feriado' && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">{day.feriadoNome}</p>
+                        <p className={`text-xs font-medium ${day.marcacoes.length > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {day.marcacoes.length > 0 ? `⚠️ Feriado Trabalhado (${day.feriadoNome})` : day.feriadoNome}
+                        </p>
                       )}
 
                       {day.status === 'ferias' && (
@@ -508,7 +514,7 @@ const HistoricoPage: React.FC = () => {
                         </div>
                       )}
 
-                      {(day.status === 'registrado' || day.status === 'atestado') && (
+                      {(day.status === 'registrado' || day.status === 'atestado' || (day.status === 'feriado' && day.marcacoes.length > 0)) && (
                         <p className="text-xs text-muted-foreground tabular-nums">
                           {formatarHoraLocal(day.primeiraEntrada)} → {formatarHoraLocal(day.ultimaSaida)}
                           {' · '}{formatarDuracaoJornada(day.totalMin)}
