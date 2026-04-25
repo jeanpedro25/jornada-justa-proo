@@ -638,15 +638,17 @@ function gerarExtratoPDF(
   const totalMinExtra = daysForCalc.reduce((s, d) => s + d.extraMin, 0);
   const totalMinReais = daysReais.reduce((s, d) => s + d.totalMin, 0);
   const totalMinReconst = daysReconstituidos.reduce((s, d) => s + d.totalMin, 0);
-  const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
+  const dataInicioMes = daysForCalc.length > 0 ? daysForCalc.map(d => d.data).sort()[0] : '9999-12-31';
+  const bancoEntriesHistorico = bancoEntries.filter(e => e.data < dataInicioMes);
+  const bhSummaryHistorico = summarizeBancoHoras(bancoEntriesHistorico, salario, percentual);
+  
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
   
-  const modoTrabalho = perfil?.horas_extras || 'banco_horas';
-  // Se o usuário está no modo 'Horas extras pagas', o bhSummary.saldo não inclui as horas do período.
-  // Para mostrar a projeção dupla no relatório, nós somamos as horas extras do período ao saldo do banco.
-  const saldoFinalPDF = modoTrabalho !== 'banco_horas' 
-    ? saldoInicial + bhSummary.saldo - totalCompensado + totalMinExtra
-    : saldoInicial + bhSummary.saldo - totalCompensado;
+  // Projetamos o saldo: Histórico real (DB) + Horas Extras do período atual (independentemente da config)
+  const saldoFinalPDF = saldoInicial + bhSummaryHistorico.saldo - totalCompensado + totalMinExtra;
+  
+  // Mantemos o bhSummary original apenas para exibir as horas vencidas/a compensar no PDF
+  const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
 
   const valorHN = salario > 0 ? salario / 220 : 0;
   const valorHE = valorHN * (1 + percentual / 100);
@@ -788,6 +790,11 @@ function gerarExtratoPDF(
       const eqDias = Math.floor(Math.abs(saldoFinalPDF) / (carga * 60));
       const eqH = Math.round(Math.abs(saldoFinalPDF) % (carga * 60) / 60);
       bhItems.push({ label: 'Equivalente a', valor: `${eqDias} dias e ${eqH}h` });
+    }
+    
+    if (saldoFinalPDF > 0 && salario > 0) {
+      const estimativaBanco = (saldoFinalPDF / 60) * valorHE;
+      bhItems.push({ label: 'Valor estimado do Banco (em dinheiro)', valor: estimativaBanco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) });
     }
 
     if (saldoInicial !== 0) {
@@ -1261,9 +1268,14 @@ const RelatorioPage: React.FC = () => {
   const totalExtra = days.reduce((s, d) => s + d.extraMin / 60, 0);
   const valorHE = salario > 0 ? (salario / 220) * (1 + percentual / 100) : 0;
   const valorTotal = totalExtra * valorHE;
-  const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
+  
+  const dataInicioMesUI = days.length > 0 ? days.map(d => d.data).sort()[0] : '9999-12-31';
+  const bancoEntriesHistorico = bancoEntries.filter(e => e.data < dataInicioMesUI);
+  const bhSummaryHistorico = summarizeBancoHoras(bancoEntriesHistorico, salario, percentual);
+  
   const saldoInicial = p?.banco_horas_saldo_inicial ?? 0;
-  const saldoFinal = saldoInicial + bhSummary.saldo - totalCompensado;
+  // UI Saldo projetado
+  const saldoFinal = saldoInicial + bhSummaryHistorico.saldo - totalCompensado + (totalExtra * 60);
 
   const listaIrregularidades: Irregularidade[] = useMemo(() => {
     const lista: Irregularidade[] = [];
@@ -1453,6 +1465,7 @@ const RelatorioPage: React.FC = () => {
             <div>
               <p className="opacity-60 text-xs">Banco horas</p>
               <p className="font-bold">{formatMinutosHoras(saldoFinal)}</p>
+              {saldoFinal > 0 && <p className="text-[10px] text-accent mt-0.5">{formatCurrency((saldoFinal / 60) * valorHE)}</p>}
             </div>
             <div>
               <p className="opacity-60 text-xs">Compensado</p>
