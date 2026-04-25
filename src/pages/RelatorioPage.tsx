@@ -643,6 +643,7 @@ function gerarExtratoPDF(
   const bhSummaryHistorico = summarizeBancoHoras(bancoEntriesHistorico, salario, percentual);
   
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
+  const modoTrabalho = perfil?.horas_extras || 'banco_horas';
   
   // Projetamos o saldo: Histórico real (DB) + Horas Extras do período atual (independentemente da config)
   const saldoFinalPDF = saldoInicial + bhSummaryHistorico.saldo - totalCompensado + totalMinExtra;
