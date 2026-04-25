@@ -640,7 +640,13 @@ function gerarExtratoPDF(
   const totalMinReconst = daysReconstituidos.reduce((s, d) => s + d.totalMin, 0);
   const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
   const saldoInicial = perfil?.banco_horas_saldo_inicial ?? 0;
-  const saldoFinalPDF = saldoInicial + bhSummary.saldo - totalCompensado;
+  
+  const modoTrabalho = perfil?.horas_extras || 'banco_horas';
+  // Se o usuário está no modo 'Horas extras pagas', o bhSummary.saldo não inclui as horas do período.
+  // Para mostrar a projeção dupla no relatório, nós somamos as horas extras do período ao saldo do banco.
+  const saldoFinalPDF = modoTrabalho !== 'banco_horas' 
+    ? saldoInicial + bhSummary.saldo - totalCompensado + totalMinExtra
+    : saldoInicial + bhSummary.saldo - totalCompensado;
 
   const valorHN = salario > 0 ? salario / 220 : 0;
   const valorHE = valorHN * (1 + percentual / 100);
@@ -685,7 +691,10 @@ function gerarExtratoPDF(
   // ── DEMONSTRATIVO FINANCEIRO ──
   if (incluirFinanceiro && salario > 0) {
     y = checkPage(doc, y, 65);
-    y = addSectionTitle(doc, 'Demonstrativo Financeiro Estimado', y, margem);
+    const tituloFinanceiro = modoTrabalho === 'banco_horas' 
+      ? 'Demonstrativo Financeiro (Se pagas em dinheiro)' 
+      : 'Demonstrativo Financeiro Estimado';
+    y = addSectionTitle(doc, tituloFinanceiro, y, margem);
 
     const salarioBruto = salario + valorExtras;
     const inss = calcularINSS(salarioBruto);
@@ -772,7 +781,7 @@ function gerarExtratoPDF(
       { label: 'Horas extras (reconstituidos)', valor: formatMinutosHoras(horasAutoMin) },
       { label: 'Compensacoes utilizadas', valor: `-${fmtHM(bhSummary.aCompensar + totalCompensado)}` },
       { label: 'Horas vencidas', valor: bhSummary.expirado > 0 ? fmtHM(bhSummary.expirado) : '0h' },
-      { label: 'SALDO TOTAL ATUAL', valor: formatMinutosHoras(saldoFinalPDF), bold: true },
+      { label: modoTrabalho !== 'banco_horas' ? 'SALDO TOTAL (Se convertidas em banco)' : 'SALDO TOTAL ATUAL', valor: formatMinutosHoras(saldoFinalPDF), bold: true },
     ];
 
     if (saldoFinalPDF !== 0) {
