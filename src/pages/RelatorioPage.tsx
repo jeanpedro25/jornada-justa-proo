@@ -1273,6 +1273,8 @@ const RelatorioPage: React.FC = () => {
   const bancoEntriesHistorico = bancoEntries.filter(e => e.data < dataInicioMesUI);
   const bhSummaryHistorico = summarizeBancoHoras(bancoEntriesHistorico, salario, percentual);
   
+  const bhSummary = summarizeBancoHoras(bancoEntries, salario, percentual);
+  
   const saldoInicial = p?.banco_horas_saldo_inicial ?? 0;
   // UI Saldo projetado
   const saldoFinal = saldoInicial + bhSummaryHistorico.saldo - totalCompensado + (totalExtra * 60);
